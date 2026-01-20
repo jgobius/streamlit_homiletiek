@@ -1,4 +1,5 @@
 from uuid import uuid4
+import json
 
 import streamlit as st
 
@@ -59,6 +60,14 @@ if len(st.session_state["selected_scriptures"]) > 0:
             extra_context=extra_context if extra_context else None
         )
         
-        st.write(sermon_analysis_model.model_dump())
+        data = json.loads(sermon_analysis_model.model_dump_json())
+        
+        st.session_state['api_handler'].post(
+            endpoint="api/sermon-analyses/",
+            data=data,
+            session_token=st.session_state['session_token']
+        )
+        
+        st.write(data)
         
         st.success("Analyse gestart! Je wordt doorgestuurd naar het dashboard.")

@@ -60,21 +60,29 @@ class APIHandler:
         response.raise_for_status()
         return response.json()
     
-    def post(self, endpoint: str, data: dict[str, Any]) -> dict[str, Any]:
+    def post(self, endpoint: str, data: dict[str, Any], session_token:str=None) -> dict[str, Any]:
         """
         Send a POST request to the specified endpoint with the given data.
         Args:
             endpoint (str): The API endpoint to send the POST request to.
             data (dict[str, Any]): The data to be sent in the request body as JSON.
+            session_token (str): The session token for authentication.
         Returns:
             dict[str, Any]: The JSON response from the API as a dictionary.
         Raises:
             requests.exceptions.HTTPError: If the HTTP request returns an unsuccessful status code.
             requests.exceptions.RequestException: If there is a network-related error during the request.
         """
-        
+        print(type(data))
         url = f"{self.base_url}/{endpoint}"
-        response = requests.post(url, json=data)
+        headers = {}
+        if session_token:
+            headers = {
+                "Authorization": f"Bearer {session_token}",
+                "Content-Type": "application/json"
+        }
+        
+        response = requests.post(url, json=data, headers=headers)
         response.raise_for_status()
         return response.json()
     
