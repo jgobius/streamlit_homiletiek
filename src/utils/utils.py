@@ -16,6 +16,10 @@ def redirect_to_login() -> None:
         >>> redirect_to_login()
         # Redirects to login page if session_token is not in session state
     """
-    if 'session_token' not in st.session_state:
+    
+    if not 'api_handler' in st.session_state:
+        return st.switch_page(f'{st.session_state["page_navigation_dir"]}/login.py')
+    
+    if not st.session_state['api_handler'].jwt_handler.authorized:
     
         st.switch_page(f'{st.session_state["page_navigation_dir"]}/login.py')

@@ -1,28 +1,40 @@
+from datetime import datetime
+from typing import Any
+
 import streamlit as st
 
 from src.utils.utils import redirect_to_login
 
 redirect_to_login()
 
+@st.cache_data
+def get_sermon_analysis():
+    
+    analysis = st.session_state['api_handler'].get('api/sermon-analyses')
+    
+    return analysis
 
-analysis = [
-    {
-        "title": "Analyse 1",
-        "date": "2024-06-01",
-        "congregation": "Gemeente A",
-    },
-    {
-        "title": "Analyse 2",
-        "date": "2024-05-15",
-        "congregation": "Gemeente B",
-    },
-    {
-        "title": "Analyse 3",
-        "date": "2024-04-20",
-        "congregation": "Gemeente C",
-    },
-]
+def set_scripture(scriptures:list[dict[str, Any]]) -> str:
+    
+    if len(scriptures) == 0:
+        return ""
+    
+    scripture_str = ""
+    for scripture in scriptures:
+        book = scripture['start_verse']['scripture_book']['book']
+        chapter = scripture['chapter']['value']
+        verse_start = scripture['verse_start']['number']['value']
+        verse_end = scripture['verse_end']['number']['value']
+        
+        if verse_start == verse_end:
+            scripture_str += f"{book} {chapter}:{verse_start}, "
+        else:
+            scripture_str += f"{book} {chapter}:{verse_start}-{verse_end}, "
+    
+    return scripture_str.rstrip(', ')
 
+
+analysis = get_sermon_analysis()
 
 st.title("Preekanalyses")
 
@@ -33,7 +45,13 @@ if new_analysis:
 
 with st.container():
     for item in analysis:
-        with st.expander(f"{item['title']} - {item['congregation']} ({item['date']})"):
-            st.write(f"**Gemeente:** {item['congregation']}")
-            st.write(f"**Datum:** {item['date']}")
-            st.write("**Details van de analyse komen hier.**")
+        
+        title = item['title']
+        congregation = item['congregation']
+        sermon_date = datetime.strptime(item['sermon_date'], '%Y-%m-%d').strftime('%d-%m-%Y')
+        # scriptures = set_scripture(item['scripture_references'])
+        
+        with st.expander(f"{title} - {congregation} - {sermon_date}"):
+            st.write(f"**Titel:** {title}")
+            st.write(f"**Gemeente:** {congregation}")
+            st.write(f"**Datum:** {sermon_date}")

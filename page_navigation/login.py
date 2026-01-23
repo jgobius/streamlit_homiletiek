@@ -1,16 +1,25 @@
 import streamlit as st
+import requests
 
 from src.api.handler import APIHandler
+from src.api.jwthandler import JwtHandler
 
+def get_token(username: str, password: str) -> APIHandler:
 
-
-def get_token(api_handler: APIHandler, username:str, password:str) -> dict[str, str]:
+    jwt_handler = JwtHandler(
+        username=username,
+        password=password,
+        base_url=st.secrets["API_BASE_URL"],
+        access_endpoint="/api/token/",
+        refresh_endpoint="/api/token/refresh/",
+    )
     
-    token = api_handler.post(
-        endpoint="api/token/",
-        data={"username": username, "password": password})
-    
-    return token
+    api_handler = APIHandler(
+        base_url=st.secrets["API_BASE_URL"],
+        jwt_handler=jwt_handler,
+    )
+
+    return api_handler
 
 st.title("Inloggen")
 user_name = st.text_input("Username")
@@ -19,11 +28,20 @@ login_button = st.button("Login", disabled=not user_name or not password)
 
 if login_button:
 
-    token = get_token(
-        api_handler=st.session_state['api_handler'],
-        username=user_name,
-        password=password)
+    try:
+        api_handler = get_token(
+            username=user_name,
+            password=password,
+        )
+        st.session_state['api_handler'] = api_handler
+        st.switch_page(f"{st.session_state['page_navigation_dir']}/dashboard.py")
+        
+    except requests.exceptions.HTTPError as e:
+        
+        if e.response.status_code == 401:
+            st.session_state['login_error'] = True
+        else:
+            raise e
+            
+
     
-    st.session_state['session_token'] = token['access']
-    
-    st.switch_page(f"{st.session_state['page_navigation_dir']}/dashboard.py")
