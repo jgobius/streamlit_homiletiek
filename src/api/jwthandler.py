@@ -5,7 +5,6 @@ from typing import Any
 import requests
 import jwt
 
-
 class JwtHandler:
     """
     Manages JWT authentication with automatic token refresh.

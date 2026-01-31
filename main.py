@@ -6,16 +6,28 @@ def main():
     
     welcome_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/welcome.py", title='Welcome')
     login_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/login.py", title='Login')
-    dashboard_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/dashboard.py", title='Preekanalyses')
+    register_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/register.py", title='Register')
+    dashboard_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py", title='Overzicht preekanalyses')
     # settings_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/settings.py", title='Instellingen')
-    new_analysis_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/new_analysis.py", title='Nieuwe analyse')
+    new_analysis_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py", title='Nieuwe preekanalyse')
     
-    if 'session_token' not in st.session_state:
-       pg = st.navigation([welcome_page, login_page, dashboard_page], position='hidden')
+    church_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/churches/churches_overview.py", title='Overzicht gemeentes')
+    new_church_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/churches/new_church.py", title='Nieuwe gemeente')
+    
+    pages = {
+         "Preekanalyses": [dashboard_page, new_analysis_page],
+         "Gemeentes": [church_overview_page, new_church_page]
+         
+    }
+    
+    pages_total = {"Welcome": [welcome_page]} | pages
+    
+    if 'api_handler' not in st.session_state:
+       pg = st.navigation([welcome_page, login_page, register_page, dashboard_page], position='hidden')
        pg.run()
     
     else:
-       pg = st.navigation([dashboard_page, new_analysis_page])
+       pg = st.navigation(pages, position='top')
        pg.run()
 
 if __name__ == "__main__":

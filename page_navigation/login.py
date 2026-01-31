@@ -34,7 +34,7 @@ if login_button:
             password=password,
         )
         st.session_state['api_handler'] = api_handler
-        st.switch_page(f"{st.session_state['page_navigation_dir']}/dashboard.py")
+        st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
         
     except requests.exceptions.HTTPError as e:
         

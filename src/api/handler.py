@@ -63,7 +63,13 @@ class APIHandler:
         """
 
         url = f"{self.base_url}/{endpoint}"
-        response = requests.get(url, params=params)
+        
+        headers = {
+                "Authorization": f"Bearer {self.jwt_handler.token}",
+                "Content-Type": "application/json",
+            }
+        
+        response = requests.get(url, params=params, headers=headers)
         response.raise_for_status()
         return response.json()
 
@@ -93,6 +99,30 @@ class APIHandler:
         else:
             response = requests.post(url, json=data)    
             
+        response.raise_for_status()
+        return response.json()
+    
+    def put(
+        self, endpoint: str, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Send a PUT request to the specified endpoint with the given data.
+        Args:
+            endpoint (str): The API endpoint to send the PUT request to.
+            data (dict[str, Any]): The data to be sent in the request body as JSON.
+        Returns:
+            dict[str, Any]: The JSON response from the API as a dictionary.
+        Raises:
+            requests.exceptions.HTTPError: If the HTTP request returns an unsuccessful status code.
+            requests.exceptions.RequestException: If there is a network-related error during the request.
+        """
+
+        url = f"{self.base_url}/{endpoint}"
+        headers = {
+            "Authorization": f"Bearer {self.jwt_handler.token}",
+            "Content-Type": "application/json",
+        }
+        response = requests.put(url, json=data, headers=headers)
         response.raise_for_status()
         return response.json()
 

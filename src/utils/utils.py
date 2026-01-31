@@ -23,3 +23,11 @@ def redirect_to_login() -> None:
     if not st.session_state['api_handler'].jwt_handler.authorized:
     
         st.switch_page(f'{st.session_state["page_navigation_dir"]}/login.py')
+        
+def get_churches():
+    churches = st.session_state['api_handler'].get('api/churches/')
+    return churches
+
+def get_song_books():
+    song_books = st.session_state['api_handler'].get('api/song-books/')
+    return song_books

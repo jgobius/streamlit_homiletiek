@@ -17,10 +17,10 @@ class SermonAnalysisModel(BaseModel):
         extra_context (Optional[str | None]): Optional additional contextual information about the sermon, maximum 1024 characters.
     """
     
+    church: int
     title: str = Field(..., max_length=64)
-    place:str = Field(..., max_length=64)
-    congregation: str = Field(..., max_length=64)
     sermon_date: date
-    website: Optional[str | None] = Field(None, max_length=64)
-    scriptures: list[str] = Field(..., max_length=64)
+    use_calender: bool
+    scriptures: str
+    song_books: list[int] = Field(default_factory=list, max_length=64)
     extra_context: Optional[str | None] = Field(None, max_length=1024)
