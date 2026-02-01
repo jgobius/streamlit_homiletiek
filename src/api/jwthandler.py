@@ -78,6 +78,27 @@ class JwtHandler:
         response = requests.post(url, json=data)
         response.raise_for_status()
         return response.json()
+    
+    def get_refresh_token(self) -> str:
+        """
+        Get the current refresh token.
+        Returns:
+            str: The current refresh token.
+        """
+        return self._refresh_token
+    
+    def clear_tokens(self) -> None:
+        """
+        Clear the stored access and refresh tokens.
+        This method resets the internal access token, refresh token, and expiry timestamp
+        to None, effectively logging out the user.
+        Returns:
+            None: This method does not return a value.
+        """
+        self._access_token = None
+        self._refresh_token = None
+        self._token_expiry_timestamp = None
+        self.authorized = False
 
     @property
     def token(self) -> str:

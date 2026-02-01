@@ -1,8 +1,9 @@
-from typing import Annotated
+import json
+from time import sleep
 
 import streamlit as st
+import requests
 
-from email_validator import validate_email
 from email_validator.exceptions import EmailSyntaxError
 from src.models.user_model import UserModel
 
@@ -13,7 +14,7 @@ def validate_data(
     email: str,
     password: str,
     check_password: str,
-) -> Annotated[UserModel, 'Validated User Model']:
+) -> str:
     
     if password != check_password:
         raise ValueError('Wachtwoorden komen niet overeen')
@@ -23,10 +24,12 @@ def validate_data(
         first_name=first_name,
         last_name=last_name,
         email=email,
+        username=email,
         password=password,
         check_password=check_password
     )
-    return user_model
+    
+    return json.dumps(user_model.model_dump())
 
 st.title('Registreren voor preekanalyses')
 
@@ -40,21 +43,33 @@ register = st.button('Registreren')
 
 if register:
     
-    
-        st.error('Wachtwoorden komen niet overeen!')
-        
-    else:
-        
         try:
-            validate_email(email)
-        
-            user_model = UserModel(
+            data:str = validate_data(
                 first_name=first_name,
                 last_name=last_name,
                 email=email,
                 password=password,
-                check_password=check_password
+                check_password=check_password,
             )
+            result = requests.post(
+                url=f"{st.secrets['API_BASE_URL']}/api/auth/register/",
+                data=data,
+                headers={'Content-Type': 'application/json'}
+            )
+            
+            if result.status_code == 201:
+                st.success('Registratie succesvol! Je wordt doorgestuurd naar de login pagina.')
+                sleep(3)
+                st.switch_page(f"{st.session_state['page_navigation_dir']}/login.py")
+
+            else:
+                st.error(f'Fout bij registratie: {result.text}')
+            
+        except ValueError as ve:
+            st.error(str(ve))
         
         except EmailSyntaxError as e:
             st.error(f'Ongeldig emailadres')
+            
+        except Exception as e:
+            st.error(f'Er is een fout opgetreden: {str(e)}')
