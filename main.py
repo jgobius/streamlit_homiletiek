@@ -4,10 +4,6 @@ st.session_state['page_navigation_dir'] = 'page_navigation'
 
 def main():
    
-   st.logo(
-      image='images/bible Large.png ',
-      size='large'
-   )
    welcome_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/welcome.py", title='Welcome')
    login_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/login.py", title='Inloggen')
    logout_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/logout.py", title='Uitloggen')
