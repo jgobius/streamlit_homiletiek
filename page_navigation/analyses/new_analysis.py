@@ -15,7 +15,7 @@ def update(options: list[str]) -> None:
 churches = get_churches()
 song_books = get_song_books()
 
-st.header("Nieuwe contextanalyse")
+st.header("Nieuwe analyse")
 
 if "selected_scriptures" not in st.session_state:
     st.session_state["selected_scriptures"] = []
@@ -36,7 +36,7 @@ with col2:
 if new_church:
     st.switch_page(f"{st.session_state['page_navigation_dir']}/churches/new_church.py", query_params={'from_page': 'new_analysis.py'})
 
-title = st.text_input("Titel van de preekanalyse", max_chars=64)
+title = st.text_input("Thema van de preekanalyse (optioneel)", max_chars=64)
 sermon_date = st.date_input("Datum van de preek", format="DD-MM-YYYY")
 song_books = st.multiselect(
     "Selecteer de liedboeken die in deze preek gebruikt worden (optioneel):",
