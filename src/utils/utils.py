@@ -1,4 +1,7 @@
+from typing import Any
+
 import streamlit as st
+import requests
 
 
 def redirect_to_login() -> None:
@@ -28,6 +31,34 @@ def get_churches():
     churches = st.session_state['api_handler'].get('api/churches/')
     return churches
 
+@st.cache_data
 def get_song_books():
     song_books = st.session_state['api_handler'].get('api/song-books/')
     return song_books
+
+@st.cache_data
+def get_bible_versions():
+    bible_versions = st.session_state['api_handler'].get('api/bible-versions/')
+    return bible_versions
+
+def get_structured_scriptures(scriptures: list[str], bible_version: str, language: str) -> list[dict[str, Any]]:
+    
+    structured_scripture_data: list[dict[str, Any]] = []
+    st.write(bible_version)
+    for scripture in scriptures:
+
+        data: dict[str, str] = {
+            "scripture_data": scripture,
+            "bible_version": bible_version,
+            "language": language
+            }
+        
+        response = requests.post(
+            url=f"{st.secrets['API_AGENT_URL']}/structured_scripture/",
+            json=data
+        )
+        
+        if response.status_code == 200:
+            structured_scripture_data.append(response.json())
+            
+    return structured_scripture_data
