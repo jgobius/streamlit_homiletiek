@@ -18,11 +18,11 @@ class SermonAnalysisModel(BaseModel):
     """
     
     church: int
-    title: str = Field(..., max_length=64)
+    title: Optional[str | None] = Field(None, max_length=64)
     sermon_date: date
-    core_scriptures: str = Field(..., max_length=64)
+    core_scriptures: Optional[str | None] = Field(None, max_length=64)
     scripture_json: list[dict[str, Any]]
     use_calender: bool
     extra_context: Optional[str | None] = Field(None, max_length=1024)
-    song_books: list[int] = Field(default_factory=list, max_length=64)
+    song_books: Optional[list[int] | None] = Field(default_factory=list, max_length=64)
     

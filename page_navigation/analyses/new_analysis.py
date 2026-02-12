@@ -18,6 +18,12 @@ redirect_to_login()
 
 def update(options: list[str]) -> None:
     st.session_state["selected_scriptures"] = options
+    
+def clean_up_session_state() -> None:
+    keys_to_remove = ["selected_scriptures", "structured_scriptures", "scriptures_approved"]
+    for key in keys_to_remove:
+        if key in st.session_state:
+            del st.session_state[key]
 
 
 churches = get_data("api/churches/")
@@ -28,6 +34,9 @@ st.header("Nieuwe analyse")
 
 if "selected_scriptures" not in st.session_state:
     st.session_state["selected_scriptures"] = []
+
+if "structured_scriptures" not in st.session_state:
+    st.session_state["structured_scriptures"] = []
 
 ### FORM ###
 
@@ -99,26 +108,26 @@ if collect_structured_scriptures:
 
     # save_scriptures(structured_scriptures)
     
-    for scripture in st.session_state['structured_scriptures']:
+for scripture in st.session_state['structured_scriptures']:
+    
+    with st.expander(f"**{scripture.get('original_scripture')}**", expanded=False):
+    
+        for sc in scripture.get("scriptures"):
+            st.markdown(f"Hoofdstuk **{sc.get('chapter')}**")
+            for verse in sc.get("verses", []):
+                st.markdown(f"**{verse.get('number')}**")
+                st.markdown(f"{verse.get('text')}")
         
-        with st.expander(f"**{scripture.get('original_scripture')}**", expanded=False):
-        
-            for sc in scripture.get("scriptures"):
-                st.markdown(f"Hoofdstuk **{sc.get('chapter')}**")
-                for verse in sc.get("verses", []):
-                    st.markdown(f"**{verse.get('number')}**")
-                    st.markdown(f"{verse.get('text')}")
-            
-                st.write("---")
-        
-    # scriptures_approved = st.checkbox("Ik bevestig dat de geselecteerde lezingen correct zijn en klaar voor analyse", value=False)
+            st.write("---")
+    
+if 'structured_scriptures' in st.session_state and len(st.session_state['structured_scriptures']) > 0:
 
-    # if scriptures_approved:
+    st.session_state['scriptures_approved'] = st.checkbox("Ik bevestig dat de date zoals hierboven vermeldt, correct zijn en klaar voor analyse", value=False)
+
 
 submit = st.button("Analyse starten", type="primary")
 
 if submit:
-    print(submit)
     sermon_analysis_model = SermonAnalysisModel(
         church=selected_church['id'],
         title=title,
@@ -130,13 +139,14 @@ if submit:
         extra_context=extra_context
     )
     data = json.loads(sermon_analysis_model.model_dump_json())
-    print(data)
 
     st.session_state['api_handler'].post(
         endpoint="api/sermon-analyses/",
         data=data
     )
-
+    
+    clean_up_session_state()
+    
     st.success("Analyse gestart! Je wordt doorgestuurd naar het dashboard.")
 
     st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
