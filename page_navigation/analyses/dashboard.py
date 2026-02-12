@@ -3,7 +3,7 @@ from typing import Any
 
 import streamlit as st
 
-from src.utils.utils import redirect_to_login
+from src.utils.utils import redirect_to_login, get_data
 
 redirect_to_login()
 
@@ -33,7 +33,7 @@ def set_scripture(scriptures:list[dict[str, Any]]) -> str:
     return scripture_str.rstrip(', ')
 
 
-analysis = get_sermon_analysis()
+analysis = get_data("api/sermon-analyses/")
 st.title("Preekanalyses")
 st.write("Overzicht van alle preekanalyses.")
 
@@ -47,14 +47,17 @@ if len(analysis) == 0:
 else:
     with st.container():
         for item in analysis:
-            
             title = item['title']
             congregation = item['church']['name']
             sermon_date = datetime.strptime(item['sermon_date'], '%Y-%m-%d').strftime('%d-%m-%Y')
-            scriptures = item['scriptures']
+            scriptures = item['scripture_json']
             
             with st.expander(f"{title} - {congregation} - {sermon_date}"):
                 st.write(f"**Titel:** {title}")
                 st.write(f"**Gemeente:** {congregation}")
                 st.write(f"**Datum:** {sermon_date}")
-                st.write(f"**Schriftlezingen:** {scriptures}")
+                st.write(f"**Lezingen:**")
+                
+                for sc in scriptures:
+                    st.write(f"- {sc.get('original_scripture')}")
+                

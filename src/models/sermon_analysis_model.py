@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 
 from pydantic import BaseModel, Field
 from datetime import date
@@ -20,7 +20,9 @@ class SermonAnalysisModel(BaseModel):
     church: int
     title: str = Field(..., max_length=64)
     sermon_date: date
+    core_scriptures: str = Field(..., max_length=64)
+    scripture_json: list[dict[str, Any]]
     use_calender: bool
-    scriptures: str
-    song_books: list[int] = Field(default_factory=list, max_length=64)
     extra_context: Optional[str | None] = Field(None, max_length=1024)
+    song_books: list[int] = Field(default_factory=list, max_length=64)
+    

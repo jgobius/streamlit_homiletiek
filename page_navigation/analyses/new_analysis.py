@@ -2,28 +2,27 @@ from uuid import uuid4
 import json
 
 import streamlit as st
-import requests
 
 from src.models.sermon_analysis_model import SermonAnalysisModel
 from src.utils.utils import (
-    get_churches,
-    get_song_books,
+    get_data,
+    get_cached_data,
     redirect_to_login,
-    get_bible_versions,
     get_structured_scriptures,
+    save_scriptures,
+    load_scriptures
 )
 
 redirect_to_login()
 
 
 def update(options: list[str]) -> None:
-
     st.session_state["selected_scriptures"] = options
 
 
-churches = get_churches()
-song_books = get_song_books()
-bible_versions = get_bible_versions()
+churches = get_data("api/churches/")
+song_books = get_cached_data("api/song-books/")
+bible_versions = get_cached_data("api/bible-versions/")
 
 st.header("Nieuwe analyse")
 
@@ -71,45 +70,39 @@ scriptures_choice = st.radio(
 )
 
 if scriptures_choice == "Eigen lezingen":
-    core_scripture = st.text_input("Voeg een kernlezing toe (optioneel)")
-    scripture = st.text_input("Voeg lezing toe")
-    scripture_selected = st.button("Lezing toevoegen")
-
-    if scripture_selected:
-        unique_id = str(uuid4())
-        st.session_state["selected_scriptures"].append(scripture)
-
-if len(st.session_state["selected_scriptures"]) > 0:
-
-    st.subheader("Geselecteerde lezingen:")
-
+    core_scripture = st.text_input("Voeg een kernlezing toe (optioneel)", max_chars=64)
     options = st.multiselect(
         "Geselecteerde lezingen:",
-        options=list(st.session_state["selected_scriptures"]),
-        default=list(st.session_state["selected_scriptures"]),
+        placeholder="Geen lezingen geselecteerd",
+        options=[],
+        accept_new_options=True
     )
-
     update(options)
 
-    extra_context = st.text_area(
-        "Extra context (optioneel):", height=150, max_chars=1024
-    )
+extra_context = st.text_area(
+    "Extra context (optioneel):", height=150, max_chars=1024
+)
 
-    collect_structured_scriptures = st.button("Lezingen ophalen")
+collect_structured_scriptures = st.button("Lezingen ophalen")
 
-    if collect_structured_scriptures:
+if collect_structured_scriptures:
 
-        with st.status("Lezingen structureren (afhankelijk van het aantal lezingen kan dit even duren)..."):
+    with st.status("Lezingen structureren (afhankelijk van het aantal lezingen kan dit even duren)..."):
+    
+        # structured_scriptures = get_structured_scriptures(
+        #     scriptures=st.session_state["selected_scriptures"],
+        #     bible_version=bible_version.get('version'),
+        #     language="nl",
+        # )
         
-            structured_scriptures = get_structured_scriptures(
-                scriptures=st.session_state["selected_scriptures"],
-                bible_version=bible_version.get('version'),
-                language="nl",
-            )
+        st.session_state['structured_scriptures'] = load_scriptures()
 
-        for scripture in structured_scriptures:
-            st.subheader(scripture.get("original_scripture"))
-            
+    # save_scriptures(structured_scriptures)
+    
+    for scripture in st.session_state['structured_scriptures']:
+        
+        with st.expander(f"**{scripture.get('original_scripture')}**", expanded=False):
+        
             for sc in scripture.get("scriptures"):
                 st.markdown(f"Hoofdstuk **{sc.get('chapter')}**")
                 for verse in sc.get("verses", []):
@@ -117,32 +110,33 @@ if len(st.session_state["selected_scriptures"]) > 0:
                     st.markdown(f"{verse.get('text')}")
             
                 st.write("---")
-            
-                
         
+    # scriptures_approved = st.checkbox("Ik bevestig dat de geselecteerde lezingen correct zijn en klaar voor analyse", value=False)
 
-    # submit = st.button("Analyse starten", type="primary")
+    # if scriptures_approved:
 
-    # if submit:
+submit = st.button("Analyse starten", type="primary")
 
-    #     scriptures_string = ", ".join(st.session_state["selected_scriptures"])
+if submit:
+    print(submit)
+    sermon_analysis_model = SermonAnalysisModel(
+        church=selected_church['id'],
+        title=title,
+        sermon_date=sermon_date,
+        core_scriptures=core_scripture,
+        scripture_json=st.session_state.get('structured_scriptures'),
+        use_calender=(scriptures_choice == "Kerkelijk rooster volgen"),
+        song_books=[book['id'] for book in song_books],
+        extra_context=extra_context
+    )
+    data = json.loads(sermon_analysis_model.model_dump_json())
+    print(data)
 
-    #     sermon_analysis_model = SermonAnalysisModel(
-    #         church=selected_church['id'],
-    #         title=title,
-    #         sermon_date=sermon_date,
-    #         use_calender=(scriptures_choice == "Kerkelijk rooster volgen"),
-    #         scriptures=scriptures_string,
-    #         song_books=[book['id'] for book in song_books],
-    #         extra_context=extra_context
-    #     )
-    #     data = json.loads(sermon_analysis_model.model_dump_json())
+    st.session_state['api_handler'].post(
+        endpoint="api/sermon-analyses/",
+        data=data
+    )
 
-    #     st.session_state['api_handler'].post(
-    #         endpoint="api/sermon-analyses/",
-    #         data=data
-    #     )
+    st.success("Analyse gestart! Je wordt doorgestuurd naar het dashboard.")
 
-    #     st.success("Analyse gestart! Je wordt doorgestuurd naar het dashboard.")
-
-    #     st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
+    st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
