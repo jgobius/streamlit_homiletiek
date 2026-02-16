@@ -98,13 +98,13 @@ if collect_structured_scriptures:
 
     with st.status("Lezingen structureren (afhankelijk van het aantal lezingen kan dit even duren)..."):
     
-        # structured_scriptures = get_structured_scriptures(
-        #     scriptures=st.session_state["selected_scriptures"],
-        #     bible_version=bible_version.get('version'),
-        #     language="nl",
-        # )
+        st.session_state['structured_scriptures'] = get_structured_scriptures(
+            scriptures=st.session_state["selected_scriptures"],
+            bible_version=bible_version.get('version'),
+            language="nl",
+        )
         
-        st.session_state['structured_scriptures'] = load_scriptures()
+        # st.session_state['structured_scriptures'] = load_scriptures()
 
     # save_scriptures(structured_scriptures)
     
