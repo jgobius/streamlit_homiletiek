@@ -1,5 +1,5 @@
-from uuid import uuid4
 import json
+from typing import Any
 
 import streamlit as st
 
@@ -15,7 +15,16 @@ from src.utils.utils import (
 
 redirect_to_login()
 
+########### DEFINE FUNCTIONS ###########
 
+@st.dialog('Details roosterlezing')
+def show_scripture_details(scripture: dict[str, Any]) -> None:
+
+    st.markdown(f'**Eerste lezing:**\t{scripture.get("first_scripture")}')
+    st.markdown(f'**Tweede lezing:**\t{scripture.get("second_scripture")}')
+    st.markdown(f'**Psalm:**\t{scripture.get("psalm")}')
+    st.markdown(f'**Evangelie:**\t{scripture.get("gospel")}')
+    
 def update(options: list[str]) -> None:
     st.session_state["selected_scriptures"] = options
     
@@ -25,10 +34,12 @@ def clean_up_session_state() -> None:
         if key in st.session_state:
             del st.session_state[key]
 
+########### GET DATA ###########
 
 churches = get_data("api/churches/")
 song_books = get_cached_data("api/song-books/")
 bible_versions = get_cached_data("api/bible-versions/")
+liturgy = get_cached_data("api/liturgy/")
 
 st.header("Nieuwe analyse")
 
@@ -59,7 +70,7 @@ if new_church:
     )
 
 title = st.text_input("Thema (optioneel)", max_chars=64)
-sermon_date = st.date_input("Datum van de preek", format="DD-MM-YYYY")
+sermon_date = st.date_input("Datum van de preek", format="DD-MM-YYYY", min_value='today')
 song_books = st.multiselect(
     "Selecteer de liedboeken die in deze preek gebruikt worden (optioneel):",
     placeholder="Geen liedboeken geselecteerd",
@@ -74,12 +85,27 @@ bible_version = st.selectbox(
     format_func=lambda version: version["version"],
 )
 
+core_scripture = st.text_input("Voeg een kernlezing toe (optioneel)", max_chars=64, value="", placeholder="Geen kernlezing toegevoegd")
+
+
 scriptures_choice = st.radio(
     "Schriftlezingen", options=["Kerkelijk rooster volgen", "Eigen lezingen"]
 )
 
+if scriptures_choice == "Kerkelijk rooster volgen":
+    
+    selected_liturgy = [l for l in liturgy if l.get('date') == sermon_date.strftime('%Y-%m-%d')]
+    
+    if len(selected_liturgy) == 0:
+        st.warning("Er zijn geen roosterlezingen gevonden voor de geselecteerde datum. Kies een andere datum of selecteer 'Eigen lezingen' om handmatig lezingen toe te voegen.")
+    else:
+        st.session_state["selected_scripture_id"] = selected_liturgy[0].get("id")
+        show_scriptures = st.button("Roosterlezingen tonen")
+        if show_scriptures:
+            show_scripture_details(selected_liturgy[0])
+
+
 if scriptures_choice == "Eigen lezingen":
-    core_scripture = st.text_input("Voeg een kernlezing toe (optioneel)", max_chars=64)
     options = st.multiselect(
         "Geselecteerde lezingen:",
         placeholder="Geen lezingen geselecteerd",
@@ -132,6 +158,7 @@ if submit:
         church=selected_church['id'],
         title=title,
         sermon_date=sermon_date,
+        liturgy=st.session_state.get("selected_scripture_id"),
         core_scriptures=core_scripture,
         scripture_json=st.session_state.get('structured_scriptures'),
         use_calender=(scriptures_choice == "Kerkelijk rooster volgen"),

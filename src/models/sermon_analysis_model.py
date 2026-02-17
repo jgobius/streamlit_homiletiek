@@ -20,6 +20,7 @@ class SermonAnalysisModel(BaseModel):
     church: int
     title: Optional[str | None] = Field(None, max_length=64)
     sermon_date: date
+    liturgy: Optional[int | None] = None
     core_scriptures: Optional[str | None] = Field(None, max_length=64)
     scripture_json: list[dict[str, Any]]
     use_calender: bool

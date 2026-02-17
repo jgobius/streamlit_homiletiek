@@ -34,6 +34,7 @@ def set_scripture(scriptures:list[dict[str, Any]]) -> str:
 
 
 analysis = get_data("api/sermon-analyses/")
+
 st.title("Preekanalyses")
 st.write("Overzicht van alle preekanalyses.")
 

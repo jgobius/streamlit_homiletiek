@@ -4,8 +4,8 @@
   "settings": {
     "width": 4000,
     "height": 4000,
-    "scrollTop": -1214.4036,
-    "scrollLeft": -1846.0883,
+    "scrollTop": -1223.5102,
+    "scrollLeft": -1750.1232,
     "zoomLevel": 0.8,
     "show": 431,
     "database": 4,
@@ -98,6 +98,7 @@
           "cJ7u8FKK5N7KAMNWXrlw9",
           "TUyyDxx2MbfA0397KI3CA",
           "gsqMRYK60s9Sxq7GbUu2_",
+          "A1pyzkMEZVIqzc3Q6g4Xf",
           "eUXjOI1dayOU-pDJrBGHE",
           "bzrie1s94KpPW-oMY5Nl2",
           "321J-FwqQx4T1hq3nfZv8",
@@ -112,6 +113,7 @@
           "TUyyDxx2MbfA0397KI3CA",
           "CGQL_BKaqwQltjgQdHUKp",
           "gsqMRYK60s9Sxq7GbUu2_",
+          "A1pyzkMEZVIqzc3Q6g4Xf",
           "eUXjOI1dayOU-pDJrBGHE",
           "_aiNuJjoUMpxe0tDin8XE",
           "bzrie1s94KpPW-oMY5Nl2",
@@ -131,7 +133,7 @@
           "color": ""
         },
         "meta": {
-          "updateAt": 1771275891455,
+          "updateAt": 1771317022216,
           "createAt": 1768847211433
         }
       },
@@ -3224,6 +3226,26 @@
           "updateAt": 1771275901340,
           "createAt": 1771275891455
         }
+      },
+      "A1pyzkMEZVIqzc3Q6g4Xf": {
+        "id": "A1pyzkMEZVIqzc3Q6g4Xf",
+        "tableId": "45KGcSmTJsQRdHNoabHyC",
+        "name": "scripture_json",
+        "comment": "",
+        "dataType": "JSON",
+        "default": "",
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 84,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1771316839927,
+          "createAt": 1771316830012
+        }
       }
     },
     "relationshipEntities": {
@@ -3247,7 +3269,7 @@
             "bzrie1s94KpPW-oMY5Nl2"
           ],
           "x": 1945.5,
-          "y": 1657.75,
+          "y": 1669.75,
           "direction": 1
         },
         "meta": {
@@ -3602,7 +3624,7 @@
             "Gpk7jgTGE-XP4vz8ONYDb"
           ],
           "x": 2158,
-          "y": 1793.75,
+          "y": 1817.75,
           "direction": 8
         },
         "end": {
@@ -3630,7 +3652,7 @@
             "Gpk7jgTGE-XP4vz8ONYDb"
           ],
           "x": 2370.5,
-          "y": 1748.416666666667,
+          "y": 1768.416666666667,
           "direction": 2
         },
         "end": {
@@ -3658,7 +3680,7 @@
             "Gpk7jgTGE-XP4vz8ONYDb"
           ],
           "x": 2370.5,
-          "y": 1657.7500000000002,
+          "y": 1669.7500000000002,
           "direction": 2
         },
         "end": {
@@ -3947,7 +3969,7 @@
             "zh_TvR9KzPPtjQ9KkrR3l"
           ],
           "x": 2370.5,
-          "y": 1567.0833333333335,
+          "y": 1571.0833333333335,
           "direction": 2
         },
         "meta": {
