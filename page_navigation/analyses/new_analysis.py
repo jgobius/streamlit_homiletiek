@@ -55,7 +55,6 @@ churches = get_data("api/churches/")
 song_books = get_cached_data("api/song-books/")
 bible_versions = get_cached_data("api/bible-versions/")
 liturgy = get_cached_data("api/liturgy/")
-st.write(liturgy[0])
 st.header("Nieuwe analyse")
 
 if "selected_scriptures" not in st.session_state:
@@ -148,7 +147,7 @@ if collect_structured_scriptures:
         # st.session_state['structured_scriptures'] = load_scriptures()
 
     # save_scriptures(structured_scriptures)
-    
+st.write(scriptures_choice == "Kerkelijk rooster volgen")
 for scripture in st.session_state['structured_scriptures']:
     
     with st.expander(f"**{scripture.get('original_scripture')}**", expanded=False):
@@ -163,7 +162,7 @@ for scripture in st.session_state['structured_scriptures']:
     
 if 'structured_scriptures' in st.session_state and len(st.session_state['structured_scriptures']) > 0:
 
-    st.session_state['scriptures_approved'] = st.checkbox("Ik bevestig dat de date zoals hierboven vermeldt, correct zijn en klaar voor analyse", value=False)
+    st.session_state['scriptures_approved'] = st.checkbox("Ik bevestig dat de data zoals hierboven vermeldt, correct zijn en klaar voor analyse", value=False)
 
 
 submit = st.button("Analyse starten", type="primary")
@@ -176,10 +175,12 @@ if submit:
         liturgy=st.session_state.get("selected_scripture_id"),
         core_scriptures=core_scripture,
         scripture_json=st.session_state.get('structured_scriptures'),
-        use_calender=(scriptures_choice == "Kerkelijk rooster volgen"),
+        use_calendar=(scriptures_choice == "Kerkelijk rooster volgen"),
         song_books=[book['id'] for book in song_books],
         extra_context=extra_context
     )
+    
+    print(sermon_analysis_model.model_dump_json())
     data = json.loads(sermon_analysis_model.model_dump_json())
 
     st.session_state['api_handler'].post(

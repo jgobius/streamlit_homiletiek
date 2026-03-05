@@ -23,7 +23,7 @@ class SermonAnalysisModel(BaseModel):
     liturgy: Optional[int | None] = None
     core_scriptures: Optional[str | None] = Field(None, max_length=64)
     scripture_json: list[dict[str, Any]]
-    use_calender: bool
+    use_calendar: bool
     extra_context: Optional[str | None] = Field(None, max_length=1024)
     song_books: Optional[list[int] | None] = Field(default_factory=list, max_length=64)
     
