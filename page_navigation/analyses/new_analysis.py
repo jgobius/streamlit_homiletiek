@@ -17,19 +17,34 @@ redirect_to_login()
 
 ########### DEFINE FUNCTIONS ###########
 
-@st.dialog('Details roosterlezing')
+def get_scripture_text(scripture_dict: list[dict[str, str | int]], ) -> str:
+    reading = ""
+    for item in scripture_dict:
+        verse_number = item.get("verse")
+        verse_text = item.get("text")
+        reading += f"{verse_number}. {verse_text} \n"
+    
+    return reading
+
+@st.dialog('Details roosterlezing', width='large')
 def show_scripture_details(scripture: dict[str, Any]) -> None:
 
-    st.markdown(f'**Eerste lezing:**\t{scripture.get("first_scripture")}')
+    scripture_data = scripture.get("scriptures", {})
+
+    st.markdown(f'**Eerste lezing:\t{scripture.get("first_scripture")}**')
+    st.markdown(f'{get_scripture_text(scripture_data["first_scripture"])}')
     st.markdown(f'**Tweede lezing:**\t{scripture.get("second_scripture")}')
+    st.markdown(get_scripture_text(scripture_data['second_scripture']))
     st.markdown(f'**Psalm:**\t{scripture.get("psalm")}')
+    st.markdown(get_scripture_text(scripture_data['psalm']))
     st.markdown(f'**Evangelie:**\t{scripture.get("gospel")}')
+    st.markdown(get_scripture_text(scripture_data['gospel']))
     
 def update(options: list[str]) -> None:
     st.session_state["selected_scriptures"] = options
     
 def clean_up_session_state() -> None:
-    keys_to_remove = ["selected_scriptures", "structured_scriptures", "scriptures_approved"]
+    keys_to_remove = ["selected_scriptures", "structured_scriptures", "scriptures_approved", "selected_scripture_id"]
     for key in keys_to_remove:
         if key in st.session_state:
             del st.session_state[key]
@@ -40,7 +55,7 @@ churches = get_data("api/churches/")
 song_books = get_cached_data("api/song-books/")
 bible_versions = get_cached_data("api/bible-versions/")
 liturgy = get_cached_data("api/liturgy/")
-
+st.write(liturgy[0])
 st.header("Nieuwe analyse")
 
 if "selected_scriptures" not in st.session_state:

@@ -38,10 +38,19 @@ analysis = get_data("api/sermon-analyses/")
 st.title("Preekanalyses")
 st.write("Overzicht van alle preekanalyses.")
 
-new_analysis = st.button("Nieuwe analyse", type="primary")
+col1, col2 = st.columns([1, 1])
+
+with col1:
+    new_analysis = st.button("Nieuwe analyse", type="primary")
+
+with col2:
+    liturgisch_jaar = st.button("Liturgisch jaar")
 
 if new_analysis:
     st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py")
+
+if liturgisch_jaar:
+    st.switch_page(f"{st.session_state['page_navigation_dir']}/analysis_results/liturgisch_jaar.py")
 
 if len(analysis) == 0:
     st.info("Er zijn nog geen preekanalyses gestart.")
