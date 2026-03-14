@@ -1,9 +1,10 @@
 import streamlit as st 
 
-from src.utils.utils import get_data, redirect_to_login
+from src.utils.utils import get_data, redirect_to_login, render_sidebar
 
 redirect_to_login()
 
+render_sidebar()
 
 churches = get_data("api/churches/")
 st.title("Overzicht van gemeentes")

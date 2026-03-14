@@ -9,11 +9,14 @@ from src.utils.utils import (
     get_cached_data,
     redirect_to_login,
     get_structured_scriptures,
+    render_sidebar,
     save_scriptures,
     load_scriptures
 )
 
 redirect_to_login()
+
+render_sidebar()
 
 ########### DEFINE FUNCTIONS ###########
 
@@ -65,23 +68,11 @@ if "structured_scriptures" not in st.session_state:
 
 ### FORM ###
 
-col1, col2 = st.columns([11, 1], vertical_alignment="bottom")
-
-with col1:
-    selected_church = st.selectbox(
-        "Selecteer de gemeente voor deze preekanalyse",
-        options=churches,
-        format_func=lambda church: church["name"],
-    )
-
-with col2:
-    new_church = st.button(":material/Add:")
-
-if new_church:
-    st.switch_page(
-        f"{st.session_state['page_navigation_dir']}/churches/new_church.py",
-        query_params={"from_page": "new_analysis.py"},
-    )
+selected_church = st.selectbox(
+    "Selecteer de gemeente voor deze preekanalyse",
+    options=churches,
+    format_func=lambda church: church["name"],
+)
 
 title = st.text_input("Thema (optioneel)", max_chars=64)
 sermon_date = st.date_input("Datum van de preek", format="DD-MM-YYYY", min_value='today')
@@ -132,9 +123,10 @@ extra_context = st.text_area(
     "Extra context (optioneel):", height=150, max_chars=1024
 )
 
-collect_structured_scriptures = st.button("Lezingen ophalen")
+if scriptures_choice == "Eigen lezingen":
+    collect_structured_scriptures = st.button("Lezingen ophalen")
 
-if collect_structured_scriptures:
+if scriptures_choice == "Eigen lezingen" and collect_structured_scriptures:
 
     with st.status("Lezingen structureren (afhankelijk van het aantal lezingen kan dit even duren)..."):
     
@@ -147,7 +139,7 @@ if collect_structured_scriptures:
         # st.session_state['structured_scriptures'] = load_scriptures()
 
     # save_scriptures(structured_scriptures)
-st.write(scriptures_choice == "Kerkelijk rooster volgen")
+
 for scripture in st.session_state['structured_scriptures']:
     
     with st.expander(f"**{scripture.get('original_scripture')}**", expanded=False):
@@ -164,7 +156,6 @@ if 'structured_scriptures' in st.session_state and len(st.session_state['structu
 
     st.session_state['scriptures_approved'] = st.checkbox("Ik bevestig dat de data zoals hierboven vermeldt, correct zijn en klaar voor analyse", value=False)
 
-
 submit = st.button("Analyse starten", type="primary")
 
 if submit:
@@ -180,7 +171,6 @@ if submit:
         extra_context=extra_context
     )
     
-    print(sermon_analysis_model.model_dump_json())
     data = json.loads(sermon_analysis_model.model_dump_json())
 
     st.session_state['api_handler'].post(
@@ -190,6 +180,4 @@ if submit:
     
     clean_up_session_state()
     
-    st.success("Analyse gestart! Je wordt doorgestuurd naar het dashboard.")
-
     st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")

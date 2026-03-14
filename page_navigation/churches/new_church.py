@@ -2,9 +2,11 @@ import streamlit as st
 import json
 
 from src.models.church_model import ChurchModel
-from src.utils.utils import redirect_to_login
+from src.utils.utils import redirect_to_login, render_sidebar
 
 redirect_to_login()
+
+render_sidebar()
 
 def get_church(id: int):
     church = st.session_state['api_handler'].get(f'api/churches/{id}/')
