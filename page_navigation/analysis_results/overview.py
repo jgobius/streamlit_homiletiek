@@ -11,8 +11,17 @@ from page_navigation.analysis_results.analyses.theologie import theologie
 
 redirect_to_login()
 
-analysis_results = get_data(f"api/analysis-results?sermon_analysis_id={st.query_params.get('analysis_id')}")
+analysis_id = st.query_params.get('analysis_id')
 
+if not analysis_id:
+    st.warning("Geen analyse geselecteerd. Ga terug naar het overzicht en selecteer een analyse.")
+    st.stop()
+
+analysis_results = get_data(f"api/analysis-results?sermon_analysis_id={analysis_id}")
+
+if not analysis_results:
+    st.info("Er zijn nog geen analyseresultaten beschikbaar voor deze preekanalyse.")
+    st.stop()
 
 summary  = [r for r in analysis_results if r['analysis_type']['name'] == "postille"]
 other_results = [r for r in analysis_results if r['id'] != summary[0]['id']]
@@ -21,7 +30,7 @@ summary.extend(other_results)
 
 with st.sidebar:
     st.page_link(label="< Terug", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
-    
+
     selected_analysis = st.radio(
         "Analyse",
         options=summary,
@@ -42,6 +51,9 @@ with btn_col:
 
 if st.session_state.get("extra_context"):
     st.info(f"**Extra context:** {st.session_state['extra_context']}")
+
+if not selected_analysis:
+    st.stop()
 
 # st.write(analysis_results)
 analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")

@@ -46,7 +46,6 @@ def get_data(endpoint:str) -> Any:
     data = st.session_state['api_handler'].get(endpoint)
     return data
 
-@st.cache_data
 def get_cached_data(endpoint:str) -> Any:
     """
     Retrieve cached data from the specified endpoint.
@@ -141,17 +140,17 @@ def load_scriptures() -> list[dict[str, Any]] | None:
     
     
 def render_sidebar():
-    
+
     with st.sidebar:
-        
-        with st.expander("Preekanalyses"):
-            st.page_link(label="Overzicht preekanalyses", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
-            st.page_link(label="Nieuwe preekanalyse", page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py")
-            
+
         with st.expander("Gemeentes"):
             st.page_link(label="Overzicht gemeentes", page=f"{st.session_state['page_navigation_dir']}/churches/churches_overview.py")
             st.page_link(label="Nieuwe gemeente", page=f"{st.session_state['page_navigation_dir']}/churches/new_church.py")
-            
+
+        with st.expander("Voorbereidingsanalyses"):
+            st.page_link(label="Overzicht preekanalyses", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
+            st.page_link(label="Nieuwe preekanalyse", page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py")
+
         with st.expander("Account"):
             st.page_link(label="Uitloggen", page=f"{st.session_state['page_navigation_dir']}/logout.py")
             

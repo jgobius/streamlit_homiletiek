@@ -18,13 +18,11 @@ def main():
     
     analysis_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py", title='Analyse overzicht')
 
-    pages = [dashboard_page, new_analysis_page, liturgisch_jaar_page, church_overview_page, new_church_page, analysis_overview_page, logout_page]
-
-    # pages = {
-    #     "Preekanalyses": [dashboard_page, new_analysis_page, liturgisch_jaar_page],
-    #     "Gemeentes": [church_overview_page, new_church_page],
-    #     "Account": [logout_page],
-    # }
+    pages = {
+        "Gemeentes": [church_overview_page, new_church_page],
+        "Voorbereidingsanalyses": [dashboard_page, new_analysis_page, liturgisch_jaar_page, analysis_overview_page],
+        "Account": [logout_page],
+    }
 
     if 'api_handler' not in st.session_state:
         pg = st.navigation([welcome_page, login_page, register_page, dashboard_page], position='hidden')

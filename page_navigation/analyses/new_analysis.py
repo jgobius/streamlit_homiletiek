@@ -22,8 +22,10 @@ render_sidebar()
 
 
 def get_scripture_text(
-    scripture_dict: dict[str, Any],
+    scripture_dict: dict[str, Any] | None,
 ) -> str:
+    if scripture_dict is None:
+        return ""
     reading = ""
     for item in scripture_dict.get("verses", []):
         verse_number = item.get("verse")
@@ -36,16 +38,16 @@ def get_scripture_text(
 @st.dialog("Details roosterlezing", width="large")
 def show_scripture_details(scripture: dict[str, Any]) -> None:
 
-    scripture_data = scripture.get("scriptures", {})
+    scripture_data = scripture.get("scriptures") or {}
 
     st.markdown(f'**Eerste lezing:\t{scripture.get("first_scripture")}**')
-    st.markdown(f'{get_scripture_text(scripture_data["first_scripture"])}')
+    st.markdown(f'{get_scripture_text(scripture_data.get("first_scripture"))}')
     st.markdown(f'**Tweede lezing:**\t{scripture.get("second_scripture")}')
-    st.markdown(get_scripture_text(scripture_data["second_scripture"]))
+    st.markdown(get_scripture_text(scripture_data.get("second_scripture")))
     st.markdown(f'**Psalm:**\t{scripture.get("psalm")}')
-    st.markdown(get_scripture_text(scripture_data["psalm"]))
+    st.markdown(get_scripture_text(scripture_data.get("psalm")))
     st.markdown(f'**Evangelie:**\t{scripture.get("gospel")}')
-    st.markdown(get_scripture_text(scripture_data["gospel"]))
+    st.markdown(get_scripture_text(scripture_data.get("gospel")))
 
 
 def update(options: list[str]) -> None:
@@ -155,7 +157,7 @@ if scriptures_choice == "Eigen lezingen" and collect_structured_scriptures:
 
         st.session_state["structured_scriptures"] = get_structured_scriptures(
             scriptures=st.session_state["selected_scriptures"],
-            bible_version=bible_version.get("version"),
+            bible_version=bible_version.get("version") if bible_version else None,
             language="nl",
         )
 
@@ -198,6 +200,7 @@ if submit:
         use_calendar=(scriptures_choice == "Kerkelijk rooster volgen"),
         song_books=[book["id"] for book in song_books],
         extra_context=extra_context,
+        bible_version=bible_version["id"] if bible_version else None,
     )
 
     data = json.loads(sermon_analysis_model.model_dump_json())

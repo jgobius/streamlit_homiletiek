@@ -26,4 +26,5 @@ class SermonAnalysisModel(BaseModel):
     use_calendar: bool
     extra_context: Optional[str | None] = Field(None, max_length=1024)
     song_books: Optional[list[int] | None] = Field(default_factory=list, max_length=64)
+    bible_version: Optional[int | None] = None
     
