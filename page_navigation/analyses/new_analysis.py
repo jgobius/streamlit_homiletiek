@@ -169,7 +169,7 @@ for scripture in st.session_state["structured_scriptures"]:
 
     with st.expander(f"**{scripture.get('original_scripture')}**", expanded=False):
 
-        for sc in scripture.get("scriptures"):
+        for sc in scripture.get("scriptures", []):
             st.markdown(f"Hoofdstuk **{sc.get('chapter')}**")
             for verse in sc.get("verses", []):
                 st.markdown(f"**{verse.get('number')}**")

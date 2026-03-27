@@ -98,6 +98,17 @@ def get_structured_scriptures(
     return results
 
 
+def cmd_delete_results(api: APIHandler, args: argparse.Namespace) -> None:
+    results = api.get("api/analysis-results/", params={"sermon_analysis_id": args.analysis_id})
+    if not results:
+        print(f"Geen analyseresultaten gevonden voor analyse id={args.analysis_id}.")
+        return
+    for r in results:
+        api.delete(f"api/analysis-results/{r['id']}/")
+        print(f"  Verwijderd: id={r['id']}  type={r['analysis_type']['name']}")
+    print(f"\n{len(results)} resultaten verwijderd.")
+
+
 def cmd_create(api: APIHandler, agent_url: str, args: argparse.Namespace) -> None:
     sermon_date = date.fromisoformat(args.date)
 
@@ -177,6 +188,10 @@ def main() -> None:
     # list-options
     subparsers.add_parser("list-options", help="Toon beschikbare gemeentes, bijbelvertalingen en liedboeken")
 
+    # delete-results
+    del_r = subparsers.add_parser("delete-results", help="Verwijder alle analyseresultaten voor een analyse")
+    del_r.add_argument("--analysis-id", type=int, required=True, help="ID van de preekanalyse")
+
     # create
     create = subparsers.add_parser("create", help="Maak een nieuwe preekanalyse")
     create.add_argument("--church-id", type=int, required=True, help="ID van de gemeente")
@@ -215,6 +230,8 @@ def main() -> None:
 
     if args.command == "list-options":
         cmd_list_options(api)
+    elif args.command == "delete-results":
+        cmd_delete_results(api, args)
     elif args.command == "create":
         cmd_create(api, agent_url, args)
 

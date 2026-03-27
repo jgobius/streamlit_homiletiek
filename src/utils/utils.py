@@ -95,8 +95,9 @@ def get_structured_scriptures(scriptures: list[str], bible_version: str, languag
         )
         
         if response.status_code == 200:
+            st.write("Agent response:", response.json())
             structured_scripture_data.append(response.json())
-            
+
         else:
             st.write(response.text)
             
