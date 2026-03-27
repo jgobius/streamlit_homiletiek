@@ -26,7 +26,7 @@ def commentaren(analysis: dict[str, Any]) -> None:
 
     st.title(sermon.get("title", "Commentaren"))
     if sermon.get("sermon_date"):
-        st.caption(f"**Preekdatum:** {sermon['sermon_date']}")
+        st.caption(f"**Datum kerkdienst:** {sermon['sermon_date']}")
 
     st.divider()
 

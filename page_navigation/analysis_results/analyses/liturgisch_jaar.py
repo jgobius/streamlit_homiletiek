@@ -96,9 +96,9 @@ def liturgisch_jaar(analysis: dict[str, Any]) -> None:
             st.markdown(f"**Relatie tot liturgische periode:** {relatie}")
 
     # ── Preekvoorbereiding ────────────────────────────────────────────────────
-    with st.expander("✍️ Preekvoorbereiding", expanded=False):
+    with st.expander("✍️ Voorbereiding kerkdienst", expanded=False):
         if preekvoorbereiding.get("aanbevolen_preektekst"):
-            st.markdown(f"**Aanbevolen preektekst:** {preekvoorbereiding['aanbevolen_preektekst']}")
+            st.markdown(f"**Aanbevolen tekst:** {preekvoorbereiding['aanbevolen_preektekst']}")
         if preekvoorbereiding.get("reden_keuze"):
             st.markdown(f"**Reden keuze:** {preekvoorbereiding['reden_keuze']}")
         punten: list = preekvoorbereiding.get("actuele_aanknopingspunten", [])

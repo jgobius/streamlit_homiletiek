@@ -78,7 +78,7 @@ def liedsuggesties(analysis: dict[str, Any]) -> None:
 
     st.title(sermon.get("title", "Liedsuggesties"))
     if sermon.get("sermon_date"):
-        st.caption(f"**Preekdatum:** {sermon['sermon_date']}")
+        st.caption(f"**Datum kerkdienst:** {sermon['sermon_date']}")
     st.caption(f"{len(liederen)} liedsuggesties")
 
     st.divider()

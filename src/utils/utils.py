@@ -149,8 +149,8 @@ def render_sidebar():
             st.page_link(label="Nieuwe gemeente", page=f"{st.session_state['page_navigation_dir']}/churches/new_church.py")
 
         with st.expander("Voorbereidingsanalyses"):
-            st.page_link(label="Overzicht preekanalyses", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
-            st.page_link(label="Nieuwe preekanalyse", page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py")
+            st.page_link(label="Overzicht kerkdienstanalyses", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
+            st.page_link(label="Nieuwe kerkdienstanalyse", page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py")
 
         with st.expander("Account"):
             st.page_link(label="Uitloggen", page=f"{st.session_state['page_navigation_dir']}/logout.py")
@@ -163,5 +163,5 @@ def render_analysis_results_sidebar(analysis_results: list[dict[str, Any]]) -> N
     with st.sidebar:
         st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
         
-        st.page_link(label="Overzicht preekanalyses", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
+        st.page_link(label="Overzicht kerkdienstanalyses", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
         st.page_link(label="Analyse overzicht", page=f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py", query_params={"analysis_id": analysis_results[0]['id']})

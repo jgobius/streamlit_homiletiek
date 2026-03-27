@@ -83,24 +83,24 @@ if "structured_scriptures" not in st.session_state:
 ### FORM ###
 
 selected_church = st.selectbox(
-    "Selecteer de gemeente voor deze preekanalyse",
+    "Selecteer de gemeente voor deze kerkdienst",
     options=churches,
     format_func=lambda church: church["name"],
 )
 
 title = st.text_input("Thema (optioneel)", max_chars=64)
 sermon_date = st.date_input(
-    "Datum van de preek", format="DD-MM-YYYY", min_value="today"
+    "Datum van de kerkdienst", format="DD-MM-YYYY", min_value="today"
 )
 song_books = st.multiselect(
-    "Selecteer de liedboeken die in deze preek gebruikt worden (optioneel):",
+    "Selecteer de liedboeken die in deze kerkdienst gebruikt worden (optioneel):",
     placeholder="Geen liedboeken geselecteerd",
     options=song_books,
     format_func=lambda book: book["name"],
 )
 
 bible_version = st.selectbox(
-    "Selecteer de bijbelvertaling die in deze preek gebruikt wordt (optioneel):",
+    "Selecteer de bijbelvertaling die in deze kerkdienst gebruikt wordt (optioneel):",
     placeholder="Geen bijbelvertaling geselecteerd",
     options=bible_versions,
     format_func=lambda version: version["version"],
