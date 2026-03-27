@@ -943,6 +943,18 @@ wheels = [
 ]
 
 [[package]]
+name = "st-theme"
+version = "1.2.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "streamlit" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/31/84/3e2fd95f5acaf6c92a51e7f038f1120235c65bb0b8be9bf43aa9fb4267e5/st-theme-1.2.3.tar.gz", hash = "sha256:ca97aece1a48ded6e83fd742c27cb0851e1bce2100ab4b6c37c7b6e003b65b42", size = 73873 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/30/09/cd7134f1ed5074a7d456640e7ba9a8c8e68a831837b4e7bfd9f29e5700a4/st_theme-1.2.3-py3-none-any.whl", hash = "sha256:0a54d9817dd5f8a6d7b0d071b25ae72eacf536c63a5fb97374923938021b1389", size = 75205 },
+]
+
+[[package]]
 name = "streamlit"
 version = "1.53.0"
 source = { registry = "https://pypi.org/simple" }
@@ -972,6 +984,19 @@ wheels = [
 ]
 
 [[package]]
+name = "streamlit-community-navigation-bar"
+version = "4.7.11"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "st-theme" },
+    { name = "streamlit" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e8/79/32d86b412d022e76ee8e2e47ae1c8f9c6a381b2b00d5023c146f1b09775d/streamlit_community_navigation_bar-4.7.11.tar.gz", hash = "sha256:377cc0ebd0351f17e1c7cc9f91fe328a2075e5ddf1387bdf15c9136b7da148fd", size = 13354947 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ae/cb/d89ffa01bcb7b197c06899c32ced86053970ec5cececf81cf67abeeaa050/streamlit_community_navigation_bar-4.7.11-py3-none-any.whl", hash = "sha256:49195757898d263f1a7ea449fbc25e1033e340034a3ce0a2ec2fa48795a30a40", size = 118654 },
+]
+
+[[package]]
 name = "streamlit-homiletiek"
 version = "0.1.0"
 source = { virtual = "." }
@@ -982,6 +1007,7 @@ dependencies = [
     { name = "pyjwt" },
     { name = "requests" },
     { name = "streamlit" },
+    { name = "streamlit-community-navigation-bar" },
     { name = "watchdog" },
 ]
 
@@ -993,6 +1019,7 @@ requires-dist = [
     { name = "pyjwt", specifier = ">=2.10.1" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "streamlit", specifier = ">=1.53.0" },
+    { name = "streamlit-community-navigation-bar", specifier = ">=4.7.11" },
     { name = "watchdog", specifier = ">=6.0.0" },
 ]
 

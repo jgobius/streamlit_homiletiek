@@ -1,9 +1,16 @@
 import streamlit as st
 
+st.set_page_config(
+    page_title="VoorbereidVoorgaan.nl",
+    page_icon="📖",
+    layout="centered",
+)
+
 st.session_state['page_navigation_dir'] = 'page_navigation'
 
 
 def main():
+    frontpage_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/frontpage.py", title='VoorbereidVoorgaan.nl')
     welcome_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/welcome.py", title='Welcome')
     login_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/login.py", title='Inloggen')
     logout_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/logout.py", title='Uitloggen')
@@ -27,7 +34,7 @@ def main():
     # }
 
     if 'api_handler' not in st.session_state:
-        pg = st.navigation([welcome_page, login_page, register_page, dashboard_page], position='hidden')
+        pg = st.navigation([frontpage_page, login_page, register_page, dashboard_page], position='hidden')
         pg.run()
 
     else:
