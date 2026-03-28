@@ -93,11 +93,6 @@ analysis = get_data("api/sermon-analyses/")
 st.title("Kerkdienstanalyses")
 st.write("Overzicht van alle kerkdienstanalyses.")
 
-new_analysis = st.button("Nieuwe analyse", type="secondary")
-
-if new_analysis:
-    st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py")
-
 error_analyses = [item for item in analysis if item.get("status") == "error"]
 
 if error_analyses:
@@ -146,7 +141,10 @@ else:
 
                 col_link, col_del = st.columns([9, 1])
                 with col_link:
-                    st.page_link(label="Bekijk analyse", page=f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py", query_params={"analysis_id": item['id']})
+                    if st.button("Bekijk analyse", key=f"view_analysis_{item['id']}", type="primary"):
+                        st.query_params["analysis_id"] = str(item['id'])
+                        st.session_state['current_analysis_id'] = str(item['id'])
+                        st.switch_page(f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py")
                 with col_del:
                     if st.button("✕", key=f"delete_analysis_{item['id']}"):
                         st.session_state["_pending_delete_analysis"] = item

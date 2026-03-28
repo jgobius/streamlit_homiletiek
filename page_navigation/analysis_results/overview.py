@@ -13,7 +13,7 @@ from page_navigation.analysis_results.analyses.theologie import theologie
 
 redirect_to_login()
 
-analysis_id = st.query_params.get('analysis_id')
+analysis_id = st.query_params.get('analysis_id') or st.session_state.get('current_analysis_id')
 
 with st.sidebar:
     st.page_link(label="< Terug", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
@@ -21,6 +21,9 @@ with st.sidebar:
 if not analysis_id:
     st.warning("Geen analyse geselecteerd. Ga terug naar het overzicht en selecteer een analyse.")
     st.stop()
+
+# Ensure it's stored in session state for consistency when navigating between internal results
+st.session_state['current_analysis_id'] = analysis_id
 
 analysis_results = get_data(f"api/analysis-results?sermon_analysis_id={analysis_id}")
 sermon_analysis = get_data(f"api/sermon-analyses/{analysis_id}/")

@@ -160,37 +160,38 @@ def render_sidebar():
 
     current_page = st.session_state.get('current_page')
     current_title = getattr(current_page, 'title', '')
+    current_path = getattr(current_page, 'page', '')
 
     # Bepaal welke expanders open moeten staan op basis van de huidige pagina
-    expand_gemeentes = current_title in ["Overzicht gemeentes", "Nieuwe gemeente"]
-    expand_analyses = current_title in ["Overzicht kerkdienstanalyses", "Nieuwe kerkdienstanalyse", "Liturgisch jaar", "Kerkdienstanalyse overzicht"]
+    expand_gemeentes = "churches" in current_path
+    expand_analyses = "analyses" in current_path or "analysis_results" in current_path
     expand_account = current_title in ["Uitloggen", "Welcome", "Inloggen", "Registreren"]
 
     with st.sidebar:
 
         with st.expander("Gemeentes", expanded=expand_gemeentes):
             path = f"{st.session_state['page_navigation_dir']}/churches/churches_overview.py"
-            label = "Overzicht gemeentes"
-            if current_title == "Overzicht gemeentes":
+            label = "Overzicht"
+            if current_path == path:
                 label = f":red[{label}]"
             st.page_link(label=label, page=path)
 
             path = f"{st.session_state['page_navigation_dir']}/churches/new_church.py"
-            label = "Nieuwe gemeente"
-            if current_title == "Nieuwe gemeente":
+            label = "Nieuw"
+            if current_path == path:
                 label = f":red[{label}]"
             st.page_link(label=label, page=path)
 
         with st.expander("Kerkdienstanalyses", expanded=expand_analyses):
             path = f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py"
-            label = "Overzicht kerkdienstanalyses"
-            if current_title == "Overzicht kerkdienstanalyses":
+            label = "Overzicht"
+            if current_path == path:
                 label = f":red[{label}]"
             st.page_link(label=label, page=path)
 
             path = f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py"
-            label = "Nieuwe kerkdienstanalyse"
-            if current_title == "Nieuwe kerkdienstanalyse":
+            label = "Nieuw"
+            if current_path == path:
                 label = f":red[{label}]"
             st.page_link(label=label, page=path)
 
