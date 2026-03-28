@@ -1,4 +1,5 @@
 import json
+import time
 from datetime import date, timedelta
 from typing import Any
 
@@ -21,6 +22,8 @@ from src.utils.utils import (
 redirect_to_login()
 
 render_sidebar()
+
+ANALYSIS_LOCK_TIMEOUT_SECONDS = 120
 
 ########### DEFINE FUNCTIONS ###########
 
@@ -147,6 +150,21 @@ def clean_up_session_state() -> None:
     for key in keys_to_remove:
         if key in st.session_state:
             del st.session_state[key]
+
+
+def _analysis_is_locked() -> bool:
+    """Return True if an analysis is in progress and the lock has not expired."""
+    lock_time = st.session_state.get("analysis_lock_time")
+    if lock_time is None:
+        return False
+    if time.time() - lock_time > ANALYSIS_LOCK_TIMEOUT_SECONDS:
+        del st.session_state["analysis_lock_time"]
+        return False
+    return True
+
+
+def _release_analysis_lock() -> None:
+    st.session_state.pop("analysis_lock_time", None)
 
 
 ########### GET DATA ###########
@@ -281,7 +299,14 @@ if (
         value=False,
     )
 
-submit = st.button("Analyse starten", type="primary")
+_locked = _analysis_is_locked()
+
+if _locked:
+    elapsed = int(time.time() - st.session_state["analysis_lock_time"])
+    remaining = ANALYSIS_LOCK_TIMEOUT_SECONDS - elapsed
+    st.info(f"Er loopt al een analyse. Nog {remaining} seconden voordat u opnieuw kunt proberen.")
+
+submit = st.button("Analyse starten", type="primary", disabled=_locked)
 
 if submit:
     # Validation for Eigen lezingen
@@ -293,23 +318,29 @@ if submit:
             st.error("Bevestig eerst dat de opgehaalde lezingen correct zijn.")
             st.stop()
 
-    sermon_analysis_model = SermonAnalysisModel(
-        church=selected_church["id"],
-        title=title,
-        sermon_date=sermon_date,
-        liturgy=st.session_state.get("selected_scripture_id"),
-        core_scriptures=core_scripture,
-        scripture_json=st.session_state.get("structured_scriptures") or [],
-        use_calendar=(scriptures_choice == "Kerkelijk rooster volgen"),
-        song_books=[book["id"] for book in song_books],
-        extra_context=extra_context,
-        bible_version=bible_version["id"] if bible_version else None,
-    )
+    st.session_state["analysis_lock_time"] = time.time()
+    try:
+        sermon_analysis_model = SermonAnalysisModel(
+            church=selected_church["id"],
+            title=title,
+            sermon_date=sermon_date,
+            liturgy=st.session_state.get("selected_scripture_id"),
+            core_scriptures=core_scripture,
+            scripture_json=st.session_state.get("structured_scriptures") or [],
+            use_calendar=(scriptures_choice == "Kerkelijk rooster volgen"),
+            song_books=[book["id"] for book in song_books],
+            extra_context=extra_context,
+            bible_version=bible_version["id"] if bible_version else None,
+        )
 
-    data = json.loads(sermon_analysis_model.model_dump_json())
+        data = json.loads(sermon_analysis_model.model_dump_json())
 
-    st.session_state["api_handler"].post(endpoint="api/sermon-analyses/", data=data)
+        st.session_state["api_handler"].post(endpoint="api/sermon-analyses/", data=data)
 
-    clean_up_session_state()
-
-    st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
+        clean_up_session_state()
+        _release_analysis_lock()
+        st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
+    except Exception as e:
+        _release_analysis_lock()
+        st.error(f"Er is een fout opgetreden bij het starten van de analyse: {e}")
+        st.stop()

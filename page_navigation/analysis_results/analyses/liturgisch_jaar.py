@@ -129,10 +129,12 @@ def liturgisch_jaar(analysis: dict[str, Any]) -> None:
             st.markdown(f"**Liturgische orde:** {clean_md(praktisch['liturgische_orde_suggestie'])}")
 
         aanpassingen: list[dict] = praktisch.get("aanpassingen_periode", [])
+        aanpassingen = [a for a in aanpassingen if a.get("element") or a.get("aanpassing")]
         if aanpassingen:
             st.markdown("**Aanpassingen voor de periode:**")
             for a in aanpassingen:
-                st.markdown(f"- *{a.get('element', '')}*: {a.get('aanpassing', '')} *(reden: {a.get('reden', '')})*")
+                reden = f" *(reden: {a['reden']})*" if a.get("reden") else ""
+                st.markdown(f"- *{a.get('element', '')}*: {a.get('aanpassing', '')}{reden}")
 
         gebeden: list = praktisch.get("gebedsmotieven", [])
         if gebeden:

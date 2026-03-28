@@ -1,3 +1,5 @@
+import time
+
 import requests
 import streamlit as st
 
@@ -10,6 +12,23 @@ from page_navigation.analysis_results.analyses.liedsuggesties import liedsuggest
 from page_navigation.analysis_results.analyses.structuralistische_exegese import structuralistische_exegese
 from page_navigation.analysis_results.analyses.commentaren import commentaren
 from page_navigation.analysis_results.analyses.theologie import theologie
+
+REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
+
+
+def _reanalysis_is_locked(lock_key: str) -> bool:
+    lock_time = st.session_state.get(lock_key)
+    if lock_time is None:
+        return False
+    if time.time() - lock_time > REANALYSIS_LOCK_TIMEOUT_SECONDS:
+        del st.session_state[lock_key]
+        return False
+    return True
+
+
+def _release_reanalysis_lock(lock_key: str) -> None:
+    st.session_state.pop(lock_key, None)
+
 
 redirect_to_login()
 
@@ -34,16 +53,25 @@ if sermon_analysis:
 
 if not analysis_results:
     st.info("Er zijn nog geen analyseresultaten beschikbaar voor deze preekanalyse.")
-    if st.button("Start analyse", type="primary"):
-        agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
-        response = requests.post(
-            f"{agent_url}/context_graph/",
-            json={"sermon_analysis_id": int(analysis_id)},
-        )
-        if response.status_code == 200:
-            st.success("Analyse gestart. Ververs de pagina over enkele minuten.")
-        else:
-            st.error(f"Fout bij starten analyse: {response.text}")
+    _start_lock_key = f"analysis_start_lock_{analysis_id}"
+    _start_locked = _reanalysis_is_locked(_start_lock_key)
+    if st.button("Start analyse", type="primary", disabled=_start_locked):
+        st.session_state[_start_lock_key] = time.time()
+        try:
+            agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
+            response = requests.post(
+                f"{agent_url}/context_graph/",
+                json={"sermon_analysis_id": int(analysis_id)},
+                timeout=30,
+            )
+            if response.status_code == 200:
+                st.success("Analyse gestart. Ververs de pagina over enkele minuten.")
+            else:
+                _release_reanalysis_lock(_start_lock_key)
+                st.error(f"Fout bij starten analyse: {response.text}")
+        except Exception as e:
+            _release_reanalysis_lock(_start_lock_key)
+            st.error(f"Fout bij starten analyse: {e}")
     st.stop()
 
 # Houd per analysis_type alleen de nieuwste (hoogste id).
@@ -78,7 +106,10 @@ with st.sidebar:
         st.divider()
         with st.expander("Analyse toevoegen"):
             for at in missing_types:
-                if st.button(at["front_end_name"], key=f"add_{at['name']}", use_container_width=True):
+                _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+                _add_locked = _reanalysis_is_locked(_add_lock_key)
+                if st.button(at["front_end_name"], key=f"add_{at['name']}", use_container_width=True, disabled=_add_locked):
+                    st.session_state[_add_lock_key] = time.time()
                     try:
                         agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
                         response = requests.post(
@@ -87,10 +118,12 @@ with st.sidebar:
                                 "sermon_analysis_id": int(analysis_id),
                                 "analysis_type_name": at["name"],
                             },
+                            timeout=30,
                         )
                         response.raise_for_status()
                         st.toast(f"'{at['front_end_name']}' wordt uitgevoerd. Ververs de pagina over enkele minuten.")
                     except Exception as e:
+                        _release_reanalysis_lock(_add_lock_key)
                         st.error(f"Fout: {e}")
 
 selected_analysis = next((r for r in summary if r["id"] == st.session_state["selected_analysis_id"]), None)
@@ -120,9 +153,12 @@ def confirm_delete_result(result: dict) -> None:
 @st.dialog("Analyse opnieuw uitvoeren")
 def confirm_rerun_analysis(sermon_analysis_id: int, analysis_type_name: str, front_end_name: str) -> None:
     st.write(f"Weet je zeker dat je **'{front_end_name}'** opnieuw wilt uitvoeren? Dit kan enkele minuten duren.")
+    _rerun_lock_key = f"analysis_rerun_lock_{sermon_analysis_id}_{analysis_type_name}"
+    _rerun_locked = _reanalysis_is_locked(_rerun_lock_key)
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Ja, opnieuw uitvoeren", type="primary", use_container_width=True):
+        if st.button("Ja, opnieuw uitvoeren", type="primary", use_container_width=True, disabled=_rerun_locked):
+            st.session_state[_rerun_lock_key] = time.time()
             try:
                 agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
                 response = requests.post(
@@ -137,6 +173,7 @@ def confirm_rerun_analysis(sermon_analysis_id: int, analysis_type_name: str, fro
                 st.toast(f"'{front_end_name}' wordt opnieuw uitgevoerd. Ververs de pagina over enkele minuten.")
                 st.rerun()
             except Exception as e:
+                _release_reanalysis_lock(_rerun_lock_key)
                 st.error(f"Fout bij starten analyse: {e}")
     with col2:
         if st.button("Annuleren", use_container_width=True):
@@ -151,12 +188,15 @@ def confirm_rerun_liedsuggesties(sermon_analysis_id: int) -> None:
         options=all_books,
         format_func=lambda b: b["name"],
     )
+    _lied_lock_key = f"analysis_rerun_lock_{sermon_analysis_id}_liedsuggesties"
+    _lied_locked = _reanalysis_is_locked(_lied_lock_key)
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Uitvoeren", type="primary", use_container_width=True):
+        if st.button("Uitvoeren", type="primary", use_container_width=True, disabled=_lied_locked):
             if not selected:
                 st.warning("Selecteer minimaal één liedbundel.")
                 return
+            st.session_state[_lied_lock_key] = time.time()
             try:
                 agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
                 response = requests.post(
@@ -172,6 +212,7 @@ def confirm_rerun_liedsuggesties(sermon_analysis_id: int) -> None:
                 st.toast("Liedsuggesties worden opnieuw uitgevoerd. Ververs de pagina over enkele minuten.")
                 st.rerun()
             except Exception as e:
+                _release_reanalysis_lock(_lied_lock_key)
                 st.error(f"Fout bij starten analyse: {e}")
     with col2:
         if st.button("Annuleren", use_container_width=True):

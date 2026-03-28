@@ -74,7 +74,7 @@ class APIHandler:
         return response.json()
 
     def post(
-        self, endpoint: str, data: dict[str, Any], require_token: bool = True
+        self, endpoint: str, data: dict[str, Any], require_token: bool = True, timeout: int = 120
     ) -> dict[str, Any]:
         """
         Send a POST request to the specified endpoint with the given data.
@@ -95,10 +95,10 @@ class APIHandler:
                 "Authorization": f"Bearer {self.jwt_handler.token}",
                 "Content-Type": "application/json",
             }
-            response = requests.post(url, json=data, headers=headers)
+            response = requests.post(url, json=data, headers=headers, timeout=timeout)
         else:
-            response = requests.post(url, json=data)    
-            
+            response = requests.post(url, json=data, timeout=timeout)
+
         response.raise_for_status()
         return response.json()
     
