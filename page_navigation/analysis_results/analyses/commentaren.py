@@ -2,6 +2,8 @@ from typing import Any
 
 import streamlit as st
 
+from src.utils.utils import clean_md
+
 
 def _render_exegese(exegese: dict) -> None:
     titel = exegese.get("titel", "")
@@ -16,7 +18,7 @@ def _render_exegese(exegese: dict) -> None:
 
     if tekst:
         with st.expander("📖 Volledige exegese", expanded=False):
-            st.markdown(tekst)
+            st.markdown(clean_md(tekst))
 
 
 def commentaren(analysis: dict[str, Any]) -> None:

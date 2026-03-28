@@ -1,9 +1,25 @@
 import os
 import json
+import re
 from typing import Any
 
 import streamlit as st
 import requests
+
+
+def clean_md(text: str) -> str:
+    """Normalise LLM-generated markdown for robust Streamlit rendering.
+
+    Fixes:
+    - Literal \\n escape sequences -> actual newlines
+    - ** text ** (spaces inside bold markers) -> **text**
+    """
+    if not text:
+        return text
+    text = text.replace("\\n", "\n")
+    text = re.sub(r'\*\*[ \t]+(\S)', r'**\1', text)
+    text = re.sub(r'(\S)[ \t]+\*\*', r'\1**', text)
+    return text
 
 
 def redirect_to_login() -> None:

@@ -2,6 +2,8 @@ from typing import Any
 
 import streamlit as st
 
+from src.utils.utils import clean_md
+
 
 def _fmt(key: str) -> str:
     return key.replace("_", " ").capitalize()
@@ -52,13 +54,13 @@ def liturgisch_jaar(analysis: dict[str, Any]) -> None:
     # ── Thematiek ────────────────────────────────────────────────────────────
     with st.expander("🎯 Thematiek", expanded=False):
         if thematiek.get("centraal_thema"):
-            st.markdown(f"**Centraal thema:** {thematiek['centraal_thema']}")
+            st.markdown(f"**Centraal thema:** {clean_md(thematiek['centraal_thema'])}")
         if thematiek.get("stemming"):
-            st.markdown(f"**Stemming:** {thematiek['stemming']}")
+            st.markdown(f"**Stemming:** {clean_md(thematiek['stemming'])}")
         if thematiek.get("karakter_zondag"):
-            st.markdown(f"**Karakter:** {thematiek['karakter_zondag']}")
+            st.markdown(f"**Karakter:** {clean_md(thematiek['karakter_zondag'])}")
         if thematiek.get("rode_draad_liturgisch_jaar"):
-            st.markdown(f"**Rode draad:** {thematiek['rode_draad_liturgisch_jaar']}")
+            st.markdown(f"**Rode draad:** {clean_md(thematiek['rode_draad_liturgisch_jaar'])}")
         vragen: list = thematiek.get("centrale_geloofsvragen", [])
         if vragen:
             st.markdown("**Centrale geloofsvragen:**")
@@ -84,21 +86,21 @@ def liturgisch_jaar(analysis: dict[str, Any]) -> None:
                 for field in ("context", "theologische_accenten", "relatie_tot_thema", "relatie_liturgische_periode"):
                     val = lezing.get(field)
                     if val:
-                        st.markdown(f"*{_fmt(field)}:* {val}")
+                        st.markdown(f"*{_fmt(field)}:* {clean_md(val)}")
 
         samenhang = lezingen.get("thematische_samenhang")
         if samenhang:
-            st.markdown(f"**Thematische samenhang:** {samenhang}")
+            st.markdown(f"**Thematische samenhang:** {clean_md(samenhang)}")
         relatie = lezingen.get("relatie_tot_liturgische_periode")
         if relatie:
-            st.markdown(f"**Relatie tot liturgische periode:** {relatie}")
+            st.markdown(f"**Relatie tot liturgische periode:** {clean_md(relatie)}")
 
     # ── Preekvoorbereiding ────────────────────────────────────────────────────
     with st.expander("✍️ Voorbereiding kerkdienst", expanded=False):
         if preekvoorbereiding.get("aanbevolen_preektekst"):
-            st.markdown(f"**Aanbevolen tekst:** {preekvoorbereiding['aanbevolen_preektekst']}")
+            st.markdown(f"**Aanbevolen tekst:** {clean_md(preekvoorbereiding['aanbevolen_preektekst'])}")
         if preekvoorbereiding.get("reden_keuze"):
-            st.markdown(f"**Reden keuze:** {preekvoorbereiding['reden_keuze']}")
+            st.markdown(f"**Reden keuze:** {clean_md(preekvoorbereiding['reden_keuze'])}")
         punten: list = preekvoorbereiding.get("actuele_aanknopingspunten", [])
         if punten:
             st.markdown("**Actuele aanknopingspunten:**")
@@ -115,7 +117,7 @@ def liturgisch_jaar(analysis: dict[str, Any]) -> None:
     # ── Lijurgische kleur ─────────────────────────────────────────────────────
     with st.expander("🎨 Liturgische kleur", expanded=False):
         if kleur.get("symboliek"):
-            st.markdown(f"**Symboliek:** {kleur['symboliek']}")
+            st.markdown(f"**Symboliek:** {clean_md(kleur['symboliek'])}")
         suggesties: list = kleur.get("praktische_suggesties", [])
         if suggesties:
             st.markdown("**Praktische suggesties:**")
@@ -124,7 +126,7 @@ def liturgisch_jaar(analysis: dict[str, Any]) -> None:
     # ── Praktische handvatten ─────────────────────────────────────────────────
     with st.expander("🛠️ Praktische handvatten", expanded=False):
         if praktisch.get("liturgische_orde_suggestie"):
-            st.markdown(f"**Liturgische orde:** {praktisch['liturgische_orde_suggestie']}")
+            st.markdown(f"**Liturgische orde:** {clean_md(praktisch['liturgische_orde_suggestie'])}")
 
         aanpassingen: list[dict] = praktisch.get("aanpassingen_periode", [])
         if aanpassingen:
@@ -155,12 +157,12 @@ def liturgisch_jaar(analysis: dict[str, Any]) -> None:
         for key in ("oorsprong_vroege_kerk", "hervormde_traditie", "gereformeerde_traditie", "lutherse_traditie", "oecumenische_dimensie"):
             val = historisch.get(key)
             if val:
-                st.markdown(f"**{_fmt(key)}:** {val}")
+                st.markdown(f"**{_fmt(key)}:** {clean_md(val)}")
 
     # ── Traditionele naam ─────────────────────────────────────────────────────
     with st.expander("🏷️ Traditionele naam", expanded=False):
         if traditionele_naam.get("oorsprong"):
-            st.markdown(f"**Oorsprong:** {traditionele_naam['oorsprong']}")
+            st.markdown(f"**Oorsprong:** {clean_md(traditionele_naam['oorsprong'])}")
         volksnamen: list = traditionele_naam.get("volksnamen", [])
         if volksnamen:
             st.markdown("**Volksnamen:**")

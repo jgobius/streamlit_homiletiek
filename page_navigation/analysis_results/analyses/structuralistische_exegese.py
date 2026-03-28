@@ -2,6 +2,8 @@ from typing import Any
 
 import streamlit as st
 
+from src.utils.utils import clean_md
+
 
 def _render_woordstudie(woorden: list[dict]) -> None:
     for woord in woorden:
@@ -18,9 +20,9 @@ def _render_woordstudie(woorden: list[dict]) -> None:
             if woord.get("semantische_range"):
                 st.caption(f"🔤 {woord['semantische_range']}")
             if woord.get("gebruik_elders"):
-                st.markdown(f"*Gebruik elders:* {woord['gebruik_elders']}")
+                st.markdown(f"*Gebruik elders:* {clean_md(woord['gebruik_elders'])}")
             if woord.get("meerduidigheid"):
-                st.markdown(f"*Meerduidigheid:* {woord['meerduidigheid']}")
+                st.markdown(f"*Meerduidigheid:* {clean_md(woord['meerduidigheid'])}")
 
 
 def _render_scenarios(scenarios: list[dict]) -> None:
@@ -30,8 +32,8 @@ def _render_scenarios(scenarios: list[dict]) -> None:
             with col_left:
                 st.markdown(f"**{i}. {s.get('scène', '')}**")
                 st.caption(f"🕐 {s.get('tijd', '')}  ·  📍 {s.get('plaats', '')}")
-                st.markdown(f"*Actant:* {s.get('actant', '')}")
-                st.markdown(f"*Handeling:* {s.get('handeling', '')}")
+                st.markdown(f"*Actant:* {clean_md(s.get('actant', ''))}")
+                st.markdown(f"*Handeling:* {clean_md(s.get('handeling', ''))}")
             with col_right:
                 medewerkers = s.get("medewerker", [])
                 if medewerkers:
@@ -55,22 +57,22 @@ def _render_lezing(lezing: dict) -> None:
         if afbakening.get("werkvertaling_cruciaal"):
             st.info(f"📖 *{afbakening['werkvertaling_cruciaal']}*")
         for item in afbakening.get("vertaalvergelijking", []):
-            st.markdown(f"**Vertaalvergelijking:** {item.get('vertaling', '')}")
+            st.markdown(f"**Vertaalvergelijking:** {clean_md(item.get('vertaling', ''))}")
             if item.get("significante_verschillen"):
-                st.markdown(f"*Significante verschillen:* {item['significante_verschillen']}")
+                st.markdown(f"*Significante verschillen:* {clean_md(item['significante_verschillen'])}")
 
     # ── Tekstkritiek ──────────────────────────────────────────────────────────
     with st.expander("🔍 Tekstkritiek", expanded=False):
         tekstkritiek: dict = lezing.get("tekstkritiek", {})
         if tekstkritiek.get("conclusie"):
-            st.markdown(f"**Conclusie:** {tekstkritiek['conclusie']}")
+            st.markdown(f"**Conclusie:** {clean_md(tekstkritiek['conclusie'])}")
         varianten: list = tekstkritiek.get("relevante_varianten", [])
         if varianten:
             for v in varianten:
                 with st.container(border=True):
-                    st.markdown(f"**Vers {v.get('vers', '')}:** {v.get('variant', '')}")
+                    st.markdown(f"**Vers {v.get('vers', '')}:** {clean_md(v.get('variant', ''))}")
                     st.caption(f"Handschriften: {v.get('handschriften', '')}")
-                    st.markdown(f"*Impact:* {v.get('betekenis_impact', '')}")
+                    st.markdown(f"*Impact:* {clean_md(v.get('betekenis_impact', ''))}")
         else:
             st.caption("Geen relevante tekstkritische varianten.")
 
@@ -78,24 +80,24 @@ def _render_lezing(lezing: dict) -> None:
     with st.expander("📚 Literaire analyse", expanded=False):
         lit: dict = lezing.get("literaire_analyse", {})
         if lit.get("genre"):
-            st.markdown(f"**Genre:** {lit['genre']}")
+            st.markdown(f"**Genre:** {clean_md(lit['genre'])}")
         if lit.get("genre_conventies"):
-            st.markdown(f"**Genre-conventies:** {lit['genre_conventies']}")
+            st.markdown(f"**Genre-conventies:** {clean_md(lit['genre_conventies'])}")
 
         structuur: dict = lit.get("structuur", {})
         if structuur:
             st.markdown("**Structuur**")
             if structuur.get("opbouw"):
-                st.markdown(f"*Opbouw:* {structuur['opbouw']}")
+                st.markdown(f"*Opbouw:* {clean_md(structuur['opbouw'])}")
             if structuur.get("centrum"):
-                st.markdown(f"*Centrum:* {structuur['centrum']}")
+                st.markdown(f"*Centrum:* {clean_md(structuur['centrum'])}")
             cesuren = structuur.get("cesuren", [])
             if cesuren:
                 st.markdown("*Cesuren:*")
                 for c in cesuren:
                     st.markdown(f"- {c}")
             if structuur.get("chiasme_inclusio"):
-                st.markdown(f"*Chiasme/inclusio:* {structuur['chiasme_inclusio']}")
+                st.markdown(f"*Chiasme/inclusio:* {clean_md(structuur['chiasme_inclusio'])}")
 
         kp: dict = lit.get("karakters_plot", {})
         if kp:
@@ -104,11 +106,11 @@ def _render_lezing(lezing: dict) -> None:
             if personages:
                 st.markdown("*Personages:* " + ", ".join(personages))
             if kp.get("verhaallijn"):
-                st.markdown(f"*Verhaallijn:* {kp['verhaallijn']}")
+                st.markdown(f"*Verhaallijn:* {clean_md(kp['verhaallijn'])}")
             if kp.get("karakterisering"):
-                st.markdown(f"*Karakterisering:* {kp['karakterisering']}")
+                st.markdown(f"*Karakterisering:* {clean_md(kp['karakterisering'])}")
             if kp.get("verzwegen_gesuggereerd"):
-                st.markdown(f"*Verzwegen/gesuggereerd:* {kp['verzwegen_gesuggereerd']}")
+                st.markdown(f"*Verzwegen/gesuggereerd:* {clean_md(kp['verzwegen_gesuggereerd'])}")
 
         sr: dict = lit.get("stijl_retoriek", {})
         if sr:
@@ -119,9 +121,9 @@ def _render_lezing(lezing: dict) -> None:
                 for m in middelen:
                     st.markdown(f"- {m}")
             if sr.get("retorische_strategie"):
-                st.markdown(f"*Retorische strategie:* {sr['retorische_strategie']}")
+                st.markdown(f"*Retorische strategie:* {clean_md(sr['retorische_strategie'])}")
             if sr.get("effect_lezer"):
-                st.markdown(f"*Effect op lezer:* {sr['effect_lezer']}")
+                st.markdown(f"*Effect op lezer:* {clean_md(sr['effect_lezer'])}")
 
     # ── Structuralistische analyse ────────────────────────────────────────────
     with st.expander("🏗️ Structuralistische analyse", expanded=False):
@@ -137,7 +139,7 @@ def _render_lezing(lezing: dict) -> None:
                 ("medewerkers_opponenten_analyse", "Medewerkers & opponenten"),
             ]:
                 if vert.get(field):
-                    st.markdown(f"*{label}:* {vert[field]}")
+                    st.markdown(f"*{label}:* {clean_md(vert[field])}")
 
         schema: dict = struct.get("schema_constructie", {})
         if schema:
@@ -157,7 +159,7 @@ def _render_lezing(lezing: dict) -> None:
                 ("temporele_ontwikkeling", "Temporele ontwikkeling"),
             ]:
                 if horiz.get(field):
-                    st.markdown(f"*{label}:* {horiz[field]}")
+                    st.markdown(f"*{label}:* {clean_md(horiz[field])}")
 
         synth: dict = struct.get("synthese_interpretatie", {})
         if synth:
@@ -168,9 +170,9 @@ def _render_lezing(lezing: dict) -> None:
                 for t in themas:
                     st.markdown(f"- {t}")
             if synth.get("structurele_patroon"):
-                st.markdown(f"*Structureel patroon:* {synth['structurele_patroon']}")
+                st.markdown(f"*Structureel patroon:* {clean_md(synth['structurele_patroon'])}")
             if synth.get("theologische_betekenis"):
-                st.markdown(f"*Theologische betekenis:* {synth['theologische_betekenis']}")
+                st.markdown(f"*Theologische betekenis:* {clean_md(synth['theologische_betekenis'])}")
 
     # ── Theologische analyse ──────────────────────────────────────────────────
     with st.expander("✝️ Theologische analyse", expanded=False):
@@ -184,7 +186,7 @@ def _render_lezing(lezing: dict) -> None:
             ("theologische_controverses", "Theologische controverses"),
         ]:
             if theo.get(field):
-                st.markdown(f"**{label}:** {theo[field]}")
+                st.markdown(f"**{label}:** {clean_md(theo[field])}")
         dogma = theo.get("dogmatische_raakvlakken", [])
         if dogma:
             st.markdown("**Dogmatische raakvlakken:** " + " · ".join(dogma))

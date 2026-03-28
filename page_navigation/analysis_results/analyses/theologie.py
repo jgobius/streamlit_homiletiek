@@ -2,6 +2,8 @@ from typing import Any
 
 import streamlit as st
 
+from src.utils.utils import clean_md
+
 _TYPE_BADGE = {
     "Kernachtig/Klassiek": "🔵",
     "Experimenteel/Creatief": "🟣",
@@ -23,14 +25,14 @@ def _render_notie(notie: dict) -> None:
 
         if samenvatting:
             st.markdown(f"**Korte samenvatting**")
-            st.write(samenvatting)
+            st.markdown(clean_md(samenvatting))
 
         if zoektermen:
             st.caption("🔎 " + " · ".join(zoektermen))
 
         if uitwerking:
             st.markdown("**Systematische uitwerking**")
-            st.markdown(uitwerking)
+            st.markdown(clean_md(uitwerking))
 
 
 def theologie(analysis: dict[str, Any]) -> None:
@@ -49,7 +51,7 @@ def theologie(analysis: dict[str, Any]) -> None:
         st.subheader("💡 Synthese")
         if synthese.get("verbanden"):
             st.markdown("**Verbanden**")
-            st.write(synthese["verbanden"])
+            st.markdown(clean_md(synthese["verbanden"]))
         if synthese.get("homiletische_focus"):
             st.markdown("**Homiletische focus**")
             st.success(synthese["homiletische_focus"])

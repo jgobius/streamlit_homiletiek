@@ -2,6 +2,8 @@ from typing import Any
 
 import streamlit as st
 
+from src.utils.utils import clean_md
+
 
 def postille(analysis: dict[str, Any]) -> None:
     """Render a preekschets (postille) analysis result."""
@@ -33,7 +35,7 @@ def postille(analysis: dict[str, Any]) -> None:
     st.divider()
 
     # ── Schriftlezingen ───────────────────────────────────────────────────────
-    with st.expander("📚 Schriftlezingen", expanded=False):
+    with st.expander("📚 Schriftlezingen", expanded=True):
         if schriftlezingen.get("hoofdlezing"):
             st.markdown(f"**Hoofdlezing:** {schriftlezingen['hoofdlezing']}")
         aanvullend: list = schriftlezingen.get("aanvullend", [])
@@ -58,19 +60,19 @@ def postille(analysis: dict[str, Any]) -> None:
                 st.write("")
 
     # ── Eigene van de zondag ──────────────────────────────────────────────────
-    with st.expander("🗓️ Eigene van de zondag", expanded=False):
-        st.write(preekschets.get("eigene_van_de_zondag", ""))
+    with st.expander("🗓️ Eigene van de zondag", expanded=True):
+        st.markdown(clean_md(preekschets.get("eigene_van_de_zondag", "")))
 
     # ── Uitleg / Exegese ──────────────────────────────────────────────────────
-    with st.expander("🔍 Uitleg & exegese", expanded=False):
-        st.markdown(preekschets.get("uitleg", ""))
+    with st.expander("🔍 Uitleg & exegese", expanded=True):
+        st.markdown(clean_md(preekschets.get("uitleg", "")))
 
     # ── Aanwijzingen prediking ────────────────────────────────────────────────
-    with st.expander("🎤 Aanwijzingen voor de prediking", expanded=False):
-        st.markdown(preekschets.get("aanwijzingen_prediking", ""))
+    with st.expander("🎤 Aanwijzingen voor de prediking", expanded=True):
+        st.markdown(clean_md(preekschets.get("aanwijzingen_prediking", "")))
 
     # ── Liturgische aanwijzingen ──────────────────────────────────────────────
-    with st.expander("🎵 Liturgische aanwijzingen", expanded=False):
+    with st.expander("🎵 Liturgische aanwijzingen", expanded=True):
         liedsuggesties: list[dict] = liturgische_aanwijzingen.get("liedsuggesties", [])
         if liedsuggesties:
             st.markdown("**Liedsuggesties**")
@@ -85,4 +87,4 @@ def postille(analysis: dict[str, Any]) -> None:
         aanvullende_lezingen: str = liturgische_aanwijzingen.get("aanvullende_lezingen", "")
         if aanvullende_lezingen:
             st.markdown("**Aanvullende lezingen**")
-            st.write(aanvullende_lezingen)
+            st.markdown(clean_md(aanvullende_lezingen))

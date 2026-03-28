@@ -3,6 +3,8 @@ from typing import Any
 
 import streamlit as st
 
+from src.utils.utils import clean_md
+
 # Canonical display order for liturgical use-moments
 _GEBRUIK_ORDER = [
     "Intocht",
@@ -55,7 +57,7 @@ def _render_lied(lied: dict[str, Any]) -> None:
             st.caption(f"🎵 {karakter}")
 
         if toelichting:
-            st.write(toelichting)
+            st.markdown(clean_md(toelichting))
 
         tag_cols = st.columns(2)
         with tag_cols[0]:
