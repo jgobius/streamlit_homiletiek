@@ -13,6 +13,9 @@ from src.utils.utils import (
     render_sidebar,
     save_scriptures,
     load_scriptures,
+    BIBLE_BOOKS,
+    READING_TYPES,
+    READING_TYPE_BOOKS,
 )
 
 redirect_to_login()
@@ -20,6 +23,84 @@ redirect_to_login()
 render_sidebar()
 
 ########### DEFINE FUNCTIONS ###########
+
+
+def _sanitize_cv(key: str) -> None:
+    """Remove any character that is not a digit, colon, or hyphen."""
+    raw = st.session_state.get(key, "")
+    cleaned = "".join(c for c in raw if c.isdigit() or c in ":-")
+    if cleaned != raw:
+        st.session_state[key] = cleaned
+
+
+@st.dialog("Eigen lezingen toevoegen", width="large")
+def show_own_readings_dialog() -> None:
+    st.write("Configureer hier de eigen lezingen voor de dienst (minimaal één).")
+    
+    if "own_readings" not in st.session_state:
+        st.session_state["own_readings"] = {rt: {"book": "", "chapter_verses": ""} for rt in READING_TYPES}
+        
+    for rt in READING_TYPES:
+        st.markdown(f"**{rt}**")
+        col1, col2 = st.columns([1, 1])
+        
+        current_data = st.session_state["own_readings"].get(rt, {"book": "", "chapter_verses": ""})
+        
+        with col1:
+            allowed_books = READING_TYPE_BOOKS.get(rt, BIBLE_BOOKS)
+            book_options = [""] + allowed_books
+            book_index = book_options.index(current_data["book"]) if current_data["book"] in book_options else 0
+            st.selectbox(
+                f"Bijbelboek ({rt})",
+                options=book_options,
+                index=book_index,
+                key=f"book_select_{rt}",
+                label_visibility="collapsed"
+            )
+        with col2:
+            book_selected = bool(st.session_state.get(f"book_select_{rt}", ""))
+            cv_key = f"cv_input_{rt}"
+            if cv_key not in st.session_state:
+                st.session_state[cv_key] = current_data["chapter_verses"]
+            if not book_selected:
+                st.session_state[cv_key] = ""
+            st.text_input(
+                f"Hoofdstuk/verzen ({rt})",
+                key=cv_key,
+                placeholder="Bijv. 1:1-10",
+                label_visibility="collapsed",
+                disabled=not book_selected,
+                on_change=_sanitize_cv,
+                args=(cv_key,),
+            )
+
+    st.markdown("---")
+    if st.button("Opslaan en sluiten", type="primary"):
+        selected = []
+        new_own_readings = {}
+        incomplete = []
+        for rt in READING_TYPES:
+            book = st.session_state[f"book_select_{rt}"]
+            cv = st.session_state[f"cv_input_{rt}"]
+            new_own_readings[rt] = {"book": book, "chapter_verses": cv}
+            if book and cv:
+                selected.append(f"{book} {cv}")
+            elif book and not cv:
+                incomplete.append(rt)
+
+        if incomplete:
+            st.error(f"Vul ook de hoofdstuk/verzen in voor: {', '.join(incomplete)}.")
+        elif not selected:
+            st.error("Selecteer minimaal één lezing (Boek én Hoofdstuk/verzen).")
+        else:
+            # Clear previous structured results if selection changed
+            if st.session_state.get("selected_scriptures") != selected:
+                st.session_state["structured_scriptures"] = []
+                st.session_state["scriptures_approved"] = False
+                
+            st.session_state["own_readings"] = new_own_readings
+            st.session_state["selected_scriptures"] = selected
+            st.rerun()
 
 
 def get_scripture_text(
@@ -61,6 +142,7 @@ def clean_up_session_state() -> None:
         "structured_scriptures",
         "scriptures_approved",
         "selected_scripture_id",
+        "own_readings",
     ]
     for key in keys_to_remove:
         if key in st.session_state:
@@ -80,6 +162,9 @@ if "selected_scriptures" not in st.session_state:
 
 if "structured_scriptures" not in st.session_state:
     st.session_state["structured_scriptures"] = []
+
+if "own_readings" not in st.session_state:
+    st.session_state["own_readings"] = {rt: {"book": "", "chapter_verses": ""} for rt in READING_TYPES}
 
 ### FORM ###
 
@@ -139,18 +224,24 @@ if scriptures_choice == "Kerkelijk rooster volgen":
 
 
 if scriptures_choice == "Eigen lezingen":
-    options = st.multiselect(
-        "Geselecteerde lezingen:",
-        placeholder="Geen lezingen geselecteerd",
-        options=[],
-        accept_new_options=True,
-    )
-    update(options)
+    st.markdown("### Eigen lezingen")
+    any_lezing = False
+    for rt in READING_TYPES:
+        data = st.session_state.own_readings.get(rt, {})
+        if data.get("book") and data.get("chapter_verses"):
+            st.write(f"- **{rt}**: {data['book']} {data['chapter_verses']}")
+            any_lezing = True
+    
+    if not any_lezing:
+        st.info("Er zijn nog geen lezingen toegevoegd.")
+        
+    if st.button("Lezingen configureren"):
+        show_own_readings_dialog()
 
 extra_context = st.text_area("Extra context (optioneel):", height=150, max_chars=1024)
 
 if scriptures_choice == "Eigen lezingen":
-    collect_structured_scriptures = st.button("Lezingen ophalen")
+    collect_structured_scriptures = st.button("Lezingen ophalen", disabled=not any_lezing)
 
 if scriptures_choice == "Eigen lezingen" and collect_structured_scriptures:
 
@@ -193,13 +284,22 @@ if (
 submit = st.button("Analyse starten", type="primary")
 
 if submit:
+    # Validation for Eigen lezingen
+    if scriptures_choice == "Eigen lezingen":
+        if not st.session_state.get("structured_scriptures"):
+            st.error("Haal eerst de lezingen op via de knop 'Lezingen ophalen'.")
+            st.stop()
+        if not st.session_state.get("scriptures_approved"):
+            st.error("Bevestig eerst dat de opgehaalde lezingen correct zijn.")
+            st.stop()
+
     sermon_analysis_model = SermonAnalysisModel(
         church=selected_church["id"],
         title=title,
         sermon_date=sermon_date,
         liturgy=st.session_state.get("selected_scripture_id"),
         core_scriptures=core_scripture,
-        scripture_json=st.session_state.get("structured_scriptures"),
+        scripture_json=st.session_state.get("structured_scriptures") or [],
         use_calendar=(scriptures_choice == "Kerkelijk rooster volgen"),
         song_books=[book["id"] for book in song_books],
         extra_context=extra_context,

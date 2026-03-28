@@ -6,6 +6,29 @@ from typing import Any
 import streamlit as st
 import requests
 
+BIBLE_BOOKS = [
+    "Genesis", "Exodus", "Leviticus", "Numeri", "Deuteronomium", "Jozua", "Rechters", "Ruth", "1 Samuel", "2 Samuel",
+    "1 Koningen", "2 Koningen", "1 Kronieken", "2 Kronieken", "Ezra", "Nehemia", "Ester", "Job", "Psalmen", "Spreuken",
+    "Prediker", "Hooglied", "Jesaja", "Jeremia", "Klaagliederen", "Ezechiël", "Daniël", "Hosea", "Joël", "Amos",
+    "Obadja", "Jona", "Micha", "Nahum", "Habakuk", "Sefanja", "Haggai", "Zacharia", "Maleachi",
+    "Mattheüs", "Marcus", "Lucas", "Johannes", "Handelingen", "Romeinen", "1 Korintiërs", "2 Korintiërs", "Galaten",
+    "Efeziërs", "Filippenzen", "Kolossenzen", "1 Tessalonicenzen", "2 Tessalonicenzen", "1 Timoteüs", "2 Timoteüs",
+    "Titus", "Filemon", "Hebreeën", "Jakobus", "1 Petrus", "2 Petrus", "1 Johannes", "2 Johannes", "3 Johannes",
+    "Judas", "Openbaring"
+]
+
+READING_TYPES = ["EERSTE LEZING", "PSALM", "TWEEDE LEZING", "EVANGELIE"]
+
+OT_BOOKS = BIBLE_BOOKS[:39]  # Genesis t/m Maleachi
+PSALM_BOOKS = ["Psalmen", "Spreuken"]
+NT_BOOKS = BIBLE_BOOKS[39:]  # Mattheüs t/m Openbaring
+
+READING_TYPE_BOOKS = {
+    "EERSTE LEZING": OT_BOOKS,
+    "PSALM": PSALM_BOOKS,
+    "TWEEDE LEZING": NT_BOOKS,
+    "EVANGELIE": NT_BOOKS,
+}
 
 def clean_md(text: str) -> str:
     """Normalise LLM-generated markdown for robust Streamlit rendering.

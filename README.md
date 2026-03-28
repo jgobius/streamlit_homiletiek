@@ -15,6 +15,11 @@ A Streamlit web application that assists with sermon preparation and worship ser
   - Theology (*theologie*)
 - **Church management** — add and manage church congregations
 - **Dashboard** — overview of all sermon analyses
+- **Eigen lezingen** — configure manual readings for services not using a liturgical calendar:
+  - Standardized selection of all 66 Bible books
+  - Support for OT-lezing, Psalm, Epistellezing, and Evangelielezing
+  - Multi-reading support with integrated validation
+  - Structured data retrieval via AI agent
 
 ## Tech Stack
 

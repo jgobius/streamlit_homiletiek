@@ -131,9 +131,10 @@ def confirm_rerun_analysis(sermon_analysis_id: int, analysis_type_name: str, fro
                         "sermon_analysis_id": sermon_analysis_id,
                         "analysis_type_name": analysis_type_name,
                     },
+                    timeout=10,
                 )
                 response.raise_for_status()
-                st.success(f"'{front_end_name}' wordt opnieuw uitgevoerd. Ververs de pagina over enkele minuten.")
+                st.toast(f"'{front_end_name}' wordt opnieuw uitgevoerd. Ververs de pagina over enkele minuten.")
                 st.rerun()
             except Exception as e:
                 st.error(f"Fout bij starten analyse: {e}")
@@ -165,9 +166,10 @@ def confirm_rerun_liedsuggesties(sermon_analysis_id: int) -> None:
                         "analysis_type_name": "liedsuggesties",
                         "song_books": [b["id"] for b in selected],
                     },
+                    timeout=10,
                 )
                 response.raise_for_status()
-                st.success("Liedsuggesties worden opnieuw uitgevoerd. Ververs de pagina over enkele minuten.")
+                st.toast("Liedsuggesties worden opnieuw uitgevoerd. Ververs de pagina over enkele minuten.")
                 st.rerun()
             except Exception as e:
                 st.error(f"Fout bij starten analyse: {e}")
