@@ -2,6 +2,7 @@ import requests
 import streamlit as st
 
 from src.utils.utils import redirect_to_login, get_data
+from page_navigation.analysis_results.aanpassen_dialog import aanpassen_dialog
 from page_navigation.analysis_results.analyses.postille import postille
 from page_navigation.analysis_results.analyses.bijbelteksten import bijbelteksten
 from page_navigation.analysis_results.analyses.liturgisch_jaar import liturgisch_jaar
@@ -89,14 +90,6 @@ with st.sidebar:
 
 selected_analysis = next((r for r in summary if r["id"] == st.session_state["selected_analysis_id"]), None)
 
-@st.dialog("Extra context")
-def extra_context_dialog() -> None:
-    st.text_area("Geef extra context voor deze analyse", key="extra_context_input", height=200)
-    if st.button("Opslaan", type="primary"):
-        st.session_state["extra_context"] = st.session_state["extra_context_input"]
-        st.rerun()
-
-
 @st.dialog("Analyse-element verwijderen")
 def confirm_delete_result(result: dict) -> None:
     label = result["analysis_type"]["front_end_name"]
@@ -156,8 +149,8 @@ with col_rerun:
             front_end_name=selected_analysis["analysis_type"]["front_end_name"] if selected_analysis else "",
         )
 with col_ctx:
-    if st.button("Extra context", icon="✏️", use_container_width=True):
-        extra_context_dialog()
+    if st.button("Aanpassen", icon="✏️", use_container_width=True):
+        aanpassen_dialog(selected_analysis)
 
 if st.session_state.get("extra_context"):
     st.info(f"**Extra context:** {st.session_state['extra_context']}")
