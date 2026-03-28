@@ -28,7 +28,7 @@ def _render_notie(notie: dict) -> None:
             st.markdown(clean_md(samenvatting))
 
         if zoektermen:
-            st.caption("🔎 " + " · ".join(zoektermen))
+            st.caption("🔎 **Zoektermen voor verdere verkenning:** " + " · ".join(zoektermen))
 
         if uitwerking:
             st.markdown("**Systematische uitwerking**")

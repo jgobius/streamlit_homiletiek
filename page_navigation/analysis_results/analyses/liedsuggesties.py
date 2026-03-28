@@ -1,22 +1,10 @@
+import re
 from collections import defaultdict
 from typing import Any
 
 import streamlit as st
 
 from src.utils.utils import clean_md
-
-# Canonical display order for liturgical use-moments
-_GEBRUIK_ORDER = [
-    "Intocht",
-    "Kyrie",
-    "Gloria",
-    "Schriftlied",
-    "Tussenzang",
-    "Voorbeden",
-    "Avondmaal",
-    "Slotlied",
-    "Zegen",
-]
 
 _MATCH_LABELS: dict[str, str] = {
     "Schriftlezing": "📖 Schriftlezing",
@@ -26,13 +14,6 @@ _MATCH_LABELS: dict[str, str] = {
     "Emotioneel": "💙 Emotioneel",
     "Verrassend": "✨ Verrassend",
 }
-
-
-def _gebruik_sort_key(gebruik_str: str) -> int:
-    """Return lowest rank among the pipe-separated use-moment values."""
-    parts = [p.strip() for p in gebruik_str.split("|")]
-    ranks = [_GEBRUIK_ORDER.index(p) if p in _GEBRUIK_ORDER else 99 for p in parts]
-    return min(ranks)
 
 
 def _render_lied(lied: dict[str, Any]) -> None:
@@ -90,20 +71,22 @@ def liedsuggesties(analysis: dict[str, Any]) -> None:
         bundel = lied.get("bundel", "Overig")
         by_bundel[bundel].append(lied)
 
-    # Sort liederen within each bundel by nummer
-    for bundel in by_bundel:
-        by_bundel[bundel].sort(key=lambda l: (
-            int(l["nummer"]) if str(l.get("nummer", "")).isdigit() else 9999
-        ))
+    # Sort liederen within each bundel by nummer (handling non-numeric suffixes if present)
+    def _nummer_sort_key(n_str: str) -> tuple[int, str]:
+        # Extract leading digits
+        match = re.match(r"(\d+)(.*)", str(n_str))
+        if match:
+            return int(match.group(1)), match.group(2)
+        return 99999, str(n_str)
 
     # Sort bundels alphabetically
     for bundel in sorted(by_bundel.keys()):
         liederen_in_bundel = by_bundel[bundel]
         with st.expander(f"📚 {bundel} ({len(liederen_in_bundel)})", expanded=False):
-            # Secondary sort within expander: by liturgical use-moment
+            # Sort within expander primarily by nummer
             sorted_liederen = sorted(
                 liederen_in_bundel,
-                key=lambda l: _gebruik_sort_key(l.get("suggestie_gebruik", "")),
+                key=lambda l: _nummer_sort_key(l.get("nummer", "")),
             )
             for lied in sorted_liederen:
                 _render_lied(lied)
