@@ -39,6 +39,28 @@ class JwtHandler:
         >>> token = handler.token  # Automatically refreshes if needed
     """
     
+    @classmethod
+    def from_refresh_token(
+        cls,
+        refresh_token: str,
+        base_url: str,
+        access_endpoint: str,
+        refresh_endpoint: str,
+        skew_seconds: int = 60,
+    ) -> "JwtHandler":
+        """Restore a JwtHandler from a stored refresh token (e.g. from a browser cookie)."""
+        obj = cls.__new__(cls)
+        obj.base_url = base_url
+        obj.skew_seconds = skew_seconds
+        obj.access_endpoint = access_endpoint
+        obj.refresh_endpoint = refresh_endpoint
+        obj._access_token = None
+        obj._refresh_token = refresh_token
+        obj._token_expiry_timestamp = 0  # force immediate refresh on first .token access
+        obj.authorized = False
+        obj._get_refresh_token()
+        return obj
+
     def __init__(
         self,
         username: str,

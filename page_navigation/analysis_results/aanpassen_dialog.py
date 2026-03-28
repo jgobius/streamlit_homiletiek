@@ -55,9 +55,11 @@ def _render_json_field(data, key_prefix: str, ses: int):
 
 @st.dialog("Aanpassen", width="large")
 def aanpassen_dialog(result: dict) -> None:
-    if st.session_state.get("aanpassen_original") is None:
+    result_id = result.get("id")
+    if st.session_state.get("aanpassen_result_id") != result_id:
         st.session_state["aanpassen_original"] = copy.deepcopy(result.get("result", {}))
         st.session_state["aanpassen_session"] = st.session_state.get("aanpassen_session", 0) + 1
+        st.session_state["aanpassen_result_id"] = result_id
 
     ses = st.session_state["aanpassen_session"]
     original_data = st.session_state["aanpassen_original"]
@@ -88,10 +90,12 @@ def aanpassen_dialog(result: dict) -> None:
             }
             requests.patch(url, json={"result": edited_data}, headers=headers).raise_for_status()
             st.session_state["aanpassen_original"] = None
+            st.session_state["aanpassen_result_id"] = None
             st.toast("Opgeslagen.")
             st.rerun()
         except Exception as e:
             st.error(f"Fout bij opslaan: {e}")
     if col_cancel.button("Annuleren", use_container_width=True):
         st.session_state["aanpassen_original"] = None
+        st.session_state["aanpassen_result_id"] = None
         st.rerun()
