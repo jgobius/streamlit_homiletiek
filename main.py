@@ -49,11 +49,16 @@ def main():
 
     if 'api_handler' not in st.session_state:
         if not _try_restore_session(controller):
-            # Cookie controller needs one render round-trip to load browser cookies.
-            # Rerun once to give it a chance before falling back to login.
-            if not st.session_state.get('_cookie_restore_attempted'):
-                st.session_state['_cookie_restore_attempted'] = True
-                st.rerun()
+            # st.stop() halts Python but the browser still processes the render,
+            # allowing the cookie controller JS to run and send data back.
+            # That component callback triggers the next render with cookies available.
+            # Limit to 2 stops to avoid looping forever when there is no cookie.
+            attempts = st.session_state.get('_restore_attempts', 0)
+            if attempts < 2:
+                st.session_state['_restore_attempts'] = attempts + 1
+                st.stop()
+
+    st.session_state.pop('_restore_attempts', None)
 
     welcome_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/welcome.py", title='Welcome')
     login_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/login.py", title='Inloggen')
