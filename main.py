@@ -11,7 +11,10 @@ st.session_state['page_navigation_dir'] = 'page_navigation'
 
 def _try_restore_session(controller: CookieController) -> bool:
     """Restore api_handler from stored refresh token cookie. Returns True if restored."""
-    refresh_token = controller.get(_COOKIE_KEY)
+    try:
+        refresh_token = controller.get(_COOKIE_KEY)
+    except TypeError:
+        return False  # cookies not loaded yet on first render
     if not refresh_token:
         return False
     try:
@@ -34,6 +37,15 @@ def _try_restore_session(controller: CookieController) -> bool:
 def main():
     controller = CookieController()
     st.session_state['cookie_controller'] = controller
+
+    # Write pending refresh token to cookie once the controller is ready.
+    pending = st.session_state.get('_pending_refresh_token')
+    if pending:
+        try:
+            controller.set(_COOKIE_KEY, pending)
+            st.session_state.pop('_pending_refresh_token')
+        except TypeError:
+            pass  # controller not ready yet — will retry on next render
 
     if 'api_handler' not in st.session_state:
         if not _try_restore_session(controller):

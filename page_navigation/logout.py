@@ -10,7 +10,10 @@ result = requests.post(f'{st.secrets["API_BASE_URL"]}/api/token/blacklist/', dat
 if result.status_code == 200:
     st.session_state.pop('api_handler')
     if controller := st.session_state.get('cookie_controller'):
-        controller.remove('auth_refresh_token')
+        try:
+            controller.remove('auth_refresh_token')
+        except (TypeError, AttributeError):
+            pass
     st.success('Je bent succesvol uitgelogd.')
 
 else:

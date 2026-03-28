@@ -3,6 +3,7 @@ from time import sleep
 
 import streamlit as st
 import requests
+from pydantic import ValidationError
 
 from email_validator.exceptions import EmailSyntaxError
 from src.models.user_model import UserModel
@@ -39,7 +40,7 @@ email = st.text_input('E-mailadres')
 password = st.text_input('Wachtwoord', type='password')
 check_password = st.text_input('Bevestig wachtwoord', type='password')
 
-register = st.button('Registreren')
+register = st.button('Registreren', disabled=not (first_name and last_name and email and password and check_password))
 
 if register:
     
@@ -68,8 +69,11 @@ if register:
         except ValueError as ve:
             st.error(str(ve))
         
-        except EmailSyntaxError as e:
-            st.error(f'Ongeldig emailadres')
-            
+        except EmailSyntaxError:
+            st.error('Ongeldig emailadres.')
+
+        except ValidationError:
+            st.error('Ongeldig emailadres.')
+
         except Exception as e:
             st.error(f'Er is een fout opgetreden: {str(e)}')
