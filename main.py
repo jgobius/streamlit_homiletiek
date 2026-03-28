@@ -16,11 +16,11 @@ def main():
     church_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/churches/churches_overview.py", title='Overzicht gemeentes')
     new_church_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/churches/new_church.py", title='Nieuwe gemeente')
     
-    analysis_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py", title='Analyse overzicht')
+    analysis_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py", title='Kerkdienstanalyse overzicht')
 
     pages = {
         "Gemeentes": [church_overview_page, new_church_page],
-        "Voorbereidingsanalyses": [dashboard_page, new_analysis_page, liturgisch_jaar_page, analysis_overview_page],
+        "Kerkdienstanalyses": [dashboard_page, new_analysis_page, liturgisch_jaar_page, analysis_overview_page],
         "Account": [logout_page],
     }
 

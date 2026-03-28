@@ -88,6 +88,30 @@ new_analysis = st.button("Nieuwe analyse", type="secondary")
 if new_analysis:
     st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py")
 
+error_analyses = [item for item in analysis if item.get("status") == "error"]
+
+if error_analyses:
+    st.subheader("Foutmeldingen")
+    for item in error_analyses:
+        congregation = item['church']['name']
+        sermon_date = datetime.strptime(item['sermon_date'], '%Y-%m-%d').strftime('%d-%m-%Y')
+        label = item.get('title') or f"{congregation} - {sermon_date}"
+        st.error(f"De analyse voor **{label}** is mislukt.")
+
+    try:
+        error_logs = get_data("api/logs/?level=ERROR&logger=src.context_agent.graph_nodes")
+        if error_logs:
+            with st.expander("Technische details (foutlogs)", expanded=False):
+                for log in error_logs:
+                    st.code(
+                        f"[{log['level']}] {log['module']}.{log['func_name']} (regel {log['line_no']})\n{log['message']}",
+                        language=None
+                    )
+    except Exception:
+        pass
+
+    st.divider()
+
 if len(analysis) == 0:
     st.info("Er zijn nog geen kerkdienstanalyses gestart.")
 else:

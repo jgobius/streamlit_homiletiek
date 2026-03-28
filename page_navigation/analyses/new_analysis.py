@@ -1,4 +1,5 @@
 import json
+from datetime import date, timedelta
 from typing import Any
 
 import streamlit as st
@@ -89,8 +90,10 @@ selected_church = st.selectbox(
 )
 
 title = st.text_input("Thema (optioneel)", max_chars=64)
+_today = date.today()
+_next_sunday = _today + timedelta(days=(6 - _today.weekday()) % 7)
 sermon_date = st.date_input(
-    "Datum van de kerkdienst", format="DD-MM-YYYY", min_value="today"
+    "Datum van de kerkdienst", value=_next_sunday, format="DD-MM-YYYY", min_value="today"
 )
 song_books = st.multiselect(
     "Selecteer de liedboeken die in deze kerkdienst gebruikt worden (optioneel):",
