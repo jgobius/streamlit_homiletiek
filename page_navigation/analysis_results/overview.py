@@ -137,17 +137,54 @@ def confirm_rerun_analysis(sermon_analysis_id: int, analysis_type_name: str, fro
             st.rerun()
 
 
+@st.dialog("Liedsuggesties opnieuw uitvoeren")
+def confirm_rerun_liedsuggesties(sermon_analysis_id: int) -> None:
+    all_books = get_data("api/song-books/")
+    selected = st.multiselect(
+        "Selecteer liedbundels (20 suggesties per bundel):",
+        options=all_books,
+        format_func=lambda b: b["name"],
+    )
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Uitvoeren", type="primary", use_container_width=True):
+            if not selected:
+                st.warning("Selecteer minimaal één liedbundel.")
+                return
+            try:
+                agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
+                response = requests.post(
+                    f"{agent_url}/run_single_analysis/",
+                    json={
+                        "sermon_analysis_id": sermon_analysis_id,
+                        "analysis_type_name": "liedsuggesties",
+                        "song_books": [b["id"] for b in selected],
+                    },
+                )
+                response.raise_for_status()
+                st.success("Liedsuggesties worden opnieuw uitgevoerd. Ververs de pagina over enkele minuten.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Fout bij starten analyse: {e}")
+    with col2:
+        if st.button("Annuleren", use_container_width=True):
+            st.rerun()
+
+
 col_del, col_rerun, col_ctx = st.columns([3, 3, 4])
 with col_del:
     if selected_analysis and st.button("Verwijder", icon="🗑️", use_container_width=True):
         confirm_delete_result(selected_analysis)
 with col_rerun:
     if st.button("Opnieuw", icon="🔄", use_container_width=True):
-        confirm_rerun_analysis(
-            sermon_analysis_id=int(analysis_id),
-            analysis_type_name=selected_analysis["analysis_type"]["name"] if selected_analysis else "",
-            front_end_name=selected_analysis["analysis_type"]["front_end_name"] if selected_analysis else "",
-        )
+        if selected_analysis and selected_analysis["analysis_type"]["name"] == "liedsuggesties":
+            confirm_rerun_liedsuggesties(sermon_analysis_id=int(analysis_id))
+        else:
+            confirm_rerun_analysis(
+                sermon_analysis_id=int(analysis_id),
+                analysis_type_name=selected_analysis["analysis_type"]["name"] if selected_analysis else "",
+                front_end_name=selected_analysis["analysis_type"]["front_end_name"] if selected_analysis else "",
+            )
 with col_ctx:
     if st.button("Aanpassen", icon="✏️", use_container_width=True):
         aanpassen_dialog(selected_analysis)
