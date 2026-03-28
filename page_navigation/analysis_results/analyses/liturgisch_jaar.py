@@ -33,13 +33,13 @@ def liturgisch_jaar(analysis: dict[str, Any]) -> None:
     col1, col2, col3 = st.columns(3)
     with col1:
         if positie.get("zondag_naam"):
-            st.metric("Zondag", positie["zondag_naam"])
+            st.markdown(f"**Zondag**  \n{positie['zondag_naam']}")
     with col2:
         if kleur.get("kleur"):
-            st.metric("Liturgische kleur", kleur["kleur"].capitalize())
+            st.markdown(f"**Liturgische kleur**  \n{kleur['kleur'].capitalize()}")
     with col3:
         if positie.get("weken_tot_hoofdfeest"):
-            st.metric("Feest", positie["weken_tot_hoofdfeest"])
+            st.markdown(f"**Feest**  \n{positie['weken_tot_hoofdfeest']}")
 
     if traditionele_naam.get("latijnse_naam"):
         latijn = traditionele_naam["latijnse_naam"]

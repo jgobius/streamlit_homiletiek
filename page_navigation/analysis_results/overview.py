@@ -200,7 +200,7 @@ if st.session_state.get("extra_context"):
 if not selected_analysis:
     st.stop()
 
-st.title(selected_analysis["analysis_type"]["front_end_name"])
+st.header(selected_analysis["analysis_type"]["front_end_name"])
 
 analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")
 

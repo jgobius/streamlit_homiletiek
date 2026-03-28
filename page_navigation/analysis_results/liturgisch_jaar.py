@@ -182,7 +182,7 @@ def get_liturgisch_jaar_data() -> tuple[dict[str, Any], bool]:
     return EXAMPLE_DATA, False
 
 
-st.title("Liturgisch jaar")
+st.header("Liturgisch jaar")
 st.write("Overzicht van lezingen, thematiek en praktische handvatten.")
 
 liturgisch_data, from_api = get_liturgisch_jaar_data()
