@@ -38,7 +38,6 @@ def theologie(analysis: dict[str, Any]) -> None:
     result: dict[str, Any] = analysis.get("result", {})
     sermon: dict[str, Any] = analysis.get("sermon_analysis", {})
 
-    st.title(sermon.get("title", "Theologie"))
     if sermon.get("sermon_date"):
         st.caption(f"**Datum kerkdienst:** {sermon['sermon_date']}")
 
