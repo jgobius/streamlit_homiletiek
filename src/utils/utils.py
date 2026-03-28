@@ -158,18 +158,48 @@ def load_scriptures() -> list[dict[str, Any]] | None:
     
 def render_sidebar():
 
+    current_page = st.session_state.get('current_page')
+    current_title = getattr(current_page, 'title', '')
+
+    # Bepaal welke expanders open moeten staan op basis van de huidige pagina
+    expand_gemeentes = current_title in ["Overzicht gemeentes", "Nieuwe gemeente"]
+    expand_analyses = current_title in ["Overzicht kerkdienstanalyses", "Nieuwe kerkdienstanalyse", "Liturgisch jaar", "Kerkdienstanalyse overzicht"]
+    expand_account = current_title in ["Uitloggen", "Welcome", "Inloggen", "Registreren"]
+
     with st.sidebar:
 
-        with st.expander("Gemeentes"):
-            st.page_link(label="Overzicht gemeentes", page=f"{st.session_state['page_navigation_dir']}/churches/churches_overview.py")
-            st.page_link(label="Nieuwe gemeente", page=f"{st.session_state['page_navigation_dir']}/churches/new_church.py")
+        with st.expander("Gemeentes", expanded=expand_gemeentes):
+            path = f"{st.session_state['page_navigation_dir']}/churches/churches_overview.py"
+            label = "Overzicht gemeentes"
+            if current_title == "Overzicht gemeentes":
+                label = f":red[{label}]"
+            st.page_link(label=label, page=path)
 
-        with st.expander("Kerkdienstanalyses"):
-            st.page_link(label="Overzicht kerkdienstanalyses", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
-            st.page_link(label="Nieuwe kerkdienstanalyse", page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py")
+            path = f"{st.session_state['page_navigation_dir']}/churches/new_church.py"
+            label = "Nieuwe gemeente"
+            if current_title == "Nieuwe gemeente":
+                label = f":red[{label}]"
+            st.page_link(label=label, page=path)
 
-        with st.expander("Account"):
-            st.page_link(label="Uitloggen", page=f"{st.session_state['page_navigation_dir']}/logout.py")
+        with st.expander("Kerkdienstanalyses", expanded=expand_analyses):
+            path = f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py"
+            label = "Overzicht kerkdienstanalyses"
+            if current_title == "Overzicht kerkdienstanalyses":
+                label = f":red[{label}]"
+            st.page_link(label=label, page=path)
+
+            path = f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py"
+            label = "Nieuwe kerkdienstanalyse"
+            if current_title == "Nieuwe kerkdienstanalyse":
+                label = f":red[{label}]"
+            st.page_link(label=label, page=path)
+
+        with st.expander("Account", expanded=expand_account):
+            path = f"{st.session_state['page_navigation_dir']}/logout.py"
+            label = "Uitloggen"
+            if current_title == "Uitloggen":
+                label = f":red[{label}]"
+            st.page_link(label=label, page=path)
             
 
 def render_analysis_results_sidebar(analysis_results: list[dict[str, Any]]) -> None:

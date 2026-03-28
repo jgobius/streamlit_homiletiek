@@ -5,12 +5,11 @@ import streamlit as st
 from src.utils.utils import clean_md
 
 
-def postille(analysis: dict[str, Any]) -> None:
+def postille(analysis: dict[str, Any], latest_results: dict[str, Any] | None = None) -> None:
     """Render a preekschets (postille) analysis result."""
     preekschets: dict[str, Any] = analysis.get("result", {}).get("preekschets", {})
     sermon: dict[str, Any] = analysis.get("sermon_analysis", {})
     metadata: dict[str, Any] = preekschets.get("metadata", {})
-    schriftlezingen: dict[str, Any] = preekschets.get("schriftlezingen", {})
     liturgische_aanwijzingen: dict[str, Any] = preekschets.get("liturgische_aanwijzingen", {})
 
     # ── Header ────────────────────────────────────────────────────────────────
@@ -34,31 +33,6 @@ def postille(analysis: dict[str, Any]) -> None:
 
     st.divider()
 
-    # ── Schriftlezingen ───────────────────────────────────────────────────────
-    with st.expander("📚 Schriftlezingen", expanded=True):
-        if schriftlezingen.get("hoofdlezing"):
-            st.markdown(f"**Hoofdlezing:** {schriftlezingen['hoofdlezing']}")
-        aanvullend: list = schriftlezingen.get("aanvullend", [])
-        if aanvullend:
-            st.markdown(f"**Aanvullend:** {', '.join(aanvullend)}")
-
-        scripture_json: list = sermon.get("scripture_json", [])
-        if scripture_json:
-            st.markdown("---")
-            for reading in scripture_json:
-                st.markdown(f"*{reading.get('original_scripture', '')}*")
-                for scripture in reading.get("scriptures", []):
-                    book = scripture.get("book", "")
-                    chapter = scripture.get("chapter", "")
-                    for verse in scripture.get("verses", []):
-                        st.markdown(
-                            f"<span style='color:grey;font-size:0.85em;'>"
-                            f"{book} {chapter}:{verse['number']}</span>&nbsp;&nbsp;"
-                            f"{verse['text']}",
-                            unsafe_allow_html=True,
-                        )
-                st.write("")
-
     # ── Eigene van de zondag ──────────────────────────────────────────────────
     with st.expander("🗓️ Eigene van de zondag", expanded=True):
         st.markdown(clean_md(preekschets.get("eigene_van_de_zondag", "")))
@@ -72,11 +46,22 @@ def postille(analysis: dict[str, Any]) -> None:
         st.markdown(clean_md(preekschets.get("aanwijzingen_prediking", "")))
 
     # ── Liturgische aanwijzingen ──────────────────────────────────────────────
-    with st.expander("🎵 Liturgische aanwijzingen", expanded=True):
-        liedsuggesties: list[dict] = liturgische_aanwijzingen.get("liedsuggesties", [])
-        if liedsuggesties:
-            st.markdown("**Liedsuggesties**")
-            for lied in liedsuggesties:
+    st.divider()
+    st.header("🎵 Liturgische aanwijzingen")
+
+    # Prefer full song suggestions from the specialized analysis if available
+    liederen = None
+    if latest_results and "liedsuggesties" in latest_results:
+        liederen = latest_results["liedsuggesties"].get("result", {}).get("liederen")
+    
+    if liederen:
+        from page_navigation.analysis_results.analyses.liedsuggesties import render_liederen_list
+        render_liederen_list(liederen)
+    else:
+        # Fallback to internal songs if for some reason the full analysis is missing
+        liedsuggesties_fallback: list[dict] = liturgische_aanwijzingen.get("liedsuggesties", [])
+        if liedsuggesties_fallback:
+            for lied in liedsuggesties_fallback:
                 with st.container(border=True):
                     bundel = lied.get("bundel", "")
                     nummer = lied.get("nummer", "")
@@ -84,7 +69,7 @@ def postille(analysis: dict[str, Any]) -> None:
                     if lied.get("motivatie"):
                         st.caption(lied["motivatie"])
 
-        aanvullende_lezingen: str = liturgische_aanwijzingen.get("aanvullende_lezingen", "")
-        if aanvullende_lezingen:
-            st.markdown("**Aanvullende lezingen**")
+    aanvullende_lezingen: str = liturgische_aanwijzingen.get("aanvullende_lezingen", "")
+    if aanvullende_lezingen:
+        with st.expander("📖 Aanvullende lezingen", expanded=False):
             st.markdown(clean_md(aanvullende_lezingen))

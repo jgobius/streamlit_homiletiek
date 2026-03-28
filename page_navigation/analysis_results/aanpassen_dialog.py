@@ -60,13 +60,15 @@ def aanpassen_dialog(result: dict) -> None:
         st.session_state["aanpassen_original"] = copy.deepcopy(result.get("result", {}))
         st.session_state["aanpassen_session"] = st.session_state.get("aanpassen_session", 0) + 1
         st.session_state["aanpassen_result_id"] = result_id
+        # Pre-fill extra_context from the sermon_analysis object
+        st.session_state["extra_context"] = result.get("sermon_analysis", {}).get("extra_context", "")
 
     ses = st.session_state["aanpassen_session"]
     original_data = st.session_state["aanpassen_original"]
 
-    st.markdown("**Extra context**")
+    st.markdown("**Extra algemene context**")
     extra_context_val = st.text_area(
-        "Geef extra context voor deze analyse",
+        "Geef extra algemene context voor deze analyse",
         value=st.session_state.get("extra_context", ""),
         key="aanpassen_extra_context_input",
         label_visibility="collapsed",
@@ -83,12 +85,14 @@ def aanpassen_dialog(result: dict) -> None:
         try:
             handler = st.session_state["api_handler"]
             sermon_analysis_id = result["sermon_analysis"]["id"]
-            url = f"{handler.base_url}/api/analysis-results/{result['id']}/?sermon_analysis_id={sermon_analysis_id}"
-            headers = {
-                "Authorization": f"Bearer {handler.jwt_handler.token}",
-                "Content-Type": "application/json",
-            }
-            requests.patch(url, json={"result": edited_data}, headers=headers).raise_for_status()
+            
+            # Update the sermon-wide extra context
+            handler.patch(f"api/sermon-analyses/{sermon_analysis_id}/", data={"extra_context": extra_context_val})
+            
+            # Update the specific analysis result
+            url = f"api/analysis-results/{result['id']}/?sermon_analysis_id={sermon_analysis_id}"
+            handler.patch(url, data={"result": edited_data})
+            
             st.session_state["aanpassen_original"] = None
             st.session_state["aanpassen_result_id"] = None
             st.toast("Opgeslagen.")

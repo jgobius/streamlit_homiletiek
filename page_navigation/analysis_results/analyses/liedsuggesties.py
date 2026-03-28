@@ -6,7 +6,7 @@ import streamlit as st
 
 from src.utils.utils import clean_md
 
-_MATCH_LABELS: dict[str, str] = {
+MATCH_LABELS: dict[str, str] = {
     "Schriftlezing": "📖 Schriftlezing",
     "Thematisch": "🎯 Thematisch",
     "Seizoen": "📅 Seizoen",
@@ -16,7 +16,7 @@ _MATCH_LABELS: dict[str, str] = {
 }
 
 
-def _render_lied(lied: dict[str, Any]) -> None:
+def render_lied(lied: dict[str, Any]) -> None:
     nummer = lied.get("nummer", "")
     titel = lied.get("titel", "")
     eerste_regel = lied.get("eerste_regel", "")
@@ -44,13 +44,42 @@ def _render_lied(lied: dict[str, Any]) -> None:
         with tag_cols[0]:
             if type_match:
                 labels = " · ".join(
-                    _MATCH_LABELS.get(t.strip(), t.strip())
+                    MATCH_LABELS.get(t.strip(), t.strip())
                     for t in type_match.split("|")
                 )
                 st.caption(labels)
         with tag_cols[1]:
             if suggestie_gebruik:
                 st.caption("🕐 " + " · ".join(s.strip() for s in suggestie_gebruik.split("|")))
+
+
+def nummer_sort_key(n_str: str) -> tuple[int, str]:
+    # Extract leading digits
+    match = re.match(r"(\d+)(.*)", str(n_str))
+    if match:
+        return int(match.group(1)), match.group(2)
+    return 99999, str(n_str)
+
+
+def render_liederen_list(liederen: list[dict[str, Any]]) -> None:
+    """Render a list of songs grouped by bundel."""
+    # ── Group by bundel ───────────────────────────────────────────────────────
+    by_bundel: dict[str, list[dict]] = defaultdict(list)
+    for lied in liederen:
+        bundel = lied.get("bundel", "Overig")
+        by_bundel[bundel].append(lied)
+
+    # Sort bundels alphabetically
+    for bundel in sorted(by_bundel.keys()):
+        liederen_in_bundel = by_bundel[bundel]
+        with st.expander(f"📚 {bundel} ({len(liederen_in_bundel)})", expanded=False):
+            # Sort within expander primarily by nummer
+            sorted_liederen = sorted(
+                liederen_in_bundel,
+                key=lambda l: nummer_sort_key(l.get("nummer", "")),
+            )
+            for lied in sorted_liederen:
+                render_lied(lied)
 
 
 def liedsuggesties(analysis: dict[str, Any]) -> None:
@@ -65,28 +94,4 @@ def liedsuggesties(analysis: dict[str, Any]) -> None:
 
     st.divider()
 
-    # ── Group by bundel ───────────────────────────────────────────────────────
-    by_bundel: dict[str, list[dict]] = defaultdict(list)
-    for lied in liederen:
-        bundel = lied.get("bundel", "Overig")
-        by_bundel[bundel].append(lied)
-
-    # Sort liederen within each bundel by nummer (handling non-numeric suffixes if present)
-    def _nummer_sort_key(n_str: str) -> tuple[int, str]:
-        # Extract leading digits
-        match = re.match(r"(\d+)(.*)", str(n_str))
-        if match:
-            return int(match.group(1)), match.group(2)
-        return 99999, str(n_str)
-
-    # Sort bundels alphabetically
-    for bundel in sorted(by_bundel.keys()):
-        liederen_in_bundel = by_bundel[bundel]
-        with st.expander(f"📚 {bundel} ({len(liederen_in_bundel)})", expanded=False):
-            # Sort within expander primarily by nummer
-            sorted_liederen = sorted(
-                liederen_in_bundel,
-                key=lambda l: _nummer_sort_key(l.get("nummer", "")),
-            )
-            for lied in sorted_liederen:
-                _render_lied(lied)
+    render_liederen_list(liederen)

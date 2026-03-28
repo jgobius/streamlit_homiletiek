@@ -20,11 +20,21 @@ def format_title(status: str, title: str | None, congregation: str, sermon_date:
         'success': 'green',
         'error': 'red'
     }
+
+    status_map: dict[str, str] = {
+        'draft': 'Concept',
+        'submitted': 'Verzonden',
+        'pending': 'In behandeling',
+        'success': 'Voltooid',
+        'error': 'Fout'
+    }
+
+    display_status = status_map.get(status, status.capitalize())
     
     if title:
-        return f":{color_map.get(status)}[{status.capitalize()}] - {title} - {congregation} - {sermon_date}"
+        return f":{color_map.get(status)}[{display_status}] - {title} - {congregation} - {sermon_date}"
     
-    return f":{color_map.get(status)}[{status.capitalize()}] - {congregation} - {sermon_date}"
+    return f":{color_map.get(status)}[{display_status}] - {congregation} - {sermon_date}"
         
 
 
@@ -127,6 +137,8 @@ else:
                 st.write(f"**Titel:** {title}")
                 st.write(f"**Gemeente:** {congregation}")
                 st.write(f"**Datum:** {sermon_date}")
+                if item.get("extra_context"):
+                    st.write(f"**Extra context:** {item['extra_context']}")
                 st.write(f"**Lezingen:**")
 
                 for sc in scriptures:

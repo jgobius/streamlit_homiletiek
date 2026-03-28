@@ -23,6 +23,11 @@ if not analysis_id:
     st.stop()
 
 analysis_results = get_data(f"api/analysis-results?sermon_analysis_id={analysis_id}")
+sermon_analysis = get_data(f"api/sermon-analyses/{analysis_id}/")
+
+if sermon_analysis:
+    # Set the sermon-wide extra context in session state for easy access across the page
+    st.session_state["extra_context"] = sermon_analysis.get("extra_context", "")
 
 if not analysis_results:
     st.info("Er zijn nog geen analyseresultaten beschikbaar voor deze preekanalyse.")
@@ -45,9 +50,8 @@ for r in analysis_results:
     if name not in latest or r['id'] > latest[name]['id']:
         latest[name] = r
 
-summary = [latest["postille"]] if "postille" in latest else []
 other_results = [r for name, r in latest.items() if name != "postille"]
-summary.extend(other_results)
+summary = other_results + ([latest["postille"]] if "postille" in latest else [])
 
 if "selected_analysis_id" not in st.session_state or st.session_state["selected_analysis_id"] not in {r["id"] for r in summary}:
     st.session_state["selected_analysis_id"] = summary[0]["id"] if summary else None
@@ -62,12 +66,10 @@ with st.sidebar:
     for r in summary:
         label = r["analysis_type"]["front_end_name"]
         is_selected = r["id"] == st.session_state["selected_analysis_id"]
-        if is_selected:
-            st.markdown(f"**→ {label}**")
-        else:
-            if st.button(label, key=f"nav_{r['id']}", use_container_width=True):
-                st.session_state["selected_analysis_id"] = r["id"]
-                st.rerun()
+        btn_type = "primary" if is_selected else "secondary"
+        if st.button(label, key=f"nav_{r['id']}", use_container_width=True, type=btn_type):
+            st.session_state["selected_analysis_id"] = r["id"]
+            st.rerun()
 
     if missing_types:
         st.divider()
@@ -200,7 +202,7 @@ st.title(selected_analysis["analysis_type"]["front_end_name"])
 analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")
 
 if analysis_type_name == "postille":
-    postille(selected_analysis)
+    postille(selected_analysis, latest_results=latest)
 elif analysis_type_name == "bijbelteksten":
     bijbelteksten(selected_analysis)
 elif analysis_type_name == "liturgisch_jaar":
