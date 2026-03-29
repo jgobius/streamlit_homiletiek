@@ -205,10 +205,15 @@ song_books = st.multiselect(
     format_func=lambda book: book["name"],
 )
 
+_nbv21_index = next(
+    (i for i, v in enumerate(bible_versions) if "NBV21" in v.get("version", "")),
+    0,
+)
 bible_version = st.selectbox(
     "Selecteer de bijbelvertaling die in deze kerkdienst gebruikt wordt (optioneel):",
     placeholder="Geen bijbelvertaling geselecteerd",
     options=bible_versions,
+    index=_nbv21_index,
     format_func=lambda version: version["version"],
 )
 
@@ -309,6 +314,11 @@ if _locked:
 submit = st.button("Analyse starten", type="primary", disabled=_locked)
 
 if submit:
+    # Validatie: gemeente verplicht
+    if not selected_church:
+        st.error("Selecteer een gemeente. Ga naar 'Gemeentes' om een gemeente aan te maken.")
+        st.stop()
+
     # Validatie: minimaal één liedbundel verplicht
     if not song_books:
         st.error("Selecteer minimaal één liedbundel.")

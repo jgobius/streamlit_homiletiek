@@ -9,30 +9,28 @@ from src.utils.utils import redirect_to_login, render_sidebar
 redirect_to_login()
 render_sidebar()
 
-DENOMINATION_OPTIONS = ["", "PKN", "GKV", "CGK", "NGK", "HHK", "EV", "BAPT", "LUTH", "RK", "OVR"]
+DENOMINATION_OPTIONS = ["", "PKN", "CGK", "NGK", "HHK", "EV", "BAPT", "RK", "OVR"]
 DENOMINATION_LABELS = {
     "":     "— Selecteer denominatie —",
     "PKN":  "PKN (Protestantse Kerk in Nederland)",
-    "GKV":  "Gereformeerde Kerken (vrijgemaakt)",
     "CGK":  "Christelijk Gereformeerde Kerken",
     "NGK":  "Nederlands Gereformeerde Kerken",
     "HHK":  "Hersteld Hervormde Kerk",
     "EV":   "Evangelisch",
     "BAPT": "Baptistengemeente",
-    "LUTH": "Luthers",
     "RK":   "Rooms-Katholiek",
     "OVR":  "Overig",
 }
 
 MODALITY_OPTIONS = [
-    "", "confessioneel", "gereformeerd_vrijgemaakt", "hervormd_gereformeerd",
+    "", "confessioneel", "gereformeerd", "hervormd",
     "midden_orthodox", "evangelisch", "vrijzinnig", "oecumenisch", "overig",
 ]
 MODALITY_LABELS = {
     "":                         "— Selecteer modaliteit —",
     "confessioneel":            "Confessioneel",
-    "gereformeerd_vrijgemaakt": "Gereformeerd-vrijgemaakt",
-    "hervormd_gereformeerd":    "Hervormd-gereformeerd",
+    "gereformeerd": 		"Gereformeerd",
+    "hervormd":    		"Hervormd",
     "midden_orthodox":          "Midden-orthodox",
     "evangelisch":              "Evangelisch",
     "vrijzinnig":               "Vrijzinnig",
