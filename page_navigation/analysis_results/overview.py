@@ -39,6 +39,18 @@ def _release_reanalysis_lock(lock_key: str) -> None:
     st.session_state.pop(lock_key, None)
 
 
+def _deps_ok(at: dict, latest: dict) -> tuple[bool, list[str]]:
+    """Geeft (True, []) als alle vereiste analyses aanwezig zijn, anders (False, [display namen])."""
+    deps = at.get("depends_on") or []
+    missing = []
+    for dep in deps:
+        dep_name = dep.get("name") if isinstance(dep, dict) else dep
+        dep_label = dep.get("front_end_name") if isinstance(dep, dict) else dep_name
+        if dep_name and dep_name not in latest:
+            missing.append(dep_label or dep_name)
+    return (len(missing) == 0, missing)
+
+
 redirect_to_login()
 
 analysis_id = st.query_params.get('analysis_id') or st.session_state.get('current_analysis_id')
@@ -94,7 +106,11 @@ with st.sidebar:
             for at in missing_types:
                 _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
                 _add_locked = _reanalysis_is_locked(_add_lock_key)
-                if st.button(at["front_end_name"], key=f"add_{at['name']}", use_container_width=True, disabled=_add_locked):
+                _ok, _ontbr = _deps_ok(at, latest)
+                _label = f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
+                _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
+                if st.button(_label, key=f"add_{at['name']}", use_container_width=True,
+                             disabled=_add_locked or not _ok, help=_help):
                     st.session_state[_add_lock_key] = time.time()
                     try:
                         agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
@@ -108,6 +124,12 @@ with st.sidebar:
                         )
                         response.raise_for_status()
                         st.toast(f"'{at['front_end_name']}' wordt uitgevoerd. Ververs de pagina over enkele minuten.")
+                    except requests.exceptions.HTTPError as e:
+                        if e.response is not None and e.response.status_code == 409:
+                            st.warning(e.response.json().get("detail", "Al gestart, wacht even."))
+                        else:
+                            _release_reanalysis_lock(_add_lock_key)
+                            st.error(f"Fout: {e}")
                     except Exception as e:
                         _release_reanalysis_lock(_add_lock_key)
                         st.error(f"Fout: {e}")
@@ -162,6 +184,12 @@ def confirm_rerun_analysis(sermon_analysis_id: int, analysis_type_name: str, fro
                 response.raise_for_status()
                 st.toast(f"'{front_end_name}' wordt opnieuw uitgevoerd. Ververs de pagina over enkele minuten.")
                 st.rerun()
+            except requests.exceptions.HTTPError as e:
+                if e.response is not None and e.response.status_code == 409:
+                    st.warning(e.response.json().get("detail", "Al gestart, wacht even."))
+                else:
+                    _release_reanalysis_lock(_rerun_lock_key)
+                    st.error(f"Fout bij starten analyse: {e}")
             except Exception as e:
                 _release_reanalysis_lock(_rerun_lock_key)
                 st.error(f"Fout bij starten analyse: {e}")
@@ -201,6 +229,12 @@ def confirm_rerun_liedsuggesties(sermon_analysis_id: int) -> None:
                 response.raise_for_status()
                 st.toast("Liedsuggesties worden opnieuw uitgevoerd. Ververs de pagina over enkele minuten.")
                 st.rerun()
+            except requests.exceptions.HTTPError as e:
+                if e.response is not None and e.response.status_code == 409:
+                    st.warning(e.response.json().get("detail", "Al gestart, wacht even."))
+                else:
+                    _release_reanalysis_lock(_lied_lock_key)
+                    st.error(f"Fout bij starten analyse: {e}")
             except Exception as e:
                 _release_reanalysis_lock(_lied_lock_key)
                 st.error(f"Fout bij starten analyse: {e}")
