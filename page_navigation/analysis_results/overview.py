@@ -113,7 +113,7 @@ with st.sidebar:
                         st.error(f"Fout: {e}")
 
 if not analysis_results:
-    st.info("Bijbelteksten en Liturgisch jaar worden geanalyseerd. Ververs de pagina over enkele minuten.")
+    st.info("Bijbelteksten wordt geanalyseerd. Ververs de pagina over enkele minuten.")
     st.stop()
 
 selected_analysis = next((r for r in summary if r["id"] == st.session_state["selected_analysis_id"]), None)

@@ -1,6 +1,6 @@
 import json
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 import requests
@@ -193,7 +193,6 @@ selected_church = st.selectbox(
     format_func=lambda church: church["name"],
 )
 
-title = st.text_input("Thema (optioneel)", max_chars=64)
 extra_context = st.text_area("Extra context (optioneel):", height=150, max_chars=1024)
 _today = date.today()
 _next_sunday = _today + timedelta(days=(6 - _today.weekday()) % 7)
@@ -340,6 +339,10 @@ if submit:
 
     st.session_state["analysis_lock_time"] = time.time()
     try:
+        church_name = selected_church["name"]
+        date_str = sermon_date.strftime("%d-%m-%Y")
+        time_str = datetime.now().strftime("%H:%M")
+        title = f"{church_name} {date_str} {time_str}"[:64]
         sermon_analysis_model = SermonAnalysisModel(
             church=selected_church["id"],
             title=title,
@@ -360,15 +363,14 @@ if submit:
 
         if sermon_analysis_id:
             agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
-            for analysis_type in ["bijbelteksten", "liturgisch_jaar"]:
-                try:
-                    requests.post(
-                        f"{agent_url}/run_single_analysis/",
-                        json={"sermon_analysis_id": sermon_analysis_id, "analysis_type_name": analysis_type},
-                        timeout=30,
-                    )
-                except Exception:
-                    pass  # auto-start failure should not block the user
+            try:
+                requests.post(
+                    f"{agent_url}/run_single_analysis/",
+                    json={"sermon_analysis_id": sermon_analysis_id, "analysis_type_name": "bijbelteksten"},
+                    timeout=30,
+                )
+            except Exception:
+                pass  # auto-start failure should not block the user
 
         clean_up_session_state()
         _release_analysis_lock()

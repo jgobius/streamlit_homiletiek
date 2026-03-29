@@ -32,8 +32,8 @@ def format_title(status: str, title: str | None, congregation: str, sermon_date:
     display_status = status_map.get(status, status.capitalize())
     
     if title:
-        return f":{color_map.get(status)}[{display_status}] - {title} - {congregation} - {sermon_date}"
-    
+        return f":{color_map.get(status)}[{display_status}] - {title}"
+
     return f":{color_map.get(status)}[{display_status}] - {congregation} - {sermon_date}"
         
 
