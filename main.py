@@ -102,10 +102,12 @@ def main():
     new_church_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/churches/new_church.py", title='Nieuw')
 
     analysis_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py", title='Kerkdienstanalyse overzicht')
+    perspectieven_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analysis_results/perspectieven_overview.py", title='Perspectieven')
 
     pages = {
         "Kerkelijke gemeenten": [church_overview_page, new_church_page],
         "Kerkdiensten": [dashboard_page, new_analysis_page, liturgisch_jaar_page, analysis_overview_page],
+        "Perspectieven": [perspectieven_page],
         "Account": [logout_page],
     }
 
@@ -117,7 +119,7 @@ def main():
         pg = st.navigation(pages, position='hidden')
         st.session_state['current_page'] = pg
         pg.run()
-        if pg == analysis_overview_page:
+        if pg in (analysis_overview_page, perspectieven_page):
             _render_token_usage_sidebar()
 
 

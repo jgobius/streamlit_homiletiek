@@ -57,7 +57,13 @@ def _render_json_field(data, key_prefix: str, ses: int):
 def aanpassen_dialog(result: dict) -> None:
     result_id = result.get("id")
     if st.session_state.get("aanpassen_result_id") != result_id:
-        st.session_state["aanpassen_original"] = copy.deepcopy(result.get("result", {}))
+        _raw = result.get("result", {})
+        if isinstance(_raw, str):
+            try:
+                _raw = json.loads(_raw)
+            except (json.JSONDecodeError, ValueError):
+                pass
+        st.session_state["aanpassen_original"] = copy.deepcopy(_raw)
         st.session_state["aanpassen_session"] = st.session_state.get("aanpassen_session", 0) + 1
         st.session_state["aanpassen_result_id"] = result_id
         # Pre-fill extra_context from the sermon_analysis object

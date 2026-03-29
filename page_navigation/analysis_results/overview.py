@@ -21,8 +21,16 @@ from page_navigation.analysis_results.analyses.focus_en_functie import focus_en_
 from page_navigation.analysis_results.analyses.representatieve_hoorders import representatieve_hoorders
 from page_navigation.analysis_results.analyses.illustraties import illustraties
 from page_navigation.analysis_results.analyses.politieke_orientatie import politieke_orientatie
+from page_navigation.analysis_results.analyses.contextduiding import contextduiding
 
 REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
+
+_PERSPECTIEVEN_NAMEN = {
+    "filosofie", "culturele_antropologie", "receptiegeschiedenis",
+    "literaire_theorie", "psychologie", "ecologie", "postkoloniaal",
+    "rechtswetenschap", "natuurwetenschappen", "politieke_speltheorie",
+    "mystagogiek", "gender_queer_body", "digitale_cultuur", "ruimtelijke_ordening",
+}
 
 
 def _reanalysis_is_locked(lock_key: str) -> bool:
@@ -91,8 +99,13 @@ missing_types = sorted(
     key=lambda x: x.get("order", 99),
 )
 
+analyse_summary  = [r for r in summary      if r["analysis_type"]["name"] not in _PERSPECTIEVEN_NAMEN]
+perspect_summary = [r for r in summary      if r["analysis_type"]["name"] in _PERSPECTIEVEN_NAMEN]
+analyse_missing  = [at for at in missing_types if at["name"] not in _PERSPECTIEVEN_NAMEN]
+perspect_missing = [at for at in missing_types if at["name"] in _PERSPECTIEVEN_NAMEN]
+
 with st.sidebar:
-    for r in summary:
+    for r in analyse_summary:
         label = r["analysis_type"]["front_end_name"]
         is_selected = r["id"] == st.session_state["selected_analysis_id"]
         btn_type = "primary" if is_selected else "secondary"
@@ -100,10 +113,9 @@ with st.sidebar:
             st.session_state["selected_analysis_id"] = r["id"]
             st.rerun()
 
-    if missing_types:
-        st.divider()
+    if analyse_missing:
         with st.expander("Analyse toevoegen"):
-            for at in missing_types:
+            for at in analyse_missing:
                 _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
                 _add_locked = _reanalysis_is_locked(_add_lock_key)
                 _ok, _ontbr = _deps_ok(at, latest)
@@ -133,6 +145,49 @@ with st.sidebar:
                     except Exception as e:
                         _release_reanalysis_lock(_add_lock_key)
                         st.error(f"Fout: {e}")
+
+    if perspect_summary or perspect_missing:
+        st.divider()
+        for r in perspect_summary:
+            label = r["analysis_type"]["front_end_name"]
+            is_selected = r["id"] == st.session_state["selected_analysis_id"]
+            btn_type = "primary" if is_selected else "secondary"
+            if st.button(label, key=f"nav_{r['id']}", use_container_width=True, type=btn_type):
+                st.session_state["selected_analysis_id"] = r["id"]
+                st.rerun()
+
+        if perspect_missing:
+            with st.expander("Perspectief toevoegen"):
+                for at in perspect_missing:
+                    _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+                    _add_locked = _reanalysis_is_locked(_add_lock_key)
+                    _ok, _ontbr = _deps_ok(at, latest)
+                    _label = f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
+                    _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
+                    if st.button(_label, key=f"add_{at['name']}", use_container_width=True,
+                                 disabled=_add_locked or not _ok, help=_help):
+                        st.session_state[_add_lock_key] = time.time()
+                        try:
+                            agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
+                            response = requests.post(
+                                f"{agent_url}/run_single_analysis/",
+                                json={
+                                    "sermon_analysis_id": int(analysis_id),
+                                    "analysis_type_name": at["name"],
+                                },
+                                timeout=30,
+                            )
+                            response.raise_for_status()
+                            st.toast(f"'{at['front_end_name']}' wordt uitgevoerd. Ververs de pagina over enkele minuten.")
+                        except requests.exceptions.HTTPError as e:
+                            if e.response is not None and e.response.status_code == 409:
+                                st.warning(e.response.json().get("detail", "Al gestart, wacht even."))
+                            else:
+                                _release_reanalysis_lock(_add_lock_key)
+                                st.error(f"Fout: {e}")
+                        except Exception as e:
+                            _release_reanalysis_lock(_add_lock_key)
+                            st.error(f"Fout: {e}")
 
 if not analysis_results:
     st.info("Bijbelteksten wordt geanalyseerd. Ververs de pagina over enkele minuten.")
@@ -261,7 +316,8 @@ with col_ctx:
     if st.button("Aanpassen", icon="✏️", use_container_width=True):
         aanpassen_dialog(selected_analysis)
 
-if st.session_state.get("extra_context"):
+_selected_name = selected_analysis.get("analysis_type", {}).get("name", "") if selected_analysis else ""
+if st.session_state.get("extra_context") and _selected_name not in _PERSPECTIEVEN_NAMEN:
     st.info(f"**Extra context:** {st.session_state['extra_context']}")
 
 if not selected_analysis:
@@ -303,5 +359,7 @@ elif analysis_type_name == "illustraties":
     illustraties(selected_analysis)
 elif analysis_type_name == "politieke_orientatie":
     politieke_orientatie(selected_analysis)
+elif analysis_type_name in _PERSPECTIEVEN_NAMEN:
+    contextduiding(selected_analysis)
 
 
