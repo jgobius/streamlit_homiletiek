@@ -1,6 +1,8 @@
 import streamlit as st
 from streamlit_cookies_controller import CookieController
 
+st.set_page_config(page_icon="static/favicon.png")
+
 from src.api.jwthandler import JwtHandler
 from src.api.handler import APIHandler
 
@@ -30,7 +32,7 @@ def _render_token_usage_sidebar() -> None:
         st.divider()
         st.caption(
             f"Tokens huidige analyse: {total_input:,} in / {total_output:,} uit  \n"
-            f"Kosten huidige analyse: €{total_cost:.4f}"
+            f"Kosten huidige analyse: €{total_cost:.2f}"
         )
 
 st.session_state['page_navigation_dir'] = 'page_navigation'
