@@ -3,6 +3,7 @@ import time
 from datetime import date, timedelta
 from typing import Any
 
+import requests
 import streamlit as st
 
 from src.models.sermon_analysis_model import SermonAnalysisModel
@@ -193,15 +194,18 @@ selected_church = st.selectbox(
 )
 
 title = st.text_input("Thema (optioneel)", max_chars=64)
+extra_context = st.text_area("Extra context (optioneel):", height=150, max_chars=1024)
 _today = date.today()
 _next_sunday = _today + timedelta(days=(6 - _today.weekday()) % 7)
 sermon_date = st.date_input(
     "Datum van de kerkdienst", value=_next_sunday, format="DD-MM-YYYY", min_value="today"
 )
+_default_song_books = [b for b in song_books if "liedboek" in b.get("name", "").lower()]
 song_books = st.multiselect(
     "Selecteer de liedboeken die in deze kerkdienst gebruikt worden (minimaal één verplicht):",
     placeholder="Geen liedboeken geselecteerd",
     options=song_books,
+    default=_default_song_books,
     format_func=lambda book: book["name"],
 )
 
@@ -217,14 +221,6 @@ bible_version = st.selectbox(
     format_func=lambda version: version["version"],
 )
 
-core_scripture = st.text_input(
-    "Kernlezing (optioneel)",
-    max_chars=64,
-    value="",
-    placeholder="Bijv. Johannes 3:16",
-)
-
-
 scriptures_choice = st.radio(
     "Schriftlezingen", options=["Kerkelijk rooster volgen", "Eigen lezingen"]
 )
@@ -239,11 +235,18 @@ if scriptures_choice == "Kerkelijk rooster volgen":
         st.warning(
             "Er zijn geen roosterlezingen gevonden voor de geselecteerde datum. Kies een andere datum of selecteer 'Eigen lezingen' om handmatig lezingen toe te voegen."
         )
+        st.session_state.pop("liturgy_viewed_date", None)
     else:
         st.session_state["selected_scripture_id"] = selected_liturgy[0].get("id")
         show_scriptures = st.button("Roosterlezingen tonen")
         if show_scriptures:
+            st.session_state["liturgy_viewed_date"] = sermon_date.isoformat()
             show_scripture_details(selected_liturgy[0])
+        if st.session_state.get("liturgy_viewed_date") == sermon_date.isoformat():
+            st.session_state["scriptures_approved"] = st.checkbox(
+                "Ik bevestig dat de roosterlezingen voor de geselecteerde datum correct zijn en klaar voor analyse",
+                value=False,
+            )
 
 
 if scriptures_choice == "Eigen lezingen":
@@ -260,8 +263,6 @@ if scriptures_choice == "Eigen lezingen":
         
     if st.button("Lezingen configureren"):
         show_own_readings_dialog()
-
-extra_context = st.text_area("Extra context (optioneel):", height=150, max_chars=1024)
 
 if scriptures_choice == "Eigen lezingen":
     collect_structured_scriptures = st.button("Lezingen ophalen", disabled=not any_lezing)
@@ -304,6 +305,8 @@ if (
         value=False,
     )
 
+_readings_available = st.session_state.get("scriptures_approved", False)
+
 _locked = _analysis_is_locked()
 
 if _locked:
@@ -311,7 +314,9 @@ if _locked:
     remaining = ANALYSIS_LOCK_TIMEOUT_SECONDS - elapsed
     st.info(f"Er loopt al een analyse. Nog {remaining} seconden voordat u opnieuw kunt proberen.")
 
-submit = st.button("Analyse starten", type="primary", disabled=_locked)
+submit = False
+if _readings_available:
+    submit = st.button("Analyse starten", type="primary", disabled=_locked)
 
 if submit:
     # Validatie: gemeente verplicht
@@ -340,7 +345,7 @@ if submit:
             title=title,
             sermon_date=sermon_date,
             liturgy=st.session_state.get("selected_scripture_id"),
-            core_scriptures=core_scripture,
+
             scripture_json=st.session_state.get("structured_scriptures") or [],
             use_calendar=(scriptures_choice == "Kerkelijk rooster volgen"),
             song_books=[book["id"] for book in song_books],
@@ -350,7 +355,20 @@ if submit:
 
         data = json.loads(sermon_analysis_model.model_dump_json())
 
-        st.session_state["api_handler"].post(endpoint="api/sermon-analyses/", data=data)
+        result = st.session_state["api_handler"].post(endpoint="api/sermon-analyses/", data=data)
+        sermon_analysis_id = result.get("id")
+
+        if sermon_analysis_id:
+            agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
+            for analysis_type in ["bijbelteksten", "liturgisch_jaar"]:
+                try:
+                    requests.post(
+                        f"{agent_url}/run_single_analysis/",
+                        json={"sermon_analysis_id": sermon_analysis_id, "analysis_type_name": analysis_type},
+                        timeout=30,
+                    )
+                except Exception:
+                    pass  # auto-start failure should not block the user
 
         clean_up_session_state()
         _release_analysis_lock()

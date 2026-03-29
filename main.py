@@ -29,8 +29,8 @@ def _render_token_usage_sidebar() -> None:
     with st.sidebar:
         st.divider()
         st.caption(
-            f"Tokens: {total_input:,} in / {total_output:,} uit  \n"
-            f"Kosten: €{total_cost:.4f}"
+            f"Tokens huidige analyse: {total_input:,} in / {total_output:,} uit  \n"
+            f"Kosten huidige analyse: €{total_cost:.4f}"
         )
 
 st.session_state['page_navigation_dir'] = 'page_navigation'
@@ -115,7 +115,8 @@ def main():
         pg = st.navigation(pages, position='hidden')
         st.session_state['current_page'] = pg
         pg.run()
-        _render_token_usage_sidebar()
+        if pg == analysis_overview_page:
+            _render_token_usage_sidebar()
 
 
 if __name__ == "__main__":

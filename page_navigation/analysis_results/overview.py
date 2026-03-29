@@ -60,29 +60,6 @@ if sermon_analysis:
     # Set the sermon-wide extra context in session state for easy access across the page
     st.session_state["extra_context"] = sermon_analysis.get("extra_context", "")
 
-if not analysis_results:
-    st.info("Er zijn nog geen analyseresultaten beschikbaar voor deze preekanalyse.")
-    _start_lock_key = f"analysis_start_lock_{analysis_id}"
-    _start_locked = _reanalysis_is_locked(_start_lock_key)
-    if st.button("Start analyse", type="primary", disabled=_start_locked):
-        st.session_state[_start_lock_key] = time.time()
-        try:
-            agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
-            response = requests.post(
-                f"{agent_url}/context_graph/",
-                json={"sermon_analysis_id": int(analysis_id)},
-                timeout=30,
-            )
-            if response.status_code == 200:
-                st.success("Analyse gestart. Ververs de pagina over enkele minuten.")
-            else:
-                _release_reanalysis_lock(_start_lock_key)
-                st.error(f"Fout bij starten analyse: {response.text}")
-        except Exception as e:
-            _release_reanalysis_lock(_start_lock_key)
-            st.error(f"Fout bij starten analyse: {e}")
-    st.stop()
-
 # Houd per analysis_type alleen de nieuwste (hoogste id).
 latest: dict[str, dict] = {}
 for r in analysis_results:
@@ -134,6 +111,10 @@ with st.sidebar:
                     except Exception as e:
                         _release_reanalysis_lock(_add_lock_key)
                         st.error(f"Fout: {e}")
+
+if not analysis_results:
+    st.info("Bijbelteksten en Liturgisch jaar worden geanalyseerd. Ververs de pagina over enkele minuten.")
+    st.stop()
 
 selected_analysis = next((r for r in summary if r["id"] == st.session_state["selected_analysis_id"]), None)
 
