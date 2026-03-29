@@ -192,7 +192,7 @@ def render_sidebar():
 
     with st.sidebar:
 
-        with st.expander("Gemeentes", expanded=expand_gemeentes):
+        with st.expander("Gemeenten", expanded=expand_gemeentes):
             path = f"{st.session_state['page_navigation_dir']}/churches/churches_overview.py"
             label = "Overzicht"
             if current_path == path:

@@ -102,8 +102,8 @@ def main():
     analysis_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py", title='Kerkdienstanalyse overzicht')
 
     pages = {
-        "Gemeentes": [church_overview_page, new_church_page],
-        "Kerkdienstanalyses": [dashboard_page, new_analysis_page, liturgisch_jaar_page, analysis_overview_page],
+        "Kerkelijke gemeenten": [church_overview_page, new_church_page],
+        "Kerkdiensten": [dashboard_page, new_analysis_page, liturgisch_jaar_page, analysis_overview_page],
         "Account": [logout_page],
     }
 

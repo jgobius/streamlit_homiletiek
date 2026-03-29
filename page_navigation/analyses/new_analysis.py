@@ -316,7 +316,7 @@ submit = st.button("Analyse starten", type="primary", disabled=_locked)
 if submit:
     # Validatie: gemeente verplicht
     if not selected_church:
-        st.error("Selecteer een gemeente. Ga naar 'Gemeentes' om een gemeente aan te maken.")
+        st.error("Selecteer een gemeente. Ga naar 'Gemeenten' om een gemeente aan te maken.")
         st.stop()
 
     # Validatie: minimaal één liedbundel verplicht

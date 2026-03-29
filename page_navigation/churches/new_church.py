@@ -45,11 +45,11 @@ if church_id:
     church_data = st.session_state["api_handler"].get(f"api/churches/{church_id}/")
 
 is_edit = bool(church_id)
-st.title("Gemeente bewerken" if is_edit else "Nieuwe gemeente toevoegen")
+st.title("Kerkelijke gemeente bewerken" if is_edit else "Nieuwe kerkelijke gemeente toevoegen")
 
 # ── Formulier ─────────────────────────────────────────────────────────────────
 name = st.text_input(
-    "Naam van de gemeente *",
+    "Naam van de kerkelijke gemeente *",
     max_chars=128,
     value=church_data.get("name", ""),
 )

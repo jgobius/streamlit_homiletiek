@@ -63,7 +63,7 @@ def cmd_list_options(api: APIHandler) -> None:
     bible_versions = api.get("api/bible-versions/")
     song_books = api.get("api/song-books/")
 
-    print("\n=== Gemeentes ===")
+    print("\n=== Kerkelijke gemeenten ===")
     for c in churches:
         print(f"  id={c['id']:>3}  {c['name']}")
 
