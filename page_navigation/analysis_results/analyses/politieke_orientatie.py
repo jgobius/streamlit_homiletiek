@@ -10,6 +10,15 @@ def _render_list(values: list) -> None:
         st.markdown(f"- {clean_md(str(item))}")
 
 
+def _as_dict(value: Any) -> dict:
+    """Normalise a field that may be a plain string date or a proper dict."""
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str) and value:
+        return {"datum": value}
+    return {}
+
+
 def politieke_orientatie(analysis: dict[str, Any]) -> None:
     """Render politieke orientatie analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
@@ -26,10 +35,10 @@ def politieke_orientatie(analysis: dict[str, Any]) -> None:
     # ── Verkiezingsdata ───────────────────────────────────────────────────────
     with st.expander("Verkiezingsdata", expanded=False):
         c1, c2, c3, c4 = st.columns(4)
-        tk = verkiezingsdata.get("tweede_kamer", {})
-        ep = verkiezingsdata.get("europees_parlement", {})
-        ps = verkiezingsdata.get("provinciale_staten", {})
-        gr = verkiezingsdata.get("gemeenteraad", {})
+        tk = _as_dict(verkiezingsdata.get("tweede_kamer", {}))
+        ep = _as_dict(verkiezingsdata.get("europees_parlement", {}))
+        ps = _as_dict(verkiezingsdata.get("provinciale_staten", {}))
+        gr = _as_dict(verkiezingsdata.get("gemeenteraad", {}))
         with c1:
             st.markdown("**Tweede Kamer**")
             if tk.get("datum"):

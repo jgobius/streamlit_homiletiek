@@ -12,6 +12,15 @@ from page_navigation.analysis_results.analyses.liedsuggesties import liedsuggest
 from page_navigation.analysis_results.analyses.structuralistische_exegese import structuralistische_exegese
 from page_navigation.analysis_results.analyses.commentaren import commentaren
 from page_navigation.analysis_results.analyses.theologie import theologie
+from page_navigation.analysis_results.analyses.sociaal_maatschappelijk import sociaal_maatschappelijk
+from page_navigation.analysis_results.analyses.waardenorientatie import waardenorientatie
+from page_navigation.analysis_results.analyses.geloofsorientatie import geloofsorientatie
+from page_navigation.analysis_results.analyses.interpretatieve_synthese import interpretatieve_synthese
+from page_navigation.analysis_results.analyses.actueel_nieuws import actueel_nieuws
+from page_navigation.analysis_results.analyses.focus_en_functie import focus_en_functie
+from page_navigation.analysis_results.analyses.representatieve_hoorders import representatieve_hoorders
+from page_navigation.analysis_results.analyses.illustraties import illustraties
+from page_navigation.analysis_results.analyses.politieke_orientatie import politieke_orientatie
 
 REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
 
@@ -261,5 +270,23 @@ elif analysis_type_name == "commentaries":
     commentaren(selected_analysis)
 elif analysis_type_name == "theology":
     theologie(selected_analysis)
+elif analysis_type_name == "sociaal_maatschappelijk":
+    sociaal_maatschappelijk(selected_analysis)
+elif analysis_type_name == "waardenorientatie":
+    waardenorientatie(selected_analysis)
+elif analysis_type_name == "geloofsorientatie":
+    geloofsorientatie(selected_analysis)
+elif analysis_type_name == "interpretatieve_synthese":
+    interpretatieve_synthese(selected_analysis)
+elif analysis_type_name == "actueel_nieuws":
+    actueel_nieuws(selected_analysis)
+elif analysis_type_name == "focus_en_functie":
+    focus_en_functie(selected_analysis)
+elif analysis_type_name == "representatieve_hoorders":
+    representatieve_hoorders(selected_analysis)
+elif analysis_type_name == "illustraties":
+    illustraties(selected_analysis)
+elif analysis_type_name == "politieke_orientatie":
+    politieke_orientatie(selected_analysis)
 
 

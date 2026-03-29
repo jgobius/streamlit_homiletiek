@@ -5,11 +5,20 @@ import streamlit as st
 from src.utils.utils import clean_md
 
 _V_LABELS = {
+    "vragen": "Vragen",
+    "verdriet": "Verdriet",
+    "vreugden": "Vreugden",
     "visioenen": "Visioenen",
     "verlangens": "Verlangens",
-    "vreugden": "Vreugden",
-    "verdriet": "Verdriet",
-    "vragen": "Vragen",
+    "zorgen": "Zorgen",
+    "tradities": "Tradities",
+    "onzekerheden": "Onzekerheden",
+    "concrete_voorbeelden": "Concrete voorbeelden",
+    "onvervulde_behoeften": "Onvervulde behoeften",
+    "vieringen": "Vieringen",
+    "zoektochten": "Zoektochten",
+    "verloren_gegaan": "Verloren gegaan",
+    "collectieve_dromen": "Collectieve dromen",
 }
 
 
@@ -18,36 +27,33 @@ def _render_list(values: list) -> None:
         st.markdown(f"- {clean_md(str(item))}")
 
 
-def _render_vijf_vs_plaatsniveau(data: dict) -> None:
+def _render_vijf_vs(data: dict) -> None:
+    """Render a vijf V's dict whose values are either strings or lists."""
     for key, label in _V_LABELS.items():
-        v: dict = data.get(key, {})
+        v = data.get(key)
         if not v:
             continue
         with st.expander(label, expanded=False):
-            if v.get("beschrijving"):
-                st.markdown(clean_md(v["beschrijving"]))
-            extra_keys = [k for k in v if k != "beschrijving"]
-            for ek in extra_keys:
-                items = v.get(ek, [])
-                if items:
-                    st.markdown(f"*{ek.replace('_', ' ').capitalize()}:*")
-                    _render_list(items)
+            if isinstance(v, list):
+                _render_list(v)
+            elif isinstance(v, dict):
+                # Legacy nested format: may have a "beschrijving" string plus sub-lists
+                if v.get("beschrijving"):
+                    st.markdown(clean_md(v["beschrijving"]))
+                for ek, items in v.items():
+                    if ek != "beschrijving" and items:
+                        st.markdown(f"*{ek.replace('_', ' ').capitalize()}:*")
+                        if isinstance(items, list):
+                            _render_list(items)
+                        else:
+                            st.markdown(clean_md(str(items)))
+            else:
+                st.markdown(clean_md(str(v)))
 
 
-def _render_vijf_vs_gemeenteniveau(data: dict) -> None:
-    for key, label in _V_LABELS.items():
-        v: dict = data.get(key, {})
-        if not v:
-            continue
-        with st.expander(label, expanded=False):
-            if v.get("beschrijving"):
-                st.markdown(clean_md(v["beschrijving"]))
-            extra_keys = [k for k in v if k != "beschrijving"]
-            for ek in extra_keys:
-                items = v.get(ek, [])
-                if items:
-                    st.markdown(f"*{ek.replace('_', ' ').capitalize()}:*")
-                    _render_list(items)
+# Keep old names as aliases for backward compatibility
+_render_vijf_vs_plaatsniveau = _render_vijf_vs
+_render_vijf_vs_gemeenteniveau = _render_vijf_vs
 
 
 def waardenorientatie(analysis: dict[str, Any]) -> None:

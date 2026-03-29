@@ -199,7 +199,7 @@ sermon_date = st.date_input(
     "Datum van de kerkdienst", value=_next_sunday, format="DD-MM-YYYY", min_value="today"
 )
 song_books = st.multiselect(
-    "Selecteer de liedboeken die in deze kerkdienst gebruikt worden (optioneel):",
+    "Selecteer de liedboeken die in deze kerkdienst gebruikt worden (minimaal één verplicht):",
     placeholder="Geen liedboeken geselecteerd",
     options=song_books,
     format_func=lambda book: book["name"],
@@ -213,10 +213,10 @@ bible_version = st.selectbox(
 )
 
 core_scripture = st.text_input(
-    "Voeg een kernlezing toe (optioneel)",
+    "Kernlezing (optioneel)",
     max_chars=64,
     value="",
-    placeholder="Geen kernlezing toegevoegd",
+    placeholder="Bijv. Johannes 3:16",
 )
 
 
@@ -309,6 +309,11 @@ if _locked:
 submit = st.button("Analyse starten", type="primary", disabled=_locked)
 
 if submit:
+    # Validatie: minimaal één liedbundel verplicht
+    if not song_books:
+        st.error("Selecteer minimaal één liedbundel.")
+        st.stop()
+
     # Validation for Eigen lezingen
     if scriptures_choice == "Eigen lezingen":
         if not st.session_state.get("structured_scriptures"):

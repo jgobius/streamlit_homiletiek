@@ -85,9 +85,12 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
                 if herkomst.get("nederlandse_achtergrond"):
                     st.metric("Nederlandse achtergrond", herkomst["nederlandse_achtergrond"])
             with c2:
-                migr = herkomst.get("migratieachtergrond", {})
-                if migr.get("totaal"):
-                    st.metric("Migratieachtergrond", migr["totaal"])
+                migr = herkomst.get("migratieachtergrond")
+                if isinstance(migr, dict):
+                    if migr.get("totaal"):
+                        st.metric("Migratieachtergrond", migr["totaal"])
+                elif migr:
+                    st.metric("Migratieachtergrond", migr)
             if herkomst.get("grootste_groepen"):
                 st.markdown("Grootste groepen:")
                 _render_list(herkomst["grootste_groepen"])

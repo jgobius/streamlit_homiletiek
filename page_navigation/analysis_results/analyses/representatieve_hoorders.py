@@ -68,7 +68,7 @@ def representatieve_hoorders(analysis: dict[str, Any]) -> None:
                 _kv("Financieel", opleiding.get("financiele_situatie", ""))
                 st.markdown("**Gezondheid**")
                 _kv("Lichamelijk", gezondheid.get("lichamelijk", ""))
-                _kv("Mentaal", gezondheid.get("mentaal", ""))
+                _kv("Mentaal", gezondheid.get("mentale_gezondheid") or gezondheid.get("mentaal", ""))
                 _kv("Leefstijl", gezondheid.get("leefstijl", ""))
 
             st.divider()

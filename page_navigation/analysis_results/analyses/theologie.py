@@ -59,7 +59,8 @@ def theologie(analysis: dict[str, Any]) -> None:
     st.divider()
 
     # ── Theologische noties ───────────────────────────────────────────────────
-    noties: list[dict] = result.get("theologische_analyse", {}).get("noties", [])
+    # Pipeline B stores noties at the top level; Pipeline A wraps them in "theologische_analyse"
+    noties: list[dict] = result.get("noties") or result.get("theologische_analyse", {}).get("noties", [])
     if noties:
         st.subheader(f"📚 Theologische noties ({len(noties)})")
         for notie in noties:

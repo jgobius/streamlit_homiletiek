@@ -7,7 +7,9 @@ from src.utils.utils import clean_md
 
 def postille(analysis: dict[str, Any], latest_results: dict[str, Any] | None = None) -> None:
     """Render a preekschets (postille) analysis result."""
-    preekschets: dict[str, Any] = analysis.get("result", {}).get("preekschets", {})
+    result: dict[str, Any] = analysis.get("result", {})
+    # Pipeline B stores fields at the top level; Pipeline A wraps them in "preekschets"
+    preekschets: dict[str, Any] = result.get("preekschets", result)
     sermon: dict[str, Any] = analysis.get("sermon_analysis", {})
     metadata: dict[str, Any] = preekschets.get("metadata", {})
     liturgische_aanwijzingen: dict[str, Any] = preekschets.get("liturgische_aanwijzingen", {})
@@ -33,6 +35,16 @@ def postille(analysis: dict[str, Any], latest_results: dict[str, Any] | None = N
 
     st.divider()
 
+    # ── Schriftlezingen ───────────────────────────────────────────────────────
+    schriftlezingen: dict = preekschets.get("schriftlezingen", {})
+    if schriftlezingen:
+        with st.expander("📖 Schriftlezingen", expanded=False):
+            if schriftlezingen.get("hoofdlezing"):
+                st.markdown(f"**Hoofdlezing:** {schriftlezingen['hoofdlezing']}")
+            aanvullend: list = schriftlezingen.get("aanvullend", [])
+            if aanvullend:
+                st.markdown("**Aanvullende lezingen:** " + ", ".join(aanvullend))
+
     # ── Eigene van de zondag ──────────────────────────────────────────────────
     with st.expander("🗓️ Eigene van de zondag", expanded=True):
         st.markdown(clean_md(preekschets.get("eigene_van_de_zondag", "")))
@@ -53,7 +65,7 @@ def postille(analysis: dict[str, Any], latest_results: dict[str, Any] | None = N
     liederen = None
     if latest_results and "liedsuggesties" in latest_results:
         liederen = latest_results["liedsuggesties"].get("result", {}).get("liederen")
-    
+
     if liederen:
         from page_navigation.analysis_results.analyses.liedsuggesties import render_liederen_list
         render_liederen_list(liederen)
@@ -69,7 +81,11 @@ def postille(analysis: dict[str, Any], latest_results: dict[str, Any] | None = N
                     if lied.get("motivatie"):
                         st.caption(lied["motivatie"])
 
-    aanvullende_lezingen: str = liturgische_aanwijzingen.get("aanvullende_lezingen", "")
+    aanvullende_lezingen = liturgische_aanwijzingen.get("aanvullende_lezingen")
     if aanvullende_lezingen:
         with st.expander("📖 Aanvullende lezingen", expanded=False):
-            st.markdown(clean_md(aanvullende_lezingen))
+            if isinstance(aanvullende_lezingen, list):
+                for lezing in aanvullende_lezingen:
+                    st.markdown(f"- {clean_md(str(lezing))}")
+            else:
+                st.markdown(clean_md(str(aanvullende_lezingen)))
