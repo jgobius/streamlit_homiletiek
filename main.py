@@ -9,13 +9,7 @@ from src.api.handler import APIHandler
 _COOKIE_KEY = "auth_refresh_token"
 
 
-def _render_token_usage_sidebar() -> None:
-    handler = st.session_state.get('api_handler')
-    if not handler:
-        return
-    usage = handler.get("api/token-usage/")
-    if not isinstance(usage, dict):
-        return
+def _calc_token_totals(usage: dict) -> tuple[int, int, float]:
     model_prices = st.secrets.get("model_prices", {})
     fallback_model = st.secrets.get("CURRENT_MODEL", "")
     total_input = total_output = 0
@@ -28,11 +22,40 @@ def _render_token_usage_sidebar() -> None:
         total_output += out
         total_cost += (inp / 1_000_000) * prices.get("input_eur", 0.0)
         total_cost += (out / 1_000_000) * prices.get("output_eur", 0.0)
+    return total_input, total_output, total_cost
+
+
+def _render_token_usage_sidebar() -> None:
+    handler = st.session_state.get('api_handler')
+    if not handler:
+        return
+    analysis_id = st.session_state.get('current_analysis_id')
+    endpoint = f"api/token-usage/?sermon_analysis_id={analysis_id}" if analysis_id else "api/token-usage/"
+    usage = handler.get(endpoint)
+    if not isinstance(usage, dict):
+        return
+    total_input, total_output, total_cost = _calc_token_totals(usage)
     with st.sidebar:
         st.divider()
         st.caption(
             f"Tokens huidige analyse: {total_input:,} in / {total_output:,} uit  \n"
             f"Kosten huidige analyse: €{total_cost:.2f}"
+        )
+
+
+def _render_cumulative_token_usage_sidebar() -> None:
+    handler = st.session_state.get('api_handler')
+    if not handler:
+        return
+    usage = handler.get("api/token-usage/cumulative/")
+    if not isinstance(usage, dict):
+        return
+    total_input, total_output, total_cost = _calc_token_totals(usage)
+    with st.sidebar:
+        st.divider()
+        st.caption(
+            f"Totaal tokenverbruik: {total_input:,} in / {total_output:,} uit  \n"
+            f"Totale kosten: €{total_cost:.2f}"
         )
 
 st.session_state['page_navigation_dir'] = 'page_navigation'
@@ -122,6 +145,8 @@ def main():
         pg.run()
         if pg in (analysis_overview_page, perspectieven_page):
             _render_token_usage_sidebar()
+        if pg == dashboard_page:
+            _render_cumulative_token_usage_sidebar()
 
 
 if __name__ == "__main__":
