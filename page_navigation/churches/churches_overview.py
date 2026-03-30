@@ -1,11 +1,9 @@
 import requests
 import streamlit as st
 
-from src.utils.utils import get_data, redirect_to_login, render_sidebar
+from src.utils.utils import get_data, redirect_to_login
 
 redirect_to_login()
-
-render_sidebar()
 
 @st.dialog("Gemeente verwijderen")
 def confirm_delete_church():
