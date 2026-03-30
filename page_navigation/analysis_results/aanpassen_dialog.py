@@ -59,8 +59,13 @@ def aanpassen_dialog(result: dict) -> None:
     if st.session_state.get("aanpassen_result_id") != result_id:
         _raw = result.get("result", {})
         if isinstance(_raw, str):
+            cleaned = _raw.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("\n", 1)[-1]
+                if cleaned.endswith("```"):
+                    cleaned = cleaned[: cleaned.rfind("```")]
             try:
-                _raw = json.loads(_raw)
+                _raw = json.loads(cleaned)
             except (json.JSONDecodeError, ValueError):
                 pass
         st.session_state["aanpassen_original"] = copy.deepcopy(_raw)

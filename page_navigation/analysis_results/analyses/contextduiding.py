@@ -10,8 +10,14 @@ def contextduiding(analysis: dict[str, Any]) -> None:
     """Render een contextduiding (Perspectieven) analyse."""
     result = analysis.get("result", {})
     if isinstance(result, str):
+        # Strip markdown code fences (```json ... ```) that LLMs sometimes add
+        cleaned = result.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[-1]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[: cleaned.rfind("```")]
         try:
-            result = json.loads(result)
+            result = json.loads(cleaned)
         except (json.JSONDecodeError, ValueError):
             st.markdown(result)
             return

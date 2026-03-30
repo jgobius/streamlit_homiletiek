@@ -22,6 +22,7 @@ from page_navigation.analysis_results.analyses.representatieve_hoorders import r
 from page_navigation.analysis_results.analyses.illustraties import illustraties
 from page_navigation.analysis_results.analyses.politieke_orientatie import politieke_orientatie
 from page_navigation.analysis_results.analyses.contextduiding import contextduiding
+from page_navigation.analysis_results.analyses.verdieping import verdieping
 
 REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
 
@@ -30,6 +31,12 @@ _PERSPECTIEVEN_NAMEN = {
     "literaire_theorie", "psychologie", "ecologie", "postkoloniaal",
     "rechtswetenschap", "natuurwetenschappen", "politieke_speltheorie",
     "mystagogiek", "gender_queer_body", "digitale_cultuur", "ruimtelijke_ordening",
+}
+
+_VERDIEPING_NAMEN = {
+    "gebeden", "gebeden_profetisch", "gebeden_dialogisch", "gebeden_eenvoudig",
+    "homiletische_lowry", "homiletische_buttrick", "kunst_cultuur",
+    "kindermoment", "wetslezing", "kalender", "bezinningsmoment",
 }
 
 _TABS = ["Basis", "Verdieping", "Perspectieven", "Preekschetsen", "Feedback"]
@@ -122,21 +129,27 @@ for r in analysis_results:
 other_results = [r for name, r in latest.items() if name != "postille"]
 summary = other_results + ([latest["postille"]] if "postille" in latest else [])
 
-analyse_summary  = [r for r in summary if r["analysis_type"]["name"] not in _PERSPECTIEVEN_NAMEN]
-perspect_summary = [r for r in summary if r["analysis_type"]["name"] in _PERSPECTIEVEN_NAMEN]
+analyse_summary   = [r for r in summary if r["analysis_type"]["name"] not in _PERSPECTIEVEN_NAMEN | _VERDIEPING_NAMEN]
+verdiep_summary   = [r for r in summary if r["analysis_type"]["name"] in _VERDIEPING_NAMEN]
+perspect_summary  = [r for r in summary if r["analysis_type"]["name"] in _PERSPECTIEVEN_NAMEN]
 
 all_analysis_types = get_data("api/analysis-types/")
 missing_types = sorted(
     [at for at in all_analysis_types if at.get("front_end_name") and at["name"] not in latest],
     key=lambda x: x.get("order", 99),
 )
-analyse_missing  = [at for at in missing_types if at["name"] not in _PERSPECTIEVEN_NAMEN]
+analyse_missing  = [at for at in missing_types if at["name"] not in _PERSPECTIEVEN_NAMEN | _VERDIEPING_NAMEN]
+verdiep_missing  = [at for at in missing_types if at["name"] in _VERDIEPING_NAMEN]
 perspect_missing = [at for at in missing_types if at["name"] in _PERSPECTIEVEN_NAMEN]
 
 # Validate selected IDs for each tab
 if "selected_analysis_id" not in st.session_state or \
         st.session_state["selected_analysis_id"] not in {r["id"] for r in analyse_summary}:
     st.session_state["selected_analysis_id"] = analyse_summary[0]["id"] if analyse_summary else None
+
+if "selected_verdiep_id" not in st.session_state or \
+        st.session_state["selected_verdiep_id"] not in {r["id"] for r in verdiep_summary}:
+    st.session_state["selected_verdiep_id"] = verdiep_summary[0]["id"] if verdiep_summary else None
 
 if "selected_perspect_id" not in st.session_state or \
         st.session_state["selected_perspect_id"] not in {r["id"] for r in perspect_summary}:
@@ -151,6 +164,7 @@ with st.sidebar:
             btn_type = "primary" if is_selected else "secondary"
             if st.button(label, key=f"nav_{r['id']}", use_container_width=True, type=btn_type):
                 st.session_state["selected_analysis_id"] = r["id"]
+                st.session_state['current_tab'] = current_tab
                 st.rerun()
 
         if analyse_missing:
@@ -165,6 +179,28 @@ with st.sidebar:
                                  disabled=_add_locked or not _ok, help=_help):
                         _trigger_analysis(int(analysis_id), at, _add_lock_key)
 
+    elif current_tab == "Verdieping":
+        for r in verdiep_summary:
+            label = r["analysis_type"]["front_end_name"]
+            is_selected = r["id"] == st.session_state["selected_verdiep_id"]
+            btn_type = "primary" if is_selected else "secondary"
+            if st.button(label, key=f"vnav_{r['id']}", use_container_width=True, type=btn_type):
+                st.session_state["selected_verdiep_id"] = r["id"]
+                st.session_state['current_tab'] = current_tab
+                st.rerun()
+
+        if verdiep_missing:
+            with st.expander("Verdieping toevoegen"):
+                for at in verdiep_missing:
+                    _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+                    _add_locked = _reanalysis_is_locked(_add_lock_key)
+                    _ok, _ontbr = _deps_ok(at, latest)
+                    _label = f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
+                    _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
+                    if st.button(_label, key=f"vadd_{at['name']}", use_container_width=True,
+                                 disabled=_add_locked or not _ok, help=_help):
+                        _trigger_analysis(int(analysis_id), at, _add_lock_key)
+
     elif current_tab == "Perspectieven":
         for r in perspect_summary:
             label = r["analysis_type"]["front_end_name"]
@@ -172,6 +208,7 @@ with st.sidebar:
             btn_type = "primary" if is_selected else "secondary"
             if st.button(label, key=f"pnav_{r['id']}", use_container_width=True, type=btn_type):
                 st.session_state["selected_perspect_id"] = r["id"]
+                st.session_state['current_tab'] = current_tab
                 st.rerun()
 
         if perspect_missing:
@@ -206,6 +243,7 @@ def confirm_delete_result(result: dict) -> None:
                 headers = {"Authorization": f"Bearer {handler.jwt_handler.token}"}
                 requests.delete(url, headers=headers).raise_for_status()
                 st.session_state.pop("selected_analysis_id", None)
+                st.session_state.pop("selected_verdiep_id", None)
                 st.session_state.pop("selected_perspect_id", None)
                 st.rerun()
             except Exception as e:
@@ -373,7 +411,31 @@ if current_tab == "Basis":
         politieke_orientatie(selected_analysis)
 
 elif current_tab == "Verdieping":
-    st.info("Verdieping — binnenkort beschikbaar.")
+    selected_verdiep = next(
+        (r for r in verdiep_summary if r["id"] == st.session_state["selected_verdiep_id"]), None
+    )
+
+    if not verdiep_summary:
+        st.info("Nog geen verdieping beschikbaar. Voeg ze toe via 'Verdieping toevoegen' in de zijbalk.")
+    else:
+        col_del, col_rerun, col_ctx = st.columns([3, 3, 4])
+        with col_del:
+            if selected_verdiep and st.button("Verwijder", icon="🗑️", use_container_width=True, key="v_del"):
+                confirm_delete_result(selected_verdiep)
+        with col_rerun:
+            if st.button("Opnieuw", icon="🔄", use_container_width=True, key="v_rerun"):
+                confirm_rerun_analysis(
+                    sermon_analysis_id=int(analysis_id),
+                    analysis_type_name=selected_verdiep["analysis_type"]["name"] if selected_verdiep else "",
+                    front_end_name=selected_verdiep["analysis_type"]["front_end_name"] if selected_verdiep else "",
+                )
+        with col_ctx:
+            if st.button("Aanpassen", icon="✏️", use_container_width=True, key="v_ctx"):
+                aanpassen_dialog(selected_verdiep)
+
+        if selected_verdiep:
+            st.header(selected_verdiep["analysis_type"]["front_end_name"])
+            verdieping(selected_verdiep, analysis_type_name=selected_verdiep["analysis_type"]["name"])
 
 elif current_tab == "Perspectieven":
     selected_perspect = next(
