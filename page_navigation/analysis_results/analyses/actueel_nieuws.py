@@ -36,6 +36,10 @@ def actueel_nieuws(analysis: dict[str, Any]) -> None:
     """Render actueel nieuws analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
 
+    place: str = st.session_state.get("church_place", "")
+    if place:
+        st.caption(f"**Plaats:** {place}")
+
     datum: str = result.get("nieuwsoverzicht_datum", "")
     zoek_verificatie: str = result.get("zoek_verificatie", "")
     wereld: list = result.get("wereldgebeurtenissen", [])

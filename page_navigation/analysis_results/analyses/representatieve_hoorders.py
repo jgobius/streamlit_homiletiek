@@ -19,6 +19,10 @@ def representatieve_hoorders(analysis: dict[str, Any]) -> None:
     """Render representatieve hoorders analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
 
+    church_name: str = st.session_state.get("church_name", "")
+    if church_name:
+        st.caption(f"**Gemeente:** {church_name}")
+
     personas: list = result.get("personas", [])
 
     if not personas:

@@ -60,6 +60,8 @@ def waardenorientatie(analysis: dict[str, Any]) -> None:
     """Render waardenorientatie analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
 
+    church_name: str = st.session_state.get("church_name", "")
+    church_place: str = st.session_state.get("church_place", "")
     vijf_vs_plaats: dict = result.get("vijf_vs_plaatsniveau", {})
     vijf_vs_gemeente: dict = result.get("vijf_vs_gemeenteniveau", {})
     trendanalyse: dict = result.get("trendanalyse", {})
@@ -68,43 +70,9 @@ def waardenorientatie(analysis: dict[str, Any]) -> None:
     homiletisch: dict = result.get("homiletische_implicaties", {})
 
     # ── Vijf V's plaatsniveau ─────────────────────────────────────────────────
-    st.subheader("Vijf V's — Plaatsniveau")
+    plaats_label = f"Vijf V's — Plaatsniveau ({church_place})" if church_place else "Vijf V's — Plaatsniveau"
+    st.subheader(plaats_label)
     _render_vijf_vs_plaatsniveau(vijf_vs_plaats)
-
-    st.divider()
-
-    # ── Vijf V's gemeenteniveau ───────────────────────────────────────────────
-    st.subheader("Vijf V's — Gemeenteniveau")
-    _render_vijf_vs_gemeenteniveau(vijf_vs_gemeente)
-
-    st.divider()
-
-    # ── Trendanalyse ──────────────────────────────────────────────────────────
-    with st.expander("Trendanalyse", expanded=False):
-        mesotrends: list = trendanalyse.get("mesotrends_5_15_jaar", [])
-        microtrends: list = trendanalyse.get("microtrends_1_5_jaar", [])
-
-        if mesotrends:
-            st.markdown("**Mesotrends (5-15 jaar)**")
-            for t in mesotrends:
-                with st.container(border=True):
-                    st.markdown(f"**{t.get('trend', '')}**")
-                    if t.get("impact_lokaal"):
-                        st.markdown(f"*Lokale impact:* {clean_md(t['impact_lokaal'])}")
-                    if t.get("relevantie_preek"):
-                        st.markdown(f"*Relevantie preek:* {clean_md(t['relevantie_preek'])}")
-
-        if microtrends:
-            st.markdown("**Microtrends (1-5 jaar)**")
-            for t in microtrends:
-                with st.container(border=True):
-                    st.markdown(f"**{t.get('trend', '')}**")
-                    if t.get("actueel_voor_datum"):
-                        st.caption(f"Actueel voor: {t['actueel_voor_datum']}")
-                    if t.get("lokale_uitwerking"):
-                        st.markdown(clean_md(t["lokale_uitwerking"]))
-
-    st.divider()
 
     # ── Motivaction milieus plaatsniveau ──────────────────────────────────────
     with st.expander("Motivaction milieus — Plaatsniveau", expanded=False):
@@ -121,6 +89,11 @@ def waardenorientatie(analysis: dict[str, Any]) -> None:
                 c3.markdown(clean_md(m.get("kenmerken_lokaal", "")))
 
     st.divider()
+
+    # ── Vijf V's gemeenteniveau ───────────────────────────────────────────────
+    gemeente_label = f"Vijf V's — Gemeenteniveau ({church_name})" if church_name else "Vijf V's — Gemeenteniveau"
+    st.subheader(gemeente_label)
+    _render_vijf_vs_gemeenteniveau(vijf_vs_gemeente)
 
     # ── Motivaction milieus gemeenteniveau ────────────────────────────────────
     with st.expander("Motivaction milieus — Gemeenteniveau", expanded=False):
@@ -153,6 +126,33 @@ def waardenorientatie(analysis: dict[str, Any]) -> None:
                         st.markdown(clean_md(s["spanningsveld"]))
                     if s.get("implicatie_preek"):
                         st.caption(f"Implicatie preek: {clean_md(s['implicatie_preek'])}")
+
+    st.divider()
+
+    # ── Trendanalyse ──────────────────────────────────────────────────────────
+    with st.expander("Trendanalyse", expanded=False):
+        mesotrends: list = trendanalyse.get("mesotrends_5_15_jaar", [])
+        microtrends: list = trendanalyse.get("microtrends_1_5_jaar", [])
+
+        if mesotrends:
+            st.markdown("**Mesotrends (5-15 jaar)**")
+            for t in mesotrends:
+                with st.container(border=True):
+                    st.markdown(f"**{t.get('trend', '')}**")
+                    if t.get("impact_lokaal"):
+                        st.markdown(f"*Lokale impact:* {clean_md(t['impact_lokaal'])}")
+                    if t.get("relevantie_preek"):
+                        st.markdown(f"*Relevantie preek:* {clean_md(t['relevantie_preek'])}")
+
+        if microtrends:
+            st.markdown("**Microtrends (1-5 jaar)**")
+            for t in microtrends:
+                with st.container(border=True):
+                    st.markdown(f"**{t.get('trend', '')}**")
+                    if t.get("actueel_voor_datum"):
+                        st.caption(f"Actueel voor: {t['actueel_voor_datum']}")
+                    if t.get("lokale_uitwerking"):
+                        st.markdown(clean_md(t["lokale_uitwerking"]))
 
     st.divider()
 

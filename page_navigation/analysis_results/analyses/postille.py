@@ -15,16 +15,10 @@ def postille(analysis: dict[str, Any], latest_results: dict[str, Any] | None = N
     liturgische_aanwijzingen: dict[str, Any] = preekschets.get("liturgische_aanwijzingen", {})
 
     # ── Header ────────────────────────────────────────────────────────────────
-    col_left, col_right = st.columns([2, 1])
-    with col_left:
-        if metadata.get("perikoop"):
-            st.caption(f"**Perikoop:** {metadata['perikoop']}")
-        if metadata.get("liturgische_dag"):
-            st.caption(f"**Liturgische dag:** {metadata['liturgische_dag']}")
-    with col_right:
-        if sermon.get("sermon_date"):
-            st.caption(f"**Datum kerkdienst:** {sermon['sermon_date']}")
-
+    if metadata.get("perikoop"):
+        st.caption(f"**Perikoop:** {metadata['perikoop']}")
+    if metadata.get("liturgische_dag"):
+        st.caption(f"**Liturgische dag:** {metadata['liturgische_dag']}")
     # ── Kerntekst ─────────────────────────────────────────────────────────────
     if metadata.get("kerntekst"):
         st.info(f"📖 {metadata['kerntekst']}")

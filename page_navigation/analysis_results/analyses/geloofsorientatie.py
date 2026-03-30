@@ -24,6 +24,10 @@ def geloofsorientatie(analysis: dict[str, Any]) -> None:
     """Render geloofsorientatie analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
 
+    church_name: str = st.session_state.get("church_name", "")
+    if church_name:
+        st.caption(f"**Gemeente:** {church_name}")
+
     ervaringsgebieden: dict = result.get("ervaringsgebieden", {})
     geloofstaal: dict = result.get("geloofstaal_analyse", {})
     spirituele_trends: dict = result.get("spirituele_trends_regio", {})

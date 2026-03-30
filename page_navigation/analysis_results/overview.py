@@ -48,6 +48,7 @@ _PREEKSCHETSEN_NAMEN = {
     "preek_literair",
     "preek_noordmans",
     "preek_kosuke_koyama",
+    "preek_zornberg",
     "preek_brueggemann",
     "preek_drewermann",
     "preek_gardner_taylor",
@@ -181,6 +182,9 @@ sermon_analysis = get_data(f"api/sermon-analyses/{analysis_id}/")
 
 if sermon_analysis:
     st.session_state["extra_context"] = sermon_analysis.get("extra_context", "")
+    church = sermon_analysis.get("church", {})
+    st.session_state["church_place"] = church.get("place", "") if isinstance(church, dict) else ""
+    st.session_state["church_name"] = church.get("name", "") if isinstance(church, dict) else ""
 
 # Houd per analysis_type alleen de nieuwste (hoogste id).
 latest: dict[str, dict] = {}
@@ -587,31 +591,29 @@ if current_tab == "Basis":
         (r for r in analyse_summary if r["id"] == st.session_state["selected_analysis_id"]), None
     )
 
-    col_del, col_rerun, col_ctx = st.columns([3, 3, 4])
-    with col_del:
-        if selected_analysis and st.button("Verwijder", icon="🗑️", use_container_width=True):
-            confirm_delete_result(selected_analysis)
-    with col_rerun:
-        if st.button("Opnieuw", icon="🔄", use_container_width=True):
-            if selected_analysis and selected_analysis["analysis_type"]["name"] == "liedsuggesties":
-                confirm_rerun_liedsuggesties(sermon_analysis_id=int(analysis_id))
-            else:
-                confirm_rerun_analysis(
-                    sermon_analysis_id=int(analysis_id),
-                    analysis_type_name=selected_analysis["analysis_type"]["name"] if selected_analysis else "",
-                    front_end_name=selected_analysis["analysis_type"]["front_end_name"] if selected_analysis else "",
-                )
-    with col_ctx:
-        if st.button("Aanpassen", icon="✏️", use_container_width=True):
-            aanpassen_dialog(selected_analysis)
-
-    if st.session_state.get("extra_context"):
-        st.info(f"**Extra context:** {st.session_state['extra_context']}")
-
     if not selected_analysis:
         st.stop()
 
     st.header(selected_analysis["analysis_type"]["front_end_name"])
+
+    col_del, col_rerun, col_ctx = st.columns([3, 3, 4])
+    with col_del:
+        if st.button("Verwijder", icon="🗑️"):
+            confirm_delete_result(selected_analysis)
+    with col_rerun:
+        if st.button("Opnieuw", icon="🔄"):
+            if selected_analysis["analysis_type"]["name"] == "liedsuggesties":
+                confirm_rerun_liedsuggesties(sermon_analysis_id=int(analysis_id))
+            else:
+                confirm_rerun_analysis(
+                    sermon_analysis_id=int(analysis_id),
+                    analysis_type_name=selected_analysis["analysis_type"]["name"],
+                    front_end_name=selected_analysis["analysis_type"]["front_end_name"],
+                )
+    with col_ctx:
+        if st.button("Aanpassen", icon="✏️"):
+            aanpassen_dialog(selected_analysis)
+
     analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")
 
     if analysis_type_name == "postille":
@@ -655,23 +657,24 @@ elif current_tab == "Verdieping":
     if not verdiep_summary:
         st.info("Nog geen verdieping beschikbaar. Voeg ze toe via 'Verdieping toevoegen' in de zijbalk.")
     else:
+        if selected_verdiep:
+            st.header(selected_verdiep["analysis_type"]["front_end_name"])
         col_del, col_rerun, col_ctx = st.columns([3, 3, 4])
         with col_del:
-            if selected_verdiep and st.button("Verwijder", icon="🗑️", use_container_width=True, key="v_del"):
+            if selected_verdiep and st.button("Verwijder", icon="🗑️", key="v_del"):
                 confirm_delete_result(selected_verdiep)
         with col_rerun:
-            if st.button("Opnieuw", icon="🔄", use_container_width=True, key="v_rerun"):
+            if st.button("Opnieuw", icon="🔄", key="v_rerun"):
                 confirm_rerun_analysis(
                     sermon_analysis_id=int(analysis_id),
                     analysis_type_name=selected_verdiep["analysis_type"]["name"] if selected_verdiep else "",
                     front_end_name=selected_verdiep["analysis_type"]["front_end_name"] if selected_verdiep else "",
                 )
         with col_ctx:
-            if st.button("Aanpassen", icon="✏️", use_container_width=True, key="v_ctx"):
+            if st.button("Aanpassen", icon="✏️", key="v_ctx"):
                 aanpassen_dialog(selected_verdiep)
 
         if selected_verdiep:
-            st.header(selected_verdiep["analysis_type"]["front_end_name"])
             verdieping(selected_verdiep, analysis_type_name=selected_verdiep["analysis_type"]["name"])
 
 elif current_tab == "Perspectieven":
@@ -682,23 +685,24 @@ elif current_tab == "Perspectieven":
     if not perspect_summary:
         st.info("Nog geen perspectieven beschikbaar. Voeg ze toe via 'Perspectief toevoegen' in de zijbalk.")
     else:
+        if selected_perspect:
+            st.header(selected_perspect["analysis_type"]["front_end_name"])
         col_del, col_rerun, col_ctx = st.columns([3, 3, 4])
         with col_del:
-            if selected_perspect and st.button("Verwijder", icon="🗑️", use_container_width=True, key="p_del"):
+            if selected_perspect and st.button("Verwijder", icon="🗑️", key="p_del"):
                 confirm_delete_result(selected_perspect)
         with col_rerun:
-            if st.button("Opnieuw", icon="🔄", use_container_width=True, key="p_rerun"):
+            if st.button("Opnieuw", icon="🔄", key="p_rerun"):
                 confirm_rerun_analysis(
                     sermon_analysis_id=int(analysis_id),
                     analysis_type_name=selected_perspect["analysis_type"]["name"] if selected_perspect else "",
                     front_end_name=selected_perspect["analysis_type"]["front_end_name"] if selected_perspect else "",
                 )
         with col_ctx:
-            if st.button("Aanpassen", icon="✏️", use_container_width=True, key="p_ctx"):
+            if st.button("Aanpassen", icon="✏️", key="p_ctx"):
                 aanpassen_dialog(selected_perspect)
 
         if selected_perspect:
-            st.header(selected_perspect["analysis_type"]["front_end_name"])
             contextduiding(selected_perspect)
 
 elif current_tab == "Preekschetsen":
@@ -723,23 +727,24 @@ elif current_tab == "Preekschetsen":
     if not preek_summary:
         st.info("Nog geen preekschetsen beschikbaar. Stel eerst de selectie in via de knop hierboven, voeg dan een preekschets toe via de zijbalk.")
     else:
+        if selected_preek:
+            st.header(selected_preek["analysis_type"]["front_end_name"])
         col_del, col_rerun, col_ctx = st.columns([3, 3, 4])
         with col_del:
-            if selected_preek and st.button("Verwijder", icon="🗑️", use_container_width=True, key="pk_del"):
+            if selected_preek and st.button("Verwijder", icon="🗑️", key="pk_del"):
                 confirm_delete_result(selected_preek)
         with col_rerun:
-            if st.button("Opnieuw", icon="🔄", use_container_width=True, key="pk_rerun"):
+            if st.button("Opnieuw", icon="🔄", key="pk_rerun"):
                 confirm_rerun_analysis(
                     sermon_analysis_id=int(analysis_id),
                     analysis_type_name=selected_preek["analysis_type"]["name"] if selected_preek else "",
                     front_end_name=selected_preek["analysis_type"]["front_end_name"] if selected_preek else "",
                 )
         with col_ctx:
-            if st.button("Aanpassen", icon="✏️", use_container_width=True, key="pk_ctx"):
+            if st.button("Aanpassen", icon="✏️", key="pk_ctx"):
                 aanpassen_dialog(selected_preek)
 
         if selected_preek:
-            st.header(selected_preek["analysis_type"]["front_end_name"])
             _render_preekschets_result(selected_preek, latest)
 
 elif current_tab == "Feedback":

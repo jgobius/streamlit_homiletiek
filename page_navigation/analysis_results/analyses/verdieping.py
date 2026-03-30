@@ -121,7 +121,24 @@ def render_gebeden(analysis: dict) -> None:
     echo = result.get("echo_techniek", "")
     if echo:
         with st.expander("Echo-techniek", expanded=False):
-            st.markdown(_md(echo))
+            if isinstance(echo, dict):
+                thema = echo.get("schriftlezing_thema", "")
+                if thema:
+                    st.markdown(f"**Centraal beeld:** {_md(thema)}")
+                impliciet = echo.get("impliciet_taalveld_voor_lezingen", {})
+                if impliciet:
+                    st.markdown("**Impliciet taalveld (voor de lezingen):**")
+                    for gebed, tekst in impliciet.items():
+                        label = _GEBED_LABELS.get(gebed, gebed.replace("_", " ").capitalize())
+                        st.markdown(f"- *{label}:* {_md(tekst)}")
+                expliciet = echo.get("expliciete_echo_na_lezingen", {})
+                if expliciet:
+                    st.markdown("**Expliciete echo (na de lezingen):**")
+                    for gebed, tekst in expliciet.items():
+                        label = _GEBED_LABELS.get(gebed, gebed.replace("_", " ").capitalize())
+                        st.markdown(f"- *{label}:* {_md(tekst)}")
+            else:
+                st.markdown(_md(echo))
 
     technieken = result.get("poetische_technieken_gebruikt", {})
     if technieken:

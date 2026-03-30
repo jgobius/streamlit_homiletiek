@@ -40,9 +40,6 @@ def theologie(analysis: dict[str, Any]) -> None:
     result: dict[str, Any] = analysis.get("result", {})
     sermon: dict[str, Any] = analysis.get("sermon_analysis", {})
 
-    if sermon.get("sermon_date"):
-        st.caption(f"**Datum kerkdienst:** {sermon['sermon_date']}")
-
     st.divider()
 
     # ── Synthese ──────────────────────────────────────────────────────────────

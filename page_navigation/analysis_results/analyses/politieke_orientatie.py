@@ -23,6 +23,10 @@ def politieke_orientatie(analysis: dict[str, Any]) -> None:
     """Render politieke orientatie analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
 
+    place: str = st.session_state.get("church_place", "")
+    if place:
+        st.caption(f"**Plaats:** {place}")
+
     verkiezingsdata: dict = result.get("verkiezingsdata", {})
     landelijk: dict = result.get("landelijk_stemgedrag", {})
     europees: dict = result.get("europees_stemgedrag", {})

@@ -14,6 +14,10 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
     """Render sociaal-maatschappelijk analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
 
+    place: str = st.session_state.get("church_place", "")
+    if place:
+        st.caption(f"**Plaats:** {place}")
+
     demografisch: dict = result.get("demografisch", {})
     economisch: dict = result.get("economisch", {})
     sociale_structuur: dict = result.get("sociale_structuur", {})
