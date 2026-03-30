@@ -1,3 +1,4 @@
+import json
 import time
 
 import requests
@@ -23,6 +24,7 @@ from page_navigation.analysis_results.analyses.illustraties import illustraties
 from page_navigation.analysis_results.analyses.politieke_orientatie import politieke_orientatie
 from page_navigation.analysis_results.analyses.contextduiding import contextduiding
 from page_navigation.analysis_results.analyses.verdieping import verdieping
+from page_navigation.analysis_results.analyses.preekschets import preekschets
 
 REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
 
@@ -37,6 +39,21 @@ _VERDIEPING_NAMEN = {
     "gebeden", "gebeden_profetisch", "gebeden_dialogisch", "gebeden_eenvoudig",
     "homiletische_lowry", "homiletische_buttrick", "kunst_cultuur",
     "kindermoment", "wetslezing", "kalender", "bezinningsmoment",
+}
+
+_PREEKSCHETSEN_NAMEN = {
+    "preek_jungel",
+    "preek_fleming_rutledge",
+    "preek_brueggemann_poet",
+    "preek_literair",
+    "preek_noordmans",
+    "preek_kosuke_koyama",
+    "preek_brueggemann",
+    "preek_drewermann",
+    "preek_gardner_taylor",
+    "preek_solle",
+    "preek_peterson",
+    "preek_standup",
 }
 
 _TABS = ["Basis", "Verdieping", "Perspectieven", "Preekschetsen", "Feedback"]
@@ -94,6 +111,52 @@ def _trigger_analysis(analysis_id: int, at: dict, lock_key: str) -> None:
         st.error(f"Fout: {e}")
 
 
+def _trigger_preekschets(analysis_id: int, at: dict, lock_key: str) -> None:
+    """Stuur een verzoek naar de agent om een preekschets uit te voeren (met opgeslagen selectie)."""
+    st.session_state[lock_key] = time.time()
+    try:
+        selectie = st.session_state.get(f"preek_selectie_{analysis_id}", {})
+        kernteksten = selectie.get("kernteksten", [])
+        focus_optie = selectie.get("focus_optie")
+        selected_perspectieven = selectie.get("perspectieven", {})
+        selected_illustraties = selectie.get("illustraties", [])
+        selected_hoorders = selectie.get("hoorders", [])
+        agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
+        response = requests.post(
+            f"{agent_url}/run_single_analysis/",
+            json={
+                "sermon_analysis_id": int(analysis_id),
+                "analysis_type_name": at["name"],
+                "core_text": kernteksten,
+                "focus_optie": focus_optie,
+                "selected_perspectieven": selected_perspectieven,
+                "selected_illustraties": selected_illustraties,
+                "selected_hoorders": selected_hoorders,
+            },
+            timeout=30,
+        )
+        response.raise_for_status()
+        st.toast(f"'{at['front_end_name']}' wordt uitgevoerd. Ververs de pagina over enkele minuten.")
+    except requests.exceptions.HTTPError as e:
+        if e.response is not None and e.response.status_code == 409:
+            st.warning(e.response.json().get("detail", "Al gestart, wacht even."))
+        else:
+            _release_reanalysis_lock(lock_key)
+            st.error(f"Fout: {e}")
+    except Exception as e:
+        _release_reanalysis_lock(lock_key)
+        st.error(f"Fout: {e}")
+
+
+def _render_preekschets_result(selected_preek: dict, latest: dict) -> None:
+    """Dispatch op basis van aanwezigheid preek_onderdelen in result."""
+    result = selected_preek.get("result", {})
+    if isinstance(result, dict) and result.get("preek_onderdelen"):
+        preekschets(selected_preek)
+    else:
+        postille(selected_preek, latest_results=latest)
+
+
 redirect_to_login()
 
 analysis_id = st.query_params.get('analysis_id') or st.session_state.get('current_analysis_id')
@@ -126,21 +189,22 @@ for r in analysis_results:
     if name not in latest or r['id'] > latest[name]['id']:
         latest[name] = r
 
-other_results = [r for name, r in latest.items() if name != "postille"]
-summary = other_results + ([latest["postille"]] if "postille" in latest else [])
+summary = list(latest.values())
 
-analyse_summary   = [r for r in summary if r["analysis_type"]["name"] not in _PERSPECTIEVEN_NAMEN | _VERDIEPING_NAMEN]
+analyse_summary   = [r for r in summary if r["analysis_type"]["name"] not in _PERSPECTIEVEN_NAMEN | _VERDIEPING_NAMEN | _PREEKSCHETSEN_NAMEN]
 verdiep_summary   = [r for r in summary if r["analysis_type"]["name"] in _VERDIEPING_NAMEN]
 perspect_summary  = [r for r in summary if r["analysis_type"]["name"] in _PERSPECTIEVEN_NAMEN]
+preek_summary     = [r for r in summary if r["analysis_type"]["name"] in _PREEKSCHETSEN_NAMEN]
 
 all_analysis_types = get_data("api/analysis-types/")
 missing_types = sorted(
     [at for at in all_analysis_types if at.get("front_end_name") and at["name"] not in latest],
     key=lambda x: x.get("order", 99),
 )
-analyse_missing  = [at for at in missing_types if at["name"] not in _PERSPECTIEVEN_NAMEN | _VERDIEPING_NAMEN]
+analyse_missing  = [at for at in missing_types if at["name"] not in _PERSPECTIEVEN_NAMEN | _VERDIEPING_NAMEN | _PREEKSCHETSEN_NAMEN]
 verdiep_missing  = [at for at in missing_types if at["name"] in _VERDIEPING_NAMEN]
 perspect_missing = [at for at in missing_types if at["name"] in _PERSPECTIEVEN_NAMEN]
+preek_missing    = [at for at in missing_types if at["name"] in _PREEKSCHETSEN_NAMEN]
 
 # Validate selected IDs for each tab
 if "selected_analysis_id" not in st.session_state or \
@@ -154,6 +218,10 @@ if "selected_verdiep_id" not in st.session_state or \
 if "selected_perspect_id" not in st.session_state or \
         st.session_state["selected_perspect_id"] not in {r["id"] for r in perspect_summary}:
     st.session_state["selected_perspect_id"] = perspect_summary[0]["id"] if perspect_summary else None
+
+if "selected_preek_id" not in st.session_state or \
+        st.session_state["selected_preek_id"] not in {r["id"] for r in preek_summary}:
+    st.session_state["selected_preek_id"] = preek_summary[0]["id"] if preek_summary else None
 
 # --- Sidebar block 2: tab-conditional analysis buttons ---
 with st.sidebar:
@@ -223,11 +291,179 @@ with st.sidebar:
                                  disabled=_add_locked or not _ok, help=_help):
                         _trigger_analysis(int(analysis_id), at, _add_lock_key)
 
+    elif current_tab == "Preekschetsen":
+        for r in preek_summary:
+            label = r["analysis_type"]["front_end_name"]
+            is_selected = r["id"] == st.session_state["selected_preek_id"]
+            btn_type = "primary" if is_selected else "secondary"
+            if st.button(label, key=f"pknav_{r['id']}", use_container_width=True, type=btn_type):
+                st.session_state["selected_preek_id"] = r["id"]
+                st.session_state['current_tab'] = current_tab
+                st.rerun()
+
+        with st.expander("Preekschets toevoegen"):
+            _preek_ready = st.session_state.get(f"preek_selectie_{analysis_id}", {}).get("opgeslagen", False)
+            if not preek_missing:
+                st.caption("Geen preekschets-types beschikbaar.")
+            for at in preek_missing:
+                _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+                _add_locked = _reanalysis_is_locked(_add_lock_key)
+                _ok, _ontbr = _deps_ok(at, latest)
+                if not _preek_ready:
+                    _label = f"🔒 {at['front_end_name']}"
+                    _help = "Stel eerst de selectie in via 'Selectie instellen / wijzigen'."
+                elif not _ok:
+                    _label = f"🔒 {at['front_end_name']}"
+                    _help = "Vereist eerst: " + ", ".join(_ontbr)
+                else:
+                    _label = at["front_end_name"]
+                    _help = None
+                if st.button(_label, key=f"pkadd_{at['name']}", use_container_width=True,
+                             disabled=_add_locked or not _preek_ready or not _ok, help=_help):
+                    _trigger_preekschets(int(analysis_id), at, _add_lock_key)
+
 if not analysis_results:
     st.info("Bijbelteksten wordt geanalyseerd. Ververs de pagina over enkele minuten.")
     st.stop()
 
 # --- Dialogs ---
+
+@st.dialog("Selectie van input voor preekschetsen", width="large")
+def preekschets_selectie_dialog(analysis_id: int, latest: dict, perspect_summary: list) -> None:
+    """Popup voor het instellen en opslaan van de preekschets-input selectie."""
+
+    # -- Focus-en-functie (geen voorselectie) --
+    focus = latest.get("focus_en_functie", {})
+    focus_result = focus.get("result", {}) if focus else {}
+    opties = focus_result.get("opties", []) if isinstance(focus_result, dict) else []
+
+    st.subheader("Focus-en-functie")
+    focus_optie_value = None
+    if opties:
+        optie_labels = [f"Optie {o.get('nummer', i + 1)}: {o.get('korte_titel', '')}" for i, o in enumerate(opties)]
+        keuze = st.radio(
+            "Focus-en-functie optie",
+            options=optie_labels,
+            index=None,
+            label_visibility="collapsed",
+            key=f"dlg_focus_radio_{analysis_id}",
+        )
+        if keuze:
+            idx = optie_labels.index(keuze)
+            focus_optie_value = opties[idx].get("nummer")
+    else:
+        st.caption("*Focus-en-functie nog niet beschikbaar*")
+
+    st.divider()
+
+    # -- Kerntekst(en) --
+    bijbel = latest.get("bijbelteksten", {})
+    bijbel_result = bijbel.get("result", {}) if bijbel else {}
+    verzen = []
+    if isinstance(bijbel_result, dict):
+        for scripture_ref, scripture_data in bijbel_result.items():
+            book_chapter = scripture_ref.rstrip(".").strip()
+            for verse in (scripture_data.get("verses", []) if isinstance(scripture_data, dict) else []):
+                number = verse.get("number", "")
+                text = verse.get("modern_text", "").strip()
+                verzen.append({"ref": f"{book_chapter}:{number}", "text": text})
+
+    st.subheader("Kerntekst(en)")
+    selected_refs = []
+    if verzen:
+        for v in verzen:
+            ref = v["ref"]
+            preview = v["text"][:110] + ("…" if len(v["text"]) > 110 else "")
+            label = f"**{ref}** — {preview}"
+            if st.checkbox(label, key=f"dlg_kt_{analysis_id}_{ref}"):
+                selected_refs.append(ref)
+    else:
+        st.caption("*Bijbelteksten nog niet beschikbaar*")
+
+    st.divider()
+
+    # -- Perspectieven --
+    selected_perspectieven: dict[str, list] = {}
+    if perspect_summary:
+        st.subheader("Perspectieven")
+        for perspect in perspect_summary:
+            name = perspect["analysis_type"]["name"]
+            front_end_name = perspect["analysis_type"]["front_end_name"]
+            result = perspect.get("result", {})
+            if isinstance(result, str):
+                cleaned = result.strip()
+                if cleaned.startswith("```"):
+                    cleaned = cleaned.split("\n", 1)[-1]
+                    if cleaned.endswith("```"):
+                        cleaned = cleaned[: cleaned.rfind("```")]
+                try:
+                    result = json.loads(cleaned)
+                except (json.JSONDecodeError, ValueError):
+                    result = {}
+            analyses = result.get("analyses", []) if isinstance(result, dict) else []
+            if analyses:
+                with st.expander(front_end_name, expanded=False):
+                    selected_onderdelen = []
+                    for item in analyses:
+                        nummer = item.get("nummer", "")
+                        titel = item.get("titel", "")
+                        label = f"{nummer}. {titel}" if nummer else titel
+                        if st.checkbox(label, key=f"dlg_perspect_{analysis_id}_{name}_{nummer}"):
+                            selected_onderdelen.append(nummer)
+                    selected_perspectieven[name] = selected_onderdelen
+        st.divider()
+
+    # -- Illustraties --
+    selected_illustraties: list[int] = []
+    illustraties_data = latest.get("illustraties", {})
+    illustraties_result = illustraties_data.get("result", {}) if illustraties_data else {}
+    illustraties_lijst = illustraties_result.get("illustraties", []) if isinstance(illustraties_result, dict) else []
+    if illustraties_lijst:
+        st.subheader("Illustraties")
+        for ill in illustraties_lijst:
+            nummer = ill.get("nummer", 0)
+            titel = ill.get("titel", "")
+            ill_type = ill.get("metadata", {}).get("type", "")
+            label = f"#{nummer} — {titel}" + (f"  ({ill_type})" if ill_type else "")
+            if st.checkbox(label, key=f"dlg_ill_{analysis_id}_{nummer}"):
+                selected_illustraties.append(nummer)
+        st.divider()
+
+    # -- Representatieve hoorders --
+    selected_hoorders: list[str] = []
+    hoorders_data = latest.get("representatieve_hoorders", {})
+    hoorders_result = hoorders_data.get("result", {}) if hoorders_data else {}
+    personas = hoorders_result.get("personas", []) if isinstance(hoorders_result, dict) else []
+    if personas:
+        st.subheader("Representatieve hoorders")
+        for persona in personas:
+            naam_obj = persona.get("naam", {})
+            voornaam = naam_obj.get("voornaam", "")
+            achternaam = naam_obj.get("achternaam", "")
+            volledige_naam = f"{voornaam} {achternaam}".strip()
+            leeftijd = persona.get("leeftijd", "")
+            label = f"👤 {volledige_naam}" + (f" ({leeftijd})" if leeftijd else "")
+            if st.checkbox(label, key=f"dlg_hoorder_{analysis_id}_{volledige_naam}"):
+                selected_hoorders.append(volledige_naam)
+        st.divider()
+
+    # -- Opslaan --
+    _kan_opslaan = bool(selected_refs) and focus_optie_value is not None
+    if not selected_refs:
+        st.warning("Selecteer minimaal één kerntekst.")
+    if focus_optie_value is None:
+        st.warning("Selecteer een focus-en-functie optie.")
+    if st.button("Opslaan", type="primary", use_container_width=True, disabled=not _kan_opslaan):
+        st.session_state[f"preek_selectie_{analysis_id}"] = {
+            "kernteksten": selected_refs,
+            "focus_optie": focus_optie_value,
+            "perspectieven": selected_perspectieven,
+            "illustraties": selected_illustraties,
+            "hoorders": selected_hoorders,
+            "opgeslagen": True,
+        }
+        st.rerun()
+
 
 @st.dialog("Analyse-element verwijderen")
 def confirm_delete_result(result: dict) -> None:
@@ -245,6 +481,7 @@ def confirm_delete_result(result: dict) -> None:
                 st.session_state.pop("selected_analysis_id", None)
                 st.session_state.pop("selected_verdiep_id", None)
                 st.session_state.pop("selected_perspect_id", None)
+                st.session_state.pop("selected_preek_id", None)
                 st.rerun()
             except Exception as e:
                 st.error(f"Fout bij verwijderen: {e}")
@@ -465,7 +702,45 @@ elif current_tab == "Perspectieven":
             contextduiding(selected_perspect)
 
 elif current_tab == "Preekschetsen":
-    st.info("Preekschetsen — binnenkort beschikbaar.")
+    _selectie = st.session_state.get(f"preek_selectie_{analysis_id}", {})
+    if st.button("Selectie instellen / wijzigen", icon="✏️"):
+        preekschets_selectie_dialog(int(analysis_id), latest, perspect_summary)
+    if _selectie.get("opgeslagen"):
+        _kt = _selectie.get("kernteksten", [])
+        _fo = _selectie.get("focus_optie")
+        _n_persp = sum(len(v) for v in _selectie.get("perspectieven", {}).values())
+        _n_ill = len(_selectie.get("illustraties", []))
+        _n_hoord = len(_selectie.get("hoorders", []))
+        st.caption(
+            f"Opgeslagen: {len(_kt)} kerntekst(en) · focus optie {_fo} · "
+            f"{_n_persp} perspectief-onderdelen · {_n_ill} illustraties · {_n_hoord} hoorders"
+        )
+
+    selected_preek = next(
+        (r for r in preek_summary if r["id"] == st.session_state["selected_preek_id"]), None
+    )
+
+    if not preek_summary:
+        st.info("Nog geen preekschetsen beschikbaar. Stel eerst de selectie in via de knop hierboven, voeg dan een preekschets toe via de zijbalk.")
+    else:
+        col_del, col_rerun, col_ctx = st.columns([3, 3, 4])
+        with col_del:
+            if selected_preek and st.button("Verwijder", icon="🗑️", use_container_width=True, key="pk_del"):
+                confirm_delete_result(selected_preek)
+        with col_rerun:
+            if st.button("Opnieuw", icon="🔄", use_container_width=True, key="pk_rerun"):
+                confirm_rerun_analysis(
+                    sermon_analysis_id=int(analysis_id),
+                    analysis_type_name=selected_preek["analysis_type"]["name"] if selected_preek else "",
+                    front_end_name=selected_preek["analysis_type"]["front_end_name"] if selected_preek else "",
+                )
+        with col_ctx:
+            if st.button("Aanpassen", icon="✏️", use_container_width=True, key="pk_ctx"):
+                aanpassen_dialog(selected_preek)
+
+        if selected_preek:
+            st.header(selected_preek["analysis_type"]["front_end_name"])
+            _render_preekschets_result(selected_preek, latest)
 
 elif current_tab == "Feedback":
     st.info("Feedback — binnenkort beschikbaar.")

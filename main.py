@@ -83,11 +83,12 @@ def main():
             # That component callback triggers the next render with cookies available.
             # Limit to 2 stops to avoid looping forever when there is no cookie.
             attempts = st.session_state.get('_restore_attempts', 0)
-            if attempts < 2:
+            if attempts < 1:
                 st.session_state['_restore_attempts'] = attempts + 1
                 st.stop()
 
-    st.session_state.pop('_restore_attempts', None)
+    if 'api_handler' in st.session_state:
+        st.session_state.pop('_restore_attempts', None)
 
     welcome_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/welcome.py", title='Welcome', default=('api_handler' not in st.session_state))
     login_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/login.py", title='Inloggen')
