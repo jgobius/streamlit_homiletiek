@@ -109,7 +109,12 @@ def render_gebeden(analysis: dict) -> None:
 
     gebeden = result.get("gebeden", {})
     if gebeden:
+        # Drempelgebed altijd bovenaan
+        if "drempelgebed" in gebeden and isinstance(gebeden["drempelgebed"], dict):
+            _render_gebed("drempelgebed", gebeden["drempelgebed"])
         for naam, g in gebeden.items():
+            if naam == "drempelgebed":
+                continue
             if isinstance(g, dict):
                 _render_gebed(naam, g)
 
