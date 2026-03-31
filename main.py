@@ -113,7 +113,7 @@ def main():
     if 'api_handler' in st.session_state:
         st.session_state.pop('_restore_attempts', None)
 
-    welcome_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/welcome.py", title='Welcome', default=('api_handler' not in st.session_state))
+    welcome_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/welcome.py", title='Welkom', default=('api_handler' not in st.session_state))
     login_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/login.py", title='Inloggen')
     logout_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/logout.py", title='Uitloggen')
     register_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/register.py", title='Registreren')

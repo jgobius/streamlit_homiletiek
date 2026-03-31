@@ -1,7 +1,7 @@
 import streamlit as st
 
 
-st.title('Analyse eredienst')
+st.title('Analyse kerkdienst')
 
 st.write(
     """
