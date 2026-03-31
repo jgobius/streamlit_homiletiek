@@ -68,6 +68,32 @@ _FEEDBACK_NAMEN = {
 
 _TABS = ["Basis", "Verdieping", "Perspectieven", "Preekschetsen", "Feedback"]
 
+_BASIS_ORDER = [
+    "bijbelteksten",
+    "liturgisch_jaar",
+    "structuralistische_exegese",
+    "theology",
+    "commentaries",
+    "liedsuggesties",
+    "sociaal_maatschappelijk",
+    "waardenorientatie",
+    "geloofsorientatie",
+    "interpretatieve_synthese",
+    "politieke_orientatie",
+    "representatieve_hoorders",
+    "illustraties",
+    # overige basis-items — worden achteraan geplaatst
+    "actueel_nieuws",
+    "focus_en_functie",
+    "postille",
+]
+
+def _basis_sort_key(name: str) -> int:
+    try:
+        return _BASIS_ORDER.index(name)
+    except ValueError:
+        return len(_BASIS_ORDER)
+
 
 def _reanalysis_is_locked(lock_key: str) -> bool:
     lock_time = st.session_state.get(lock_key)
@@ -206,18 +232,27 @@ summary = list(latest.values())
 
 _ALL_NON_BASIS = _PERSPECTIEVEN_NAMEN | _VERDIEPING_NAMEN | _PREEKSCHETSEN_NAMEN | _FEEDBACK_NAMEN
 
-analyse_summary   = [r for r in summary if r["analysis_type"]["name"] not in _ALL_NON_BASIS]
-verdiep_summary   = [r for r in summary if r["analysis_type"]["name"] in _VERDIEPING_NAMEN]
-perspect_summary  = [r for r in summary if r["analysis_type"]["name"] in _PERSPECTIEVEN_NAMEN]
-preek_summary     = [r for r in summary if r["analysis_type"]["name"] in _PREEKSCHETSEN_NAMEN]
-feedback_summary  = [r for r in summary if r["analysis_type"]["name"] in _FEEDBACK_NAMEN]
+analyse_summary   = sorted(
+    [r for r in summary if r["analysis_type"]["name"] not in _ALL_NON_BASIS],
+    key=lambda r: _basis_sort_key(r["analysis_type"]["name"]),
+)
+# Verdieping t/m Feedback: volgorde via het `order`-veld uit de API (vastgelegd in de init-scripts).
+# Basis gebruikt een handmatige _BASIS_ORDER omdat de gewenste volgorde daar afwijkt van de API-order.
+_order_key = lambda r: r["analysis_type"].get("order", 99)
+verdiep_summary   = sorted([r for r in summary if r["analysis_type"]["name"] in _VERDIEPING_NAMEN], key=_order_key)
+perspect_summary  = sorted([r for r in summary if r["analysis_type"]["name"] in _PERSPECTIEVEN_NAMEN], key=_order_key)
+preek_summary     = sorted([r for r in summary if r["analysis_type"]["name"] in _PREEKSCHETSEN_NAMEN], key=_order_key)
+feedback_summary  = sorted([r for r in summary if r["analysis_type"]["name"] in _FEEDBACK_NAMEN], key=_order_key)
 
 all_analysis_types = get_data("api/analysis-types/")
 missing_types = sorted(
     [at for at in all_analysis_types if at.get("front_end_name") and at["name"] not in latest],
     key=lambda x: x.get("order", 99),
 )
-analyse_missing  = [at for at in missing_types if at["name"] not in _ALL_NON_BASIS]
+analyse_missing  = sorted(
+    [at for at in missing_types if at["name"] not in _ALL_NON_BASIS],
+    key=lambda at: _basis_sort_key(at["name"]),
+)
 verdiep_missing  = [at for at in missing_types if at["name"] in _VERDIEPING_NAMEN]
 perspect_missing = [at for at in missing_types if at["name"] in _PERSPECTIEVEN_NAMEN]
 preek_missing    = [at for at in missing_types if at["name"] in _PREEKSCHETSEN_NAMEN]
