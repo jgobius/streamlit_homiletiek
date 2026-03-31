@@ -266,7 +266,7 @@ def _render_werkwijze():
     st.markdown("#### Stap 4 — Werken met de output")
     st.markdown(
         "De set analyses wordt stap voor stap door de voorganger gemaakt. Het systeem is niet bedoeld om een kant-en-klare preek te genereren. " \
-        "Het is meer een verzameling van perspectieven, inzichten en suggesties waaruit u selectief kan putten. De verantwoordelijkheid voor de preek — "
+        "Het is meer een verzameling van perspectieven, inzichten en suggesties waaruit u selectief kunt putten. De verantwoordelijkheid voor de preek — "
         "inhoudelijk, theologisch en pastoraal — blijft te allen tijde bij u als voorganger."
     )
 
