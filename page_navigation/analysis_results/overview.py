@@ -26,6 +26,7 @@ from page_navigation.analysis_results.analyses.contextduiding import contextduid
 from page_navigation.analysis_results.analyses.verdieping import verdieping
 from page_navigation.analysis_results.analyses.preekschets import preekschets
 from page_navigation.analysis_results.analyses.feedback_analyse import feedback_analyse
+from src.components.user_feedback import render_feedback_trigger
 
 REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
 
@@ -790,6 +791,13 @@ if current_tab == "Basis":
     elif analysis_type_name == "politieke_orientatie":
         politieke_orientatie(selected_analysis)
 
+    render_feedback_trigger(
+        analysis_result_id=selected_analysis["id"],
+        section_name=selected_analysis["analysis_type"]["front_end_name"],
+        handler=st.session_state["api_handler"],
+        key=f"feedback_basis_{selected_analysis['id']}",
+    )
+
 elif current_tab == "Verdieping":
     selected_verdiep = next(
         (r for r in verdiep_summary if r["id"] == st.session_state["selected_verdiep_id"]), None
@@ -822,6 +830,12 @@ elif current_tab == "Verdieping":
 
         if selected_verdiep:
             verdieping(selected_verdiep, analysis_type_name=selected_verdiep["analysis_type"]["name"])
+            render_feedback_trigger(
+                analysis_result_id=selected_verdiep["id"],
+                section_name=selected_verdiep["analysis_type"]["front_end_name"],
+                handler=st.session_state["api_handler"],
+                key=f"feedback_verdiep_{selected_verdiep['id']}",
+            )
 
 elif current_tab == "Perspectieven":
     selected_perspect = next(
@@ -855,6 +869,12 @@ elif current_tab == "Perspectieven":
 
         if selected_perspect:
             contextduiding(selected_perspect)
+            render_feedback_trigger(
+                analysis_result_id=selected_perspect["id"],
+                section_name=selected_perspect["analysis_type"]["front_end_name"],
+                handler=st.session_state["api_handler"],
+                key=f"feedback_perspect_{selected_perspect['id']}",
+            )
 
 elif current_tab == "Preekschetsen":
     _selectie = st.session_state.get(f"preek_selectie_{analysis_id}", {})
@@ -902,6 +922,12 @@ elif current_tab == "Preekschetsen":
 
         if selected_preek:
             _render_preekschets_result(selected_preek, latest)
+            render_feedback_trigger(
+                analysis_result_id=selected_preek["id"],
+                section_name=selected_preek["analysis_type"]["front_end_name"],
+                handler=st.session_state["api_handler"],
+                key=f"feedback_preek_{selected_preek['id']}",
+            )
 
 elif current_tab == "Feedback":
     if st.button("Eigen preek invoeren", icon="✏️"):
@@ -946,3 +972,9 @@ elif current_tab == "Feedback":
 
         if selected_feedback:
             feedback_analyse(selected_feedback)
+            render_feedback_trigger(
+                analysis_result_id=selected_feedback["id"],
+                section_name=selected_feedback["analysis_type"]["front_end_name"],
+                handler=st.session_state["api_handler"],
+                key=f"feedback_fb_{selected_feedback['id']}",
+            )
