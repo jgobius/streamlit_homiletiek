@@ -17,18 +17,7 @@ BIBLE_BOOKS = [
     "Judas", "Openbaring"
 ]
 
-READING_TYPES = ["EERSTE LEZING", "PSALM", "TWEEDE LEZING", "EVANGELIE"]
-
-OT_BOOKS = BIBLE_BOOKS[:39]  # Genesis t/m Maleachi
-PSALM_BOOKS = ["Psalmen", "Spreuken"]
-NT_BOOKS = BIBLE_BOOKS[39:]  # Mattheüs t/m Openbaring
-
-READING_TYPE_BOOKS = {
-    "EERSTE LEZING": OT_BOOKS,
-    "PSALM": PSALM_BOOKS,
-    "TWEEDE LEZING": NT_BOOKS,
-    "EVANGELIE": NT_BOOKS,
-}
+READING_TYPES = ["Eerste lezing", "Tweede lezing", "Derde lezing", "Vierde lezing"]
 
 def clean_md(text: str) -> str:
     """Normalise LLM-generated markdown for robust Streamlit rendering.

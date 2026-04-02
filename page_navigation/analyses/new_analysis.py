@@ -17,7 +17,6 @@ from src.utils.utils import (
     load_scriptures,
     BIBLE_BOOKS,
     READING_TYPES,
-    READING_TYPE_BOOKS,
 )
 
 redirect_to_login()
@@ -30,9 +29,9 @@ ANALYSIS_LOCK_TIMEOUT_SECONDS = 120
 
 
 def _sanitize_cv(key: str) -> None:
-    """Remove any character that is not a digit, colon, or hyphen."""
+    """Remove any character that is not a digit, colon, hyphen, or letter a/b."""
     raw = st.session_state.get(key, "")
-    cleaned = "".join(c for c in raw if c.isdigit() or c in ":-")
+    cleaned = "".join(c for c in raw if c.isdigit() or c in ":-ab")
     if cleaned != raw:
         st.session_state[key] = cleaned
 
@@ -40,19 +39,24 @@ def _sanitize_cv(key: str) -> None:
 @st.dialog("Eigen lezingen toevoegen", width="large")
 def show_own_readings_dialog() -> None:
     st.write("Configureer hier de eigen lezingen voor de dienst (minimaal één).")
-    
+
     if "own_readings" not in st.session_state:
         st.session_state["own_readings"] = {rt: {"book": "", "chapter_verses": ""} for rt in READING_TYPES}
-        
-    for rt in READING_TYPES:
+
+    if "own_readings_count" not in st.session_state:
+        st.session_state["own_readings_count"] = 1
+
+    count = st.session_state["own_readings_count"]
+    active_types = READING_TYPES[:count]
+
+    for rt in active_types:
         st.markdown(f"**{rt}**")
         col1, col2 = st.columns([1, 1])
-        
+
         current_data = st.session_state["own_readings"].get(rt, {"book": "", "chapter_verses": ""})
-        
+
         with col1:
-            allowed_books = READING_TYPE_BOOKS.get(rt, BIBLE_BOOKS)
-            book_options = [""] + allowed_books
+            book_options = [""] + BIBLE_BOOKS
             book_index = book_options.index(current_data["book"]) if current_data["book"] in book_options else 0
             st.selectbox(
                 f"Bijbelboek ({rt})",
@@ -78,19 +82,38 @@ def show_own_readings_dialog() -> None:
                 args=(cv_key,),
             )
 
+    btn_col1, btn_col2 = st.columns([1, 1])
+    with btn_col1:
+        if count < len(READING_TYPES):
+            if st.button("+ Lezing toevoegen"):
+                st.session_state["own_readings_count"] = count + 1
+                st.rerun()
+    with btn_col2:
+        if count > 1:
+            if st.button("- Lezing verwijderen"):
+                last_rt = READING_TYPES[count - 1]
+                st.session_state["own_readings"][last_rt] = {"book": "", "chapter_verses": ""}
+                st.session_state.pop(f"book_select_{last_rt}", None)
+                st.session_state.pop(f"cv_input_{last_rt}", None)
+                st.session_state["own_readings_count"] = count - 1
+                st.rerun()
+
     st.markdown("---")
     if st.button("Opslaan en sluiten", type="primary"):
         selected = []
         new_own_readings = {}
         incomplete = []
         for rt in READING_TYPES:
-            book = st.session_state[f"book_select_{rt}"]
-            cv = st.session_state[f"cv_input_{rt}"]
-            new_own_readings[rt] = {"book": book, "chapter_verses": cv}
-            if book and cv:
-                selected.append(f"{book} {cv}")
-            elif book and not cv:
-                incomplete.append(rt)
+            if rt in active_types:
+                book = st.session_state[f"book_select_{rt}"]
+                cv = st.session_state[f"cv_input_{rt}"]
+                new_own_readings[rt] = {"book": book, "chapter_verses": cv}
+                if book and cv:
+                    selected.append(f"{book} {cv}")
+                elif book and not cv:
+                    incomplete.append(rt)
+            else:
+                new_own_readings[rt] = {"book": "", "chapter_verses": ""}
 
         if incomplete:
             st.error(f"Vul ook de hoofdstuk/verzen in voor: {', '.join(incomplete)}.")
@@ -101,7 +124,8 @@ def show_own_readings_dialog() -> None:
             if st.session_state.get("selected_scriptures") != selected:
                 st.session_state["structured_scriptures"] = []
                 st.session_state["scriptures_approved"] = False
-                
+
+            st.session_state["show_readings_dialog"] = False
             st.session_state["own_readings"] = new_own_readings
             st.session_state["selected_scriptures"] = selected
             st.rerun()
@@ -147,6 +171,8 @@ def clean_up_session_state() -> None:
         "scriptures_approved",
         "selected_scripture_id",
         "own_readings",
+        "own_readings_count",
+        "show_readings_dialog",
     ]
     for key in keys_to_remove:
         if key in st.session_state:
@@ -184,6 +210,9 @@ if "structured_scriptures" not in st.session_state:
 
 if "own_readings" not in st.session_state:
     st.session_state["own_readings"] = {rt: {"book": "", "chapter_verses": ""} for rt in READING_TYPES}
+
+if "own_readings_count" not in st.session_state:
+    st.session_state["own_readings_count"] = 1
 
 ### FORM ###
 
@@ -261,7 +290,10 @@ if scriptures_choice == "Eigen lezingen":
         st.info("Er zijn nog geen lezingen toegevoegd.")
         
     if st.button("Lezingen configureren"):
-        show_own_readings_dialog()
+        st.session_state["show_readings_dialog"] = True
+
+if st.session_state.get("show_readings_dialog"):
+    show_own_readings_dialog()
 
 if scriptures_choice == "Eigen lezingen":
     collect_structured_scriptures = st.button("Lezingen ophalen", disabled=not any_lezing)
