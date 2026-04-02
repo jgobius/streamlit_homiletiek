@@ -106,6 +106,7 @@ def aanpassen_dialog(result: dict) -> None:
             
             st.session_state["aanpassen_original"] = None
             st.session_state["aanpassen_result_id"] = None
+            st.session_state["analysis_data_dirty"] = True
             st.toast("Opgeslagen.")
             st.rerun()
         except Exception as e:

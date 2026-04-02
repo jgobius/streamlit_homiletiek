@@ -213,8 +213,15 @@ if not analysis_id:
 # Ensure it's stored in session state for consistency when navigating between internal results
 st.session_state['current_analysis_id'] = analysis_id
 
-analysis_results = get_data(f"api/analysis-results?sermon_analysis_id={analysis_id}")
-sermon_analysis = get_data(f"api/sermon-analyses/{analysis_id}/")
+_data_cache_key = f"overview_data_{analysis_id}"
+if st.session_state.pop("analysis_data_dirty", False) or _data_cache_key not in st.session_state:
+    st.session_state[_data_cache_key] = {
+        "analysis_results": get_data(f"api/analysis-results?sermon_analysis_id={analysis_id}"),
+        "sermon_analysis": get_data(f"api/sermon-analyses/{analysis_id}/"),
+    }
+_cached_data = st.session_state[_data_cache_key]
+analysis_results = _cached_data["analysis_results"]
+sermon_analysis = _cached_data["sermon_analysis"]
 
 if sermon_analysis:
     st.session_state["extra_context"] = sermon_analysis.get("extra_context", "")
@@ -245,7 +252,9 @@ perspect_summary  = sorted([r for r in summary if r["analysis_type"]["name"] in 
 preek_summary     = sorted([r for r in summary if r["analysis_type"]["name"] in _PREEKSCHETSEN_NAMEN], key=_order_key)
 feedback_summary  = sorted([r for r in summary if r["analysis_type"]["name"] in _FEEDBACK_NAMEN], key=_order_key)
 
-all_analysis_types = get_data("api/analysis-types/")
+if "all_analysis_types_cache" not in st.session_state:
+    st.session_state["all_analysis_types_cache"] = get_data("api/analysis-types/")
+all_analysis_types = st.session_state["all_analysis_types_cache"]
 missing_types = sorted(
     [at for at in all_analysis_types if at.get("front_end_name") and at["name"] not in latest],
     key=lambda x: x.get("order", 99),
@@ -568,6 +577,7 @@ def confirm_delete_result(result: dict) -> None:
                 st.session_state.pop("selected_perspect_id", None)
                 st.session_state.pop("selected_preek_id", None)
                 st.session_state.pop("selected_feedback_id", None)
+                st.session_state["analysis_data_dirty"] = True
                 st.rerun()
             except Exception as e:
                 st.error(f"Fout bij verwijderen: {e}")
@@ -707,6 +717,7 @@ def volledige_preek_dialog(analysis_id: int, latest: dict, all_analysis_types: l
                     },
                 )
             st.toast("Preektekst opgeslagen.")
+            st.session_state["analysis_data_dirty"] = True
             st.rerun()
         except Exception as e:
             st.error(f"Fout bij opslaan: {e}")

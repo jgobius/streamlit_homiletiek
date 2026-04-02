@@ -6,6 +6,8 @@ from typing import Any
 import streamlit as st
 import requests
 
+from src.components.user_suggestions import render_suggestions_trigger
+
 BIBLE_BOOKS = [
     "Genesis", "Exodus", "Leviticus", "Numeri", "Deuteronomium", "Jozua", "Rechters", "Ruth", "1 Samuel", "2 Samuel",
     "1 Koningen", "2 Koningen", "1 Kronieken", "2 Kronieken", "Ezra", "Nehemia", "Ester", "Job", "Psalmen", "Spreuken",
@@ -213,6 +215,9 @@ def render_sidebar():
             if current_title == "Uitloggen":
                 label = f":red[{label}]"
             st.page_link(label=label, page=path)
+
+        if "api_handler" in st.session_state:
+            render_suggestions_trigger(st.session_state["api_handler"])
             
 
 def render_analysis_results_sidebar(analysis_results: list[dict[str, Any]]) -> None:
