@@ -1,11 +1,27 @@
 import os
 import json
+import re
 from typing import Any
 
 import streamlit as st
 import requests
 
 from src.components.user_suggestions import render_suggestions_trigger
+
+
+def clean_md(text: str) -> str:
+    """Normaleer LLM-gegenereerde markdown voor robuuste Streamlit-weergave.
+
+    Herstelt:
+    - Letterlijke \\n escape-sequences naar echte newlines
+    - ** tekst ** (spaties binnen bold-markers) naar **tekst**
+    """
+    if not text:
+        return text
+    text = text.replace("\\n", "\n")
+    text = re.sub(r'\*\*[ \t]+(\S)', r'**\1', text)
+    text = re.sub(r'(\S)[ \t]+\*\*', r'\1**', text)
+    return text
 
 
 def redirect_to_login() -> None:
