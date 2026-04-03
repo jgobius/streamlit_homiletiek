@@ -1,3 +1,6 @@
+from typing import Any
+
+import requests
 import os
 import json
 import re
@@ -7,6 +10,23 @@ import streamlit as st
 import requests
 
 from src.components.user_suggestions import render_suggestions_trigger
+
+# Alle bijbelboeken in de Nederlandse volgorde — gebruikt in het eigen-lezingen-dialoogvenster.
+BIBLE_BOOKS = [
+    "Genesis", "Exodus", "Leviticus", "Numeri", "Deuteronomium", "Jozua", "Rechters", "Ruth",
+    "1 Samuel", "2 Samuel", "1 Koningen", "2 Koningen", "1 Kronieken", "2 Kronieken", "Ezra",
+    "Nehemia", "Ester", "Job", "Psalmen", "Spreuken", "Prediker", "Hooglied", "Jesaja",
+    "Jeremia", "Klaagliederen", "Ezechiël", "Daniël", "Hosea", "Joël", "Amos", "Obadja",
+    "Jona", "Micha", "Nahum", "Habakuk", "Sefanja", "Haggai", "Zacharia", "Maleachi",
+    "Mattheüs", "Marcus", "Lucas", "Johannes", "Handelingen", "Romeinen",
+    "1 Korintiërs", "2 Korintiërs", "Galaten", "Efeziërs", "Filippenzen", "Kolossenzen",
+    "1 Tessalonicenzen", "2 Tessalonicenzen", "1 Timoteüs", "2 Timoteüs", "Titus", "Filemon",
+    "Hebreeën", "Jakobus", "1 Petrus", "2 Petrus", "1 Johannes", "2 Johannes", "3 Johannes",
+    "Judas", "Openbaring",
+]
+
+# Lezing-typen voor het eigen-lezingen-dialoogvenster.
+READING_TYPES = ["Eerste lezing", "Tweede lezing", "Derde lezing", "Vierde lezing"]
 
 
 def clean_md(text: str) -> str:
@@ -162,9 +182,9 @@ def render_sidebar():
     
     with st.sidebar:
         
-        with st.expander("Preekanalyses"):
-            st.page_link(label="Overzicht preekanalyses", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
-            st.page_link(label="Nieuwe preekanalyse", page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py")
+        with st.expander("Kerkdienstanalyses"):
+            st.page_link(label="Overzicht kerkdienstanalyses", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
+            st.page_link(label="Nieuwe kerkdienstanalyse", page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py")
             
         with st.expander("Gemeentes"):
             st.page_link(label="Overzicht gemeentes", page=f"{st.session_state['page_navigation_dir']}/churches/churches_overview.py")

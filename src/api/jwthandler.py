@@ -61,6 +61,29 @@ class JwtHandler:
 
         self._get_access_token(username=username, password=password)
 
+    @classmethod
+    def from_refresh_token(
+        cls,
+        refresh_token: str,
+        base_url: str,
+        access_endpoint: str,
+        refresh_endpoint: str,
+        skew_seconds: int = 60,
+    ) -> "JwtHandler":
+        """Herstel een JwtHandler vanuit een opgeslagen refresh token (bijv. uit een browsercookie)."""
+        obj = cls.__new__(cls)
+        obj.base_url = base_url
+        obj.skew_seconds = skew_seconds
+        obj.access_endpoint = access_endpoint
+        obj.refresh_endpoint = refresh_endpoint
+        obj._access_token = None
+        obj._refresh_token = refresh_token
+        # Zet expiry op 0 zodat bij het eerste gebruik van .token direct een refresh plaatsvindt.
+        obj._token_expiry_timestamp = 0
+        obj.authorized = False
+        obj._get_refresh_token()
+        return obj
+
     def post(self, endpoint: str, data: dict[str, Any]) -> dict[str, Any]:
         """
         Send a POST request to the specified endpoint with JSON data.
