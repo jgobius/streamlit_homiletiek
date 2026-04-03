@@ -1,5 +1,4 @@
 import requests
-import time
 
 import streamlit as st
 
@@ -12,26 +11,6 @@ from page_navigation.analysis_results.analyses.liedsuggesties import liedsuggest
 from page_navigation.analysis_results.analyses.structuralistische_exegese import structuralistische_exegese
 from page_navigation.analysis_results.analyses.commentaren import commentaren
 from page_navigation.analysis_results.analyses.theologie import theologie
-
-# Aantal seconden dat een heranalyse-knop geblokkeerd blijft na het indienen
-REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
-
-
-def _reanalysis_is_locked(lock_key: str) -> bool:
-    """Controleer of een heranalyse momenteel geblokkeerd is (te snel opnieuw aangevraagd)."""
-    lock_time = st.session_state.get(lock_key)
-    if lock_time is None:
-        return False
-    if time.time() - lock_time > REANALYSIS_LOCK_TIMEOUT_SECONDS:
-        del st.session_state[lock_key]
-        return False
-    return True
-
-
-def _release_reanalysis_lock(lock_key: str) -> None:
-    """Verwijder een heranalyse-blokkade na een fout zodat de knop weer bruikbaar is."""
-    st.session_state.pop(lock_key, None)
-
 
 redirect_to_login()
 
@@ -83,12 +62,9 @@ def confirm_delete_result(result: dict) -> None:
 def confirm_rerun_analysis(sermon_analysis_id: int, analysis_type_name: str, front_end_name: str) -> None:
     """Bevestigingsdialoog voor het opnieuw uitvoeren van een analyse via de agent."""
     st.write(f"Weet je zeker dat je **'{front_end_name}'** opnieuw wilt uitvoeren? Dit kan enkele minuten duren.")
-    _rerun_lock_key = f"analysis_rerun_lock_{sermon_analysis_id}_{analysis_type_name}"
-    _rerun_locked = _reanalysis_is_locked(_rerun_lock_key)
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Ja, opnieuw uitvoeren", type="primary", use_container_width=True, disabled=_rerun_locked):
-            st.session_state[_rerun_lock_key] = time.time()
+        if st.button("Ja, opnieuw uitvoeren", type="primary", use_container_width=True):
             try:
                 agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
                 response = requests.post(
@@ -106,10 +82,8 @@ def confirm_rerun_analysis(sermon_analysis_id: int, analysis_type_name: str, fro
                 if e.response is not None and e.response.status_code == 409:
                     st.warning(e.response.json().get("detail", "Al gestart, wacht even."))
                 else:
-                    _release_reanalysis_lock(_rerun_lock_key)
                     st.error(f"Fout bij starten analyse: {e}")
             except Exception as e:
-                _release_reanalysis_lock(_rerun_lock_key)
                 st.error(f"Fout bij starten analyse: {e}")
     with col2:
         if st.button("Annuleren", use_container_width=True):
@@ -125,15 +99,12 @@ def confirm_rerun_liedsuggesties(sermon_analysis_id: int) -> None:
         options=all_books,
         format_func=lambda b: b["name"],
     )
-    _lied_lock_key = f"analysis_rerun_lock_{sermon_analysis_id}_liedsuggesties"
-    _lied_locked = _reanalysis_is_locked(_lied_lock_key)
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Uitvoeren", type="primary", use_container_width=True, disabled=_lied_locked):
+        if st.button("Uitvoeren", type="primary", use_container_width=True):
             if not selected:
                 st.warning("Selecteer minimaal één liedbundel.")
                 return
-            st.session_state[_lied_lock_key] = time.time()
             try:
                 agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
                 response = requests.post(
@@ -152,10 +123,8 @@ def confirm_rerun_liedsuggesties(sermon_analysis_id: int) -> None:
                 if e.response is not None and e.response.status_code == 409:
                     st.warning(e.response.json().get("detail", "Al gestart, wacht even."))
                 else:
-                    _release_reanalysis_lock(_lied_lock_key)
                     st.error(f"Fout bij starten analyse: {e}")
             except Exception as e:
-                _release_reanalysis_lock(_lied_lock_key)
                 st.error(f"Fout bij starten analyse: {e}")
     with col2:
         if st.button("Annuleren", use_container_width=True):
