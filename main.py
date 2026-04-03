@@ -21,6 +21,25 @@ def _calc_token_totals(usage: dict) -> tuple[int, int, float]:
     return total_input, total_output, total_cost
 
 
+def _render_token_usage_sidebar() -> None:
+    # Toon het tokenverbruik van de huidige analyse in de sidebar.
+    handler = st.session_state.get('api_handler')
+    if not handler:
+        return
+    analysis_id = st.session_state.get('current_analysis_id')
+    endpoint = f"api/token-usage/?sermon_analysis_id={analysis_id}" if analysis_id else "api/token-usage/"
+    usage = handler.get(endpoint)
+    if not isinstance(usage, dict):
+        return
+    total_input, total_output, total_cost = _calc_token_totals(usage)
+    with st.sidebar:
+        st.divider()
+        st.caption(
+            f"Tokens huidige analyse: {total_input:,} in / {total_output:,} uit  \n"
+            f"Kosten huidige analyse: €{total_cost:.2f}"
+        )
+
+
 def _render_cumulative_token_usage_sidebar() -> None:
     # Toon het cumulatieve tokenverbruik van de ingelogde gebruiker in de sidebar.
     handler = st.session_state.get('api_handler')
@@ -68,6 +87,9 @@ def main():
     else:
         pg = st.navigation(pages, position='hidden')
         pg.run()
+        # Toon tokenverbruik van de huidige analyse op de analyse-overzichtspagina.
+        if pg == analysis_overview_page:
+            _render_token_usage_sidebar()
         # Toon cumulatief tokenverbruik op de hoofdpagina (dashboard).
         if pg == dashboard_page:
             _render_cumulative_token_usage_sidebar()
