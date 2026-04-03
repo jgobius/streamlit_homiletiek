@@ -28,6 +28,7 @@ from page_navigation.analysis_results.analyses.preekschets import preekschets
 from page_navigation.analysis_results.analyses.feedback_analyse import feedback_analyse
 from src.components.user_feedback import render_feedback_trigger
 
+# --- Categorisatie van analyse-types per tabblad ---
 REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
 
 _PERSPECTIEVEN_NAMEN = {
@@ -44,19 +45,10 @@ _VERDIEPING_NAMEN = {
 }
 
 _PREEKSCHETSEN_NAMEN = {
-    "preek_jungel",
-    "preek_fleming_rutledge",
-    "preek_brueggemann_poet",
-    "preek_literair",
-    "preek_noordmans",
-    "preek_kosuke_koyama",
-    "preek_zornberg",
-    "preek_brueggemann",
-    "preek_drewermann",
-    "preek_gardner_taylor",
-    "preek_solle",
-    "preek_peterson",
-    "preek_standup",
+    "preek_jungel", "preek_fleming_rutledge", "preek_brueggemann_poet",
+    "preek_literair", "preek_noordmans", "preek_kosuke_koyama",
+    "preek_zornberg", "preek_brueggemann", "preek_drewermann",
+    "preek_gardner_taylor", "preek_solle", "preek_peterson", "preek_standup",
 }
 
 _FEEDBACK_NAMEN = {
@@ -67,6 +59,49 @@ _FEEDBACK_NAMEN = {
     "feedback_taalhandeling",
 }
 
+# Alle niet-basis namen, gebruikt om basis-analyses te filteren.
+_ALL_NON_BASIS = _PERSPECTIEVEN_NAMEN | _VERDIEPING_NAMEN | _PREEKSCHETSEN_NAMEN | _FEEDBACK_NAMEN
+
+_TABS = ["Basis", "Verdieping", "Perspectieven", "Preekschetsen", "Feedback"]
+
+# Gewenste volgorde van basis-analyses in de zijbalk (conform develop-versie).
+_BASIS_ORDER = [
+    "bijbelteksten",
+    "liturgisch_jaar",
+    "structuralistische_exegese",
+    "theology",
+    "commentaries",
+    "liedsuggesties",
+    "sociaal_maatschappelijk",
+    "waardenorientatie",
+    "geloofsorientatie",
+    "interpretatieve_synthese",
+    "politieke_orientatie",
+    "representatieve_hoorders",
+    "illustraties",
+    "actueel_nieuws",
+    "focus_en_functie",
+    "postille",
+]
+
+
+def _basis_sort_key(name: str) -> int:
+    try:
+        return _BASIS_ORDER.index(name)
+    except ValueError:
+        return len(_BASIS_ORDER)
+
+
+def _deps_ok(at: dict, latest: dict) -> tuple[bool, list[str]]:
+    """Geeft (True, []) als alle vereiste analyses aanwezig zijn, anders (False, [display namen])."""
+    deps = at.get("depends_on") or []
+    ontbrekend = []
+    for dep in deps:
+        dep_name = dep.get("name") if isinstance(dep, dict) else dep
+        dep_label = dep.get("front_end_name") if isinstance(dep, dict) else dep_name
+        if dep_name and dep_name not in latest:
+            ontbrekend.append(dep_label or dep_name)
+    return (len(ontbrekend) == 0, ontbrekend)
 _TABS = ["Basis", "Verdieping", "Perspectieven", "Preekschetsen", "Feedback"]
 
 _BASIS_ORDER = [
@@ -196,15 +231,167 @@ def _render_preekschets_result(selected_preek: dict, latest: dict) -> None:
 
 redirect_to_login()
 
+# Haal analysis_id op uit query-params of session_state.
 analysis_id = st.query_params.get('analysis_id') or st.session_state.get('current_analysis_id')
 
-# Initialize tab state before sidebar renders
+with st.sidebar:
+    st.page_link(label="< Terug", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
+
+if not analysis_id:
+    st.warning("Geen analyse geselecteerd. Ga terug naar het overzicht en selecteer een analyse.")
+    st.stop()
+
+st.session_state['current_analysis_id'] = analysis_id
+
+analysis_results = get_data(f"api/analysis-results?sermon_analysis_id={analysis_id}")
+
+# Houd per analysis_type alleen de nieuwste (hoogste id).
+latest: dict[str, dict] = {}
+for r in analysis_results:
+    name = r['analysis_type']['name']
+    if name not in latest or r['id'] > latest[name]['id']:
+        latest[name] = r
+
+# Splits resultaten op per tabblad, gesorteerd op de gewenste volgorde.
+_order_key = lambda r: r["analysis_type"].get("order", 99)
+analyse_summary  = sorted(
+    [r for r in latest.values() if r["analysis_type"]["name"] not in _ALL_NON_BASIS],
+    key=lambda r: _basis_sort_key(r["analysis_type"]["name"]),
+)
+verdiep_summary  = sorted([r for r in latest.values() if r["analysis_type"]["name"] in _VERDIEPING_NAMEN], key=_order_key)
+perspect_summary = sorted([r for r in latest.values() if r["analysis_type"]["name"] in _PERSPECTIEVEN_NAMEN], key=_order_key)
+preek_summary    = sorted([r for r in latest.values() if r["analysis_type"]["name"] in _PREEKSCHETSEN_NAMEN], key=_order_key)
+feedback_summary = sorted([r for r in latest.values() if r["analysis_type"]["name"] in _FEEDBACK_NAMEN], key=_order_key)
+# volledige_preek wordt niet in de navigatie getoond, maar apart beheerd.
+feedback_nav_summary = [r for r in feedback_summary if r["analysis_type"]["name"] != "volledige_preek"]
+
+# Haal alle bekende analyse-types op om vergrendelde knoppen te tonen voor
+# analyses die nog niet gedraaid zijn.
+if "all_analysis_types_cache" not in st.session_state:
+    st.session_state["all_analysis_types_cache"] = get_data("api/analysis-types/") or []
+all_analysis_types: list = st.session_state["all_analysis_types_cache"]
+
+# Typen die nog niet in de resultaten zitten.
+missing_types = sorted(
+    [at for at in all_analysis_types if at.get("front_end_name") and at["name"] not in latest],
+    key=lambda x: x.get("order", 99),
+)
+analyse_missing      = sorted([at for at in missing_types if at["name"] not in _ALL_NON_BASIS], key=lambda at: _basis_sort_key(at["name"]))
+verdiep_missing      = [at for at in missing_types if at["name"] in _VERDIEPING_NAMEN]
+perspect_missing     = [at for at in missing_types if at["name"] in _PERSPECTIEVEN_NAMEN]
+preek_missing        = [at for at in missing_types if at["name"] in _PREEKSCHETSEN_NAMEN]
+feedback_nav_missing = [at for at in missing_types if at["name"] in _FEEDBACK_NAMEN and at["name"] != "volledige_preek"]
+
+# Bewaar geselecteerde analyse-id per tabblad in session_state.
+if "selected_analysis_id" not in st.session_state or \
+        st.session_state["selected_analysis_id"] not in {r["id"] for r in analyse_summary}:
+    st.session_state["selected_analysis_id"] = analyse_summary[0]["id"] if analyse_summary else None
+
+if "selected_verdiep_id" not in st.session_state or \
+        st.session_state["selected_verdiep_id"] not in {r["id"] for r in verdiep_summary}:
+    st.session_state["selected_verdiep_id"] = verdiep_summary[0]["id"] if verdiep_summary else None
+
+if "selected_perspect_id" not in st.session_state or \
+        st.session_state["selected_perspect_id"] not in {r["id"] for r in perspect_summary}:
+    st.session_state["selected_perspect_id"] = perspect_summary[0]["id"] if perspect_summary else None
+
+if "selected_preek_id" not in st.session_state or \
+        st.session_state["selected_preek_id"] not in {r["id"] for r in preek_summary}:
+    st.session_state["selected_preek_id"] = preek_summary[0]["id"] if preek_summary else None
+
+if "selected_feedback_id" not in st.session_state or \
+        st.session_state["selected_feedback_id"] not in {r["id"] for r in feedback_nav_summary}:
+    st.session_state["selected_feedback_id"] = feedback_nav_summary[0]["id"] if feedback_nav_summary else None
+
+# Huidig tabblad wordt bewaard in session_state zodat de zijbalk weet wat te tonen.
 if 'current_tab' not in st.session_state:
     st.session_state['current_tab'] = 'Basis'
 current_tab = st.session_state.get('current_tab', 'Basis')
 
+# --- Zijbalk: tab-afhankelijke navigatieknoppen met slotjes ---
 with st.sidebar:
-    st.page_link(label="< Terug", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
+    if current_tab == "Basis":
+        # Beschikbare analyses: klikbare navigatieknoppen.
+        for r in analyse_summary:
+            label = r["analysis_type"]["front_end_name"]
+            is_selected = r["id"] == st.session_state["selected_analysis_id"]
+            if st.button(label, key=f"nav_{r['id']}", use_container_width=True,
+                         type="primary" if is_selected else "secondary"):
+                st.session_state["selected_analysis_id"] = r["id"]
+                st.session_state['current_tab'] = current_tab
+                st.rerun()
+        # Ontbrekende analyses: vergrendelde knoppen (nog niet gedraaid in de backend).
+        for at in analyse_missing:
+            _ok, _ontbr = _deps_ok(at, latest)
+            _label = f"🔒 {at['front_end_name']}"
+            _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else "Nog niet beschikbaar"
+            st.button(_label, key=f"lock_{at['name']}", use_container_width=True,
+                      disabled=True, help=_help, type="secondary")
+
+    elif current_tab == "Verdieping":
+        for r in verdiep_summary:
+            label = r["analysis_type"]["front_end_name"]
+            is_selected = r["id"] == st.session_state["selected_verdiep_id"]
+            if st.button(label, key=f"vnav_{r['id']}", use_container_width=True,
+                         type="primary" if is_selected else "secondary"):
+                st.session_state["selected_verdiep_id"] = r["id"]
+                st.session_state['current_tab'] = current_tab
+                st.rerun()
+        for at in verdiep_missing:
+            _ok, _ontbr = _deps_ok(at, latest)
+            _label = f"🔒 {at['front_end_name']}"
+            _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else "Nog niet beschikbaar"
+            st.button(_label, key=f"vlock_{at['name']}", use_container_width=True,
+                      disabled=True, help=_help, type="secondary")
+
+    elif current_tab == "Perspectieven":
+        for r in perspect_summary:
+            label = r["analysis_type"]["front_end_name"]
+            is_selected = r["id"] == st.session_state["selected_perspect_id"]
+            if st.button(label, key=f"pnav_{r['id']}", use_container_width=True,
+                         type="primary" if is_selected else "secondary"):
+                st.session_state["selected_perspect_id"] = r["id"]
+                st.session_state['current_tab'] = current_tab
+                st.rerun()
+        for at in perspect_missing:
+            _ok, _ontbr = _deps_ok(at, latest)
+            _label = f"🔒 {at['front_end_name']}"
+            _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else "Nog niet beschikbaar"
+            st.button(_label, key=f"plock_{at['name']}", use_container_width=True,
+                      disabled=True, help=_help, type="secondary")
+
+    elif current_tab == "Preekschetsen":
+        for r in preek_summary:
+            label = r["analysis_type"]["front_end_name"]
+            is_selected = r["id"] == st.session_state["selected_preek_id"]
+            if st.button(label, key=f"pknav_{r['id']}", use_container_width=True,
+                         type="primary" if is_selected else "secondary"):
+                st.session_state["selected_preek_id"] = r["id"]
+                st.session_state['current_tab'] = current_tab
+                st.rerun()
+        for at in preek_missing:
+            _ok, _ontbr = _deps_ok(at, latest)
+            _label = f"🔒 {at['front_end_name']}"
+            _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else "Nog niet beschikbaar"
+            st.button(_label, key=f"pklock_{at['name']}", use_container_width=True,
+                      disabled=True, help=_help, type="secondary")
+
+    elif current_tab == "Feedback":
+        for r in feedback_nav_summary:
+            label = r["analysis_type"]["front_end_name"]
+            is_selected = r["id"] == st.session_state["selected_feedback_id"]
+            if st.button(label, key=f"fbnav_{r['id']}", use_container_width=True,
+                         type="primary" if is_selected else "secondary"):
+                st.session_state["selected_feedback_id"] = r["id"]
+                st.session_state['current_tab'] = current_tab
+                st.rerun()
+        for at in feedback_nav_missing:
+            _ok, _ontbr = _deps_ok(at, latest)
+            _label = f"🔒 {at['front_end_name']}"
+            _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else "Nog niet beschikbaar"
+            st.button(_label, key=f"fblock_{at['name']}", use_container_width=True,
+                      disabled=True, help=_help, type="secondary")
+
 
 if not analysis_id:
     st.warning("Geen analyse geselecteerd. Ga terug naar het overzicht en selecteer een analyse.")
@@ -559,218 +746,40 @@ def preekschets_selectie_dialog(analysis_id: int, latest: dict, perspect_summary
         st.rerun()
 
 
-@st.dialog("Analyse-element verwijderen")
-def confirm_delete_result(result: dict) -> None:
-    label = result["analysis_type"]["front_end_name"]
-    st.write(f"Weet je zeker dat je **'{label}'** wilt verwijderen? Dit kan niet ongedaan worden gemaakt.")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Ja, verwijderen", type="primary", use_container_width=True):
-            try:
-                handler = st.session_state['api_handler']
-                sermon_analysis_id = result["sermon_analysis"]["id"]
-                url = f"{handler.base_url}/api/analysis-results/{result['id']}/?sermon_analysis_id={sermon_analysis_id}"
-                headers = {"Authorization": f"Bearer {handler.jwt_handler.token}"}
-                requests.delete(url, headers=headers).raise_for_status()
-                st.session_state.pop("selected_analysis_id", None)
-                st.session_state.pop("selected_verdiep_id", None)
-                st.session_state.pop("selected_perspect_id", None)
-                st.session_state.pop("selected_preek_id", None)
-                st.session_state.pop("selected_feedback_id", None)
-                st.session_state["analysis_data_dirty"] = True
-                st.rerun()
-            except Exception as e:
-                st.error(f"Fout bij verwijderen: {e}")
-    with col2:
-        if st.button("Annuleren", use_container_width=True):
-            st.rerun()
-
-
-@st.dialog("Analyse opnieuw uitvoeren")
-def confirm_rerun_analysis(sermon_analysis_id: int, analysis_type_name: str, front_end_name: str) -> None:
-    st.write(f"Weet je zeker dat je **'{front_end_name}'** opnieuw wilt uitvoeren? Dit kan enkele minuten duren.")
-    _rerun_lock_key = f"analysis_rerun_lock_{sermon_analysis_id}_{analysis_type_name}"
-    _rerun_locked = _reanalysis_is_locked(_rerun_lock_key)
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Ja, opnieuw uitvoeren", type="primary", use_container_width=True, disabled=_rerun_locked):
-            st.session_state[_rerun_lock_key] = time.time()
-            try:
-                agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
-                response = requests.post(
-                    f"{agent_url}/run_single_analysis/",
-                    json={
-                        "sermon_analysis_id": sermon_analysis_id,
-                        "analysis_type_name": analysis_type_name,
-                    },
-                    timeout=10,
-                )
-                response.raise_for_status()
-                st.toast(f"'{front_end_name}' wordt opnieuw uitgevoerd. Ververs de pagina over enkele minuten.")
-                st.rerun()
-            except requests.exceptions.HTTPError as e:
-                if e.response is not None and e.response.status_code == 409:
-                    st.warning(e.response.json().get("detail", "Al gestart, wacht even."))
-                else:
-                    _release_reanalysis_lock(_rerun_lock_key)
-                    st.error(f"Fout bij starten analyse: {e}")
-            except Exception as e:
-                _release_reanalysis_lock(_rerun_lock_key)
-                st.error(f"Fout bij starten analyse: {e}")
-    with col2:
-        if st.button("Annuleren", use_container_width=True):
-            st.rerun()
-
-
-@st.dialog("Liedsuggesties opnieuw uitvoeren")
-def confirm_rerun_liedsuggesties(sermon_analysis_id: int) -> None:
-    all_books = get_data("api/song-books/")
-    selected = st.multiselect(
-        "Selecteer liedbundels (20 suggesties per bundel):",
-        options=all_books,
-        format_func=lambda b: b["name"],
-    )
-    _lied_lock_key = f"analysis_rerun_lock_{sermon_analysis_id}_liedsuggesties"
-    _lied_locked = _reanalysis_is_locked(_lied_lock_key)
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Uitvoeren", type="primary", use_container_width=True, disabled=_lied_locked):
-            if not selected:
-                st.warning("Selecteer minimaal één liedbundel.")
-                return
-            st.session_state[_lied_lock_key] = time.time()
-            try:
-                agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
-                response = requests.post(
-                    f"{agent_url}/run_single_analysis/",
-                    json={
-                        "sermon_analysis_id": sermon_analysis_id,
-                        "analysis_type_name": "liedsuggesties",
-                        "song_books": [b["id"] for b in selected],
-                    },
-                    timeout=10,
-                )
-                response.raise_for_status()
-                st.toast("Liedsuggesties worden opnieuw uitgevoerd. Ververs de pagina over enkele minuten.")
-                st.rerun()
-            except requests.exceptions.HTTPError as e:
-                if e.response is not None and e.response.status_code == 409:
-                    st.warning(e.response.json().get("detail", "Al gestart, wacht even."))
-                else:
-                    _release_reanalysis_lock(_lied_lock_key)
-                    st.error(f"Fout bij starten analyse: {e}")
-            except Exception as e:
-                _release_reanalysis_lock(_lied_lock_key)
-                st.error(f"Fout bij starten analyse: {e}")
-    with col2:
-        if st.button("Annuleren", use_container_width=True):
-            st.rerun()
-
-
-@st.dialog("Eigen preek invoeren", width="large")
-def volledige_preek_dialog(analysis_id: int, latest: dict, all_analysis_types: list) -> None:
-    """Popup voor het invoeren of bewerken van de volledige preektekst."""
-    existing = latest.get("volledige_preek")
-    existing_result = existing.get("result", {}) if existing else {}
-    if not isinstance(existing_result, dict):
-        existing_result = {}
-
-    titel = existing_result.get("titel", "")
-    ondertitel = existing_result.get("ondertitel", "")
-    preektekst = existing_result.get("preektekst", "")
-
-    st.caption("Voer de preektekst in (kopieer/plak uit tekstverwerker of schrijf direct).")
-
-    new_titel = st.text_input("Titel", value=titel,
-                              placeholder="bijv. Het brood dat leven geeft")
-    new_ondertitel = st.text_input("Ondertitel", value=ondertitel,
-                                   placeholder="bijv. Johannes 6:35 — preek gehouden op 30 maart 2025")
-    new_preektekst = st.text_area("Preektekst", value=preektekst, height=500,
-                                  placeholder="Plak hier de volledige uitgeschreven preektekst...")
-
-    _kan_opslaan = bool(new_preektekst.strip())
-    if st.button("Opslaan", type="primary", use_container_width=True, disabled=not _kan_opslaan):
-        updated = {
-            **existing_result,
-            "titel": new_titel,
-            "ondertitel": new_ondertitel,
-            "preektekst": new_preektekst,
-        }
-        try:
-            handler = st.session_state["api_handler"]
-            if existing:
-                handler.patch(
-                    f"api/analysis-results/{existing['id']}/?sermon_analysis_id={analysis_id}",
-                    data={"result": updated},
-                )
-            else:
-                vp_at = next((x for x in all_analysis_types if x["name"] == "volledige_preek"), None)
-                if not vp_at:
-                    st.error("Analyse-type 'volledige_preek' niet gevonden. Voer init_feedback.py uit.")
-                    return
-                handler.post(
-                    "api/analysis-results/",
-                    data={
-                        "analysis_type": vp_at["id"],
-                        "sermon_analysis": analysis_id,
-                        "result": updated,
-                    },
-                )
-            st.toast("Preektekst opgeslagen.")
-            st.session_state["analysis_data_dirty"] = True
-            st.rerun()
-        except Exception as e:
-            st.error(f"Fout bij opslaan: {e}")
-
-
-# --- Main content ---
-
+# --- Tabbladnavigatie ---
 st.segmented_control(
     "Tabblad",
     _TABS,
     key="current_tab",
     label_visibility="collapsed",
 )
-# Re-read after widget render (widget may have updated the value this run)
+# Herlaad na de widget-render zodat de widget-waarde van deze render gebruikt wordt.
 current_tab = st.session_state.get('current_tab', 'Basis')
 
+if not analysis_results:
+    st.info("Bijbelteksten wordt geanalyseerd. Ververs de pagina over enkele minuten.")
+    st.stop()
+
+# --- Hoofdinhoud per tabblad ---
 if current_tab == "Basis":
     selected_analysis = next(
         (r for r in analyse_summary if r["id"] == st.session_state["selected_analysis_id"]), None
     )
-
     if not selected_analysis:
         st.stop()
 
-    st.header(selected_analysis["analysis_type"]["front_end_name"])
+    _, btn_col = st.columns([7, 3])
+    with btn_col:
+        if st.button("Extra context", icon="✏️", use_container_width=True):
+            extra_context_dialog()
 
-    col_del, col_rerun, col_ctx, col_info = st.columns([3, 3, 3, 1])
-    with col_del:
-        if st.button("Verwijder", icon="🗑️"):
-            confirm_delete_result(selected_analysis)
-    with col_rerun:
-        if st.button("Opnieuw", icon="🔄"):
-            if selected_analysis["analysis_type"]["name"] == "liedsuggesties":
-                confirm_rerun_liedsuggesties(sermon_analysis_id=int(analysis_id))
-            else:
-                confirm_rerun_analysis(
-                    sermon_analysis_id=int(analysis_id),
-                    analysis_type_name=selected_analysis["analysis_type"]["name"],
-                    front_end_name=selected_analysis["analysis_type"]["front_end_name"],
-                )
-    with col_ctx:
-        if st.button("Aanpassen", icon="✏️"):
-            aanpassen_dialog(selected_analysis)
-    with col_info:
-        _desc = selected_analysis["analysis_type"].get("description")
-        if _desc:
-            with st.popover("ℹ️", use_container_width=False):
-                st.markdown(_desc)
+    if st.session_state.get("extra_context"):
+        st.info(f"**Extra context:** {st.session_state['extra_context']}")
 
     analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")
 
     if analysis_type_name == "postille":
-        postille(selected_analysis, latest_results=latest)
+        postille(selected_analysis)
     elif analysis_type_name == "bijbelteksten":
         bijbelteksten(selected_analysis)
     elif analysis_type_name == "liturgisch_jaar":
@@ -783,209 +792,35 @@ if current_tab == "Basis":
         commentaren(selected_analysis)
     elif analysis_type_name == "theology":
         theologie(selected_analysis)
-    elif analysis_type_name == "sociaal_maatschappelijk":
-        sociaal_maatschappelijk(selected_analysis)
-    elif analysis_type_name == "waardenorientatie":
-        waardenorientatie(selected_analysis)
-    elif analysis_type_name == "geloofsorientatie":
-        geloofsorientatie(selected_analysis)
-    elif analysis_type_name == "interpretatieve_synthese":
-        interpretatieve_synthese(selected_analysis)
-    elif analysis_type_name == "actueel_nieuws":
-        actueel_nieuws(selected_analysis)
-    elif analysis_type_name == "focus_en_functie":
-        focus_en_functie(selected_analysis)
-    elif analysis_type_name == "representatieve_hoorders":
-        representatieve_hoorders(selected_analysis)
-    elif analysis_type_name == "illustraties":
-        illustraties(selected_analysis)
-    elif analysis_type_name == "politieke_orientatie":
-        politieke_orientatie(selected_analysis)
-
-    render_feedback_trigger(
-        analysis_result_id=selected_analysis["id"],
-        section_name=selected_analysis["analysis_type"]["front_end_name"],
-        handler=st.session_state["api_handler"],
-        key=f"feedback_basis_{selected_analysis['id']}",
-    )
 
 elif current_tab == "Verdieping":
     selected_verdiep = next(
         (r for r in verdiep_summary if r["id"] == st.session_state["selected_verdiep_id"]), None
     )
-
     if not verdiep_summary:
-        st.info("Nog geen verdieping beschikbaar. Voeg ze toe via 'Verdieping toevoegen' in de zijbalk.")
-    else:
-        if selected_verdiep:
-            st.header(selected_verdiep["analysis_type"]["front_end_name"])
-        col_del, col_rerun, col_ctx, col_info = st.columns([3, 3, 3, 1])
-        with col_del:
-            if selected_verdiep and st.button("Verwijder", icon="🗑️", key="v_del"):
-                confirm_delete_result(selected_verdiep)
-        with col_rerun:
-            if st.button("Opnieuw", icon="🔄", key="v_rerun"):
-                confirm_rerun_analysis(
-                    sermon_analysis_id=int(analysis_id),
-                    analysis_type_name=selected_verdiep["analysis_type"]["name"] if selected_verdiep else "",
-                    front_end_name=selected_verdiep["analysis_type"]["front_end_name"] if selected_verdiep else "",
-                )
-        with col_ctx:
-            if st.button("Aanpassen", icon="✏️", key="v_ctx"):
-                aanpassen_dialog(selected_verdiep)
-        with col_info:
-            _desc = selected_verdiep["analysis_type"].get("description") if selected_verdiep else None
-            if _desc:
-                with st.popover("ℹ️", use_container_width=False):
-                    st.markdown(_desc)
-
-        if selected_verdiep:
-            verdieping(selected_verdiep, analysis_type_name=selected_verdiep["analysis_type"]["name"])
-            render_feedback_trigger(
-                analysis_result_id=selected_verdiep["id"],
-                section_name=selected_verdiep["analysis_type"]["front_end_name"],
-                handler=st.session_state["api_handler"],
-                key=f"feedback_verdiep_{selected_verdiep['id']}",
-            )
+        st.info("Nog geen verdieping beschikbaar.")
+    # Render-functies voor verdieping worden in een volgende versie toegevoegd.
 
 elif current_tab == "Perspectieven":
     selected_perspect = next(
         (r for r in perspect_summary if r["id"] == st.session_state["selected_perspect_id"]), None
     )
-
     if not perspect_summary:
-        st.info("Nog geen perspectieven beschikbaar. Voeg ze toe via 'Perspectief toevoegen' in de zijbalk.")
-    else:
-        if selected_perspect:
-            st.header(selected_perspect["analysis_type"]["front_end_name"])
-        col_del, col_rerun, col_ctx, col_info = st.columns([3, 3, 3, 1])
-        with col_del:
-            if selected_perspect and st.button("Verwijder", icon="🗑️", key="p_del"):
-                confirm_delete_result(selected_perspect)
-        with col_rerun:
-            if st.button("Opnieuw", icon="🔄", key="p_rerun"):
-                confirm_rerun_analysis(
-                    sermon_analysis_id=int(analysis_id),
-                    analysis_type_name=selected_perspect["analysis_type"]["name"] if selected_perspect else "",
-                    front_end_name=selected_perspect["analysis_type"]["front_end_name"] if selected_perspect else "",
-                )
-        with col_ctx:
-            if st.button("Aanpassen", icon="✏️", key="p_ctx"):
-                aanpassen_dialog(selected_perspect)
-        with col_info:
-            _desc = selected_perspect["analysis_type"].get("description") if selected_perspect else None
-            if _desc:
-                with st.popover("ℹ️", use_container_width=False):
-                    st.markdown(_desc)
-
-        if selected_perspect:
-            contextduiding(selected_perspect)
-            render_feedback_trigger(
-                analysis_result_id=selected_perspect["id"],
-                section_name=selected_perspect["analysis_type"]["front_end_name"],
-                handler=st.session_state["api_handler"],
-                key=f"feedback_perspect_{selected_perspect['id']}",
-            )
+        st.info("Nog geen perspectieven beschikbaar.")
+    # Render-functies voor perspectieven worden in een volgende versie toegevoegd.
 
 elif current_tab == "Preekschetsen":
-    _selectie = st.session_state.get(f"preek_selectie_{analysis_id}", {})
-    if st.button("Selectie instellen / wijzigen", icon="✏️"):
-        preekschets_selectie_dialog(int(analysis_id), latest, perspect_summary)
-    if _selectie.get("opgeslagen"):
-        _kt = _selectie.get("kernteksten", [])
-        _fo = _selectie.get("focus_optie")
-        _n_persp = sum(len(v) for v in _selectie.get("perspectieven", {}).values())
-        _n_ill = len(_selectie.get("illustraties", []))
-        _n_hoord = len(_selectie.get("hoorders", []))
-        st.caption(
-            f"Opgeslagen: {len(_kt)} kerntekst(en) · focus optie {_fo} · "
-            f"{_n_persp} perspectief-onderdelen · {_n_ill} illustraties · {_n_hoord} hoorders"
-        )
-
     selected_preek = next(
         (r for r in preek_summary if r["id"] == st.session_state["selected_preek_id"]), None
     )
-
     if not preek_summary:
-        st.info("Nog geen preekschetsen beschikbaar. Stel eerst de selectie in via de knop hierboven, voeg dan een preekschets toe via de zijbalk.")
-    else:
-        if selected_preek:
-            st.header(selected_preek["analysis_type"]["front_end_name"])
-        col_del, col_rerun, col_ctx, col_info = st.columns([3, 3, 3, 1])
-        with col_del:
-            if selected_preek and st.button("Verwijder", icon="🗑️", key="pk_del"):
-                confirm_delete_result(selected_preek)
-        with col_rerun:
-            if st.button("Opnieuw", icon="🔄", key="pk_rerun"):
-                confirm_rerun_analysis(
-                    sermon_analysis_id=int(analysis_id),
-                    analysis_type_name=selected_preek["analysis_type"]["name"] if selected_preek else "",
-                    front_end_name=selected_preek["analysis_type"]["front_end_name"] if selected_preek else "",
-                )
-        with col_ctx:
-            if st.button("Aanpassen", icon="✏️", key="pk_ctx"):
-                aanpassen_dialog(selected_preek)
-        with col_info:
-            _desc = selected_preek["analysis_type"].get("description") if selected_preek else None
-            if _desc:
-                with st.popover("ℹ️", use_container_width=False):
-                    st.markdown(_desc)
-
-        if selected_preek:
-            _render_preekschets_result(selected_preek, latest)
-            render_feedback_trigger(
-                analysis_result_id=selected_preek["id"],
-                section_name=selected_preek["analysis_type"]["front_end_name"],
-                handler=st.session_state["api_handler"],
-                key=f"feedback_preek_{selected_preek['id']}",
-            )
+        st.info("Nog geen preekschetsen beschikbaar.")
+    # Render-functies voor preekschetsen worden in een volgende versie toegevoegd.
 
 elif current_tab == "Feedback":
-    if st.button("Eigen preek invoeren", icon="✏️"):
-        volledige_preek_dialog(int(analysis_id), latest, all_analysis_types)
-    _vp = latest.get("volledige_preek")
-    if _vp:
-        _vp_titel = _vp.get("result", {}).get("titel", "") if isinstance(_vp.get("result"), dict) else ""
-        if _vp_titel:
-            st.caption(f"Opgeslagen: {_vp_titel[:50]}")
-
     selected_feedback = next(
         (r for r in feedback_nav_summary if r["id"] == st.session_state["selected_feedback_id"]), None
     )
-
     if not feedback_nav_summary:
-        if not latest.get("volledige_preek"):
-            st.info("Voer eerst een preektekst in of genereer deze via de knop hierboven.")
-        else:
-            st.info("Voeg feedbackanalyses toe via 'Feedback toevoegen' in de zijbalk.")
-    else:
-        if selected_feedback:
-            st.header(selected_feedback["analysis_type"]["front_end_name"])
-        col_del, col_rerun, col_ctx, col_info = st.columns([3, 3, 3, 1])
-        with col_del:
-            if selected_feedback and st.button("Verwijder", icon="🗑️", key="fb_del"):
-                confirm_delete_result(selected_feedback)
-        with col_rerun:
-            if st.button("Opnieuw", icon="🔄", key="fb_rerun"):
-                confirm_rerun_analysis(
-                    sermon_analysis_id=int(analysis_id),
-                    analysis_type_name=selected_feedback["analysis_type"]["name"] if selected_feedback else "",
-                    front_end_name=selected_feedback["analysis_type"]["front_end_name"] if selected_feedback else "",
-                )
-        with col_ctx:
-            if st.button("Aanpassen", icon="✏️", key="fb_ctx"):
-                aanpassen_dialog(selected_feedback)
-        with col_info:
-            _desc = selected_feedback["analysis_type"].get("description") if selected_feedback else None
-            if _desc:
-                with st.popover("ℹ️", use_container_width=False):
-                    st.markdown(_desc)
-
-        if selected_feedback:
-            feedback_analyse(selected_feedback)
-            render_feedback_trigger(
-                analysis_result_id=selected_feedback["id"],
-                section_name=selected_feedback["analysis_type"]["front_end_name"],
-                handler=st.session_state["api_handler"],
-                key=f"feedback_fb_{selected_feedback['id']}",
-            )
+        st.info("Nog geen feedback-analyses beschikbaar.")
+    # Render-functies voor feedback worden in een volgende versie toegevoegd.
