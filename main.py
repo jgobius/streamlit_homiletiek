@@ -38,6 +38,8 @@ def _try_restore_session(controller: CookieController) -> bool:
 
 
 def main():
+    # Stel paginatitel en favicon in (oranje kruis-icoon).
+    st.set_page_config(page_icon="static/favicon.png")
     # Initialiseer de cookie controller en sla hem op in session_state zodat
     # andere pagina's hem kunnen ophalen zonder hem opnieuw te initialiseren.
     controller = CookieController()
