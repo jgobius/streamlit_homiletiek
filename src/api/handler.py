@@ -126,6 +126,17 @@ class APIHandler:
         response.raise_for_status()
         return response.json()
 
+    def delete(self, endpoint: str, timeout: int = 30) -> None:
+        # Verwijder de resource op het opgegeven endpoint.
+        # timeout=30 is voldoende voor DELETE-verzoeken die geen zware verwerking vereisen.
+        url = f"{self.base_url}/{endpoint}"
+        headers = {
+            "Authorization": f"Bearer {self.jwt_handler.token}",
+            "Content-Type": "application/json",
+        }
+        response = requests.delete(url, headers=headers, timeout=timeout)
+        response.raise_for_status()
+
     def patch(
         self, endpoint: str, data: dict[str, Any]
     ) -> dict[str, Any]:
