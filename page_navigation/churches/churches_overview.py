@@ -6,8 +6,8 @@ redirect_to_login()
 
 
 churches = get_churches()
-st.title("Overzicht van gemeentes")
-st.write("Hieronder vind je een overzicht van alle toegevoegde gemeentes.")
+st.title("Overzicht van gemeenten")
+st.write("Hieronder vind je een overzicht van alle toegevoegde gemeenten.")
 
 for church in churches:
     name = church['name']

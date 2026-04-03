@@ -26,7 +26,7 @@ col1, col2 = st.columns([11,1], vertical_alignment='bottom')
 
 with col1:
     selected_church = st.selectbox(
-        "Selecteer de gemeente voor deze preekanalyse",
+        "Selecteer de gemeente voor deze kerkdienstanalyse",
         options=churches,
         format_func=lambda church: church['name'])
 
@@ -36,7 +36,7 @@ with col2:
 if new_church:
     st.switch_page(f"{st.session_state['page_navigation_dir']}/churches/new_church.py", query_params={'from_page': 'new_analysis.py'})
 
-title = st.text_input("Thema van de preekanalyse (optioneel)", max_chars=64)
+title = st.text_input("Thema van de kerkdienstanalyse (optioneel)", max_chars=64)
 sermon_date = st.date_input("Datum van de preek", format="DD-MM-YYYY")
 song_books = st.multiselect(
     "Selecteer de liedboeken die in deze preek gebruikt worden (optioneel):",
