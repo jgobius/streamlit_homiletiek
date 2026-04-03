@@ -40,8 +40,8 @@ def set_scripture(scriptures: list[dict[str, Any]]) -> str:
 
 analysis = get_data("api/sermon-analyses/")
 
-st.title("Preekanalyses")
-st.write("Overzicht van alle preekanalyses.")
+st.title("Kerkdienstanalyses")
+st.write("Overzicht van alle kerkdienstanalyses.")
 
 new_analysis = st.button("Nieuwe analyse", type="primary")
 
@@ -51,7 +51,7 @@ if new_analysis:
     )
 
 if len(analysis) == 0:
-    st.info("Er zijn nog geen preekanalyses gestart.")
+    st.info("Er zijn nog geen kerkdienstanalyses gestart.")
 else:
     with st.container():
         for item in analysis:
