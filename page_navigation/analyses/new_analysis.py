@@ -129,7 +129,6 @@ def _show_own_readings_dialog() -> None:
                 st.session_state["structured_scriptures"] = []
                 st.session_state["scriptures_approved"] = False
 
-            st.session_state["show_readings_dialog"] = False
             st.session_state["own_readings"] = new_own_readings
             st.session_state["selected_scriptures"] = selected
             st.rerun()
@@ -163,7 +162,7 @@ def _clean_up_session_state() -> None:
     """Verwijder alle analyse-gerelateerde session state na het indienen van het formulier."""
     for key in [
         "selected_scriptures", "structured_scriptures", "scriptures_approved",
-        "selected_scripture_id", "own_readings", "own_readings_count", "show_readings_dialog",
+        "selected_scripture_id", "own_readings", "own_readings_count",
     ]:
         st.session_state.pop(key, None)
 
@@ -348,13 +347,11 @@ if scriptures_choice == "Eigen lezingen":
     if not any_lezing:
         st.info("Er zijn nog geen lezingen toegevoegd.")
 
-    # Knop opent het dialoogvenster voor het configureren van eigen lezingen
+    # Knop opent het dialoogvenster direct — geen session_state-vlag nodig.
+    # Een vlag in session_state blijft actief bij elke rerun, waardoor de popup
+    # steeds opnieuw verschijnt als de gebruiker iets op de pagina wijzigt.
     if st.button("Lezingen configureren"):
-        st.session_state["show_readings_dialog"] = True
-
-# Dialoogvenster tonen als de vlag gezet is
-if st.session_state.get("show_readings_dialog"):
-    _show_own_readings_dialog()
+        _show_own_readings_dialog()
 
 if scriptures_choice == "Eigen lezingen":
     collect_structured_scriptures = st.button("Lezingen ophalen", disabled=not any_lezing)
