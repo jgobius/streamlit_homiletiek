@@ -5,6 +5,8 @@ from typing import Any
 import streamlit as st
 import requests
 
+from src.components.user_suggestions import render_suggestions_trigger
+
 
 def redirect_to_login() -> None:
     """
@@ -154,7 +156,11 @@ def render_sidebar():
             
         with st.expander("Account"):
             st.page_link(label="Uitloggen", page=f"{st.session_state['page_navigation_dir']}/logout.py")
-            
+
+        # Toon de suggesties-knop als de gebruiker ingelogd is (api_handler beschikbaar).
+        if "api_handler" in st.session_state:
+            render_suggestions_trigger(st.session_state["api_handler"])
+
 
 def render_analysis_results_sidebar(analysis_results: list[dict[str, Any]]) -> None:
     
