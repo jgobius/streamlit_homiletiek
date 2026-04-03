@@ -88,9 +88,8 @@ def main():
     if 'api_handler' not in st.session_state:
         pg = st.navigation([welcome_page, login_page, register_page, dashboard_page], position='hidden')
         pg.run()
-
     else:
-        pg = st.navigation(pages, position='hidden')
+        pg = st.navigation(pages, position='top')
         pg.run()
 
 if __name__ == "__main__":
