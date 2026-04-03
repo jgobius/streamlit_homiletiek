@@ -9,34 +9,14 @@ redirect_to_login()
 
 render_sidebar()
 
-
 def format_title(title: str | None, congregation: str, sermon_date: str) -> str:
-
     if title:
         return f"{title} - {congregation} - {sermon_date}"
 
     return f"{congregation} - {sermon_date}"
 
-
-def set_scripture(scriptures: list[dict[str, Any]]) -> str:
-
-    if len(scriptures) == 0:
-        return ""
-
-    scripture_str = ""
-    for scripture in scriptures:
-        book = scripture["start_verse"]["scripture_book"]["book"]
-        chapter = scripture["start_verse"]["chapter"]["value"]
-        verse_start = scripture["start_verse"]["number"]["value"]
-        verse_end = scripture["end_verse"]["number"]["value"]
-
-        if verse_start == verse_end:
-            scripture_str += f"{book} {chapter}:{verse_start}, "
-        else:
-            scripture_str += f"{book} {chapter}:{verse_start}-{verse_end}, "
-
-    return scripture_str.rstrip(", ")
-
+def set_analysis_id(analysis_id: int) -> None:
+    st.session_state.selected_analysis_id = analysis_id
 
 analysis = get_data("api/sermon-analyses/")
 
@@ -55,20 +35,26 @@ if len(analysis) == 0:
 else:
     with st.container():
         for item in analysis:
+            id = item["id"]
             status = item["status"]
             title = item["title"]
             congregation = item["church"]["name"]
             sermon_date = datetime.strptime(item["sermon_date"], "%Y-%m-%d").strftime(
                 "%d-%m-%Y"
             )
-            scriptures = item["scripture_json"]
 
             st.button(
                 f"{format_title(title, congregation, sermon_date)}",
                 type="secondary",
                 key=item["id"],
                 width="stretch",
-                on_click=lambda item=item: st.session_state.update(
-                    {"selected_analysis": item}
-                ),
+                on_click=lambda id=id: set_analysis_id(id)
             )
+
+if "selected_analysis_id" in st.session_state:
+    analysis_id = st.session_state.selected_analysis_id
+    del st.session_state.selected_analysis_id
+    st.switch_page(
+        f'{st.session_state["page_navigation_dir"]}/analysis_results/overview.py',
+        query_params={"analysis_id": analysis_id}
+    )
