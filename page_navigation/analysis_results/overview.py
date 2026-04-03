@@ -813,9 +813,16 @@ elif current_tab == "Preekschetsen":
     selected_preek = next(
         (r for r in preek_summary if r["id"] == st.session_state["selected_preek_id"]), None
     )
+    # Knop om de kerntekst- en focus-en-functie-selectie in te stellen of te wijzigen.
+    # Vereist is dat de dialog al gedefinieerd is (zie boven).
+    _, btn_col = st.columns([7, 3])
+    with btn_col:
+        if st.button("Selectie instellen / wijzigen", icon="🎯", use_container_width=True):
+            preekschets_selectie_dialog(int(analysis_id), latest, perspect_summary)
     if not preek_summary:
         st.info("Nog geen preekschetsen beschikbaar.")
-    # Render-functies voor preekschetsen worden in een volgende versie toegevoegd.
+    elif selected_preek:
+        preekschets(selected_preek)
 
 elif current_tab == "Feedback":
     selected_feedback = next(
