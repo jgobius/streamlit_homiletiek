@@ -89,7 +89,7 @@ def main():
         pg = st.navigation([welcome_page, login_page, register_page, dashboard_page], position='hidden')
         pg.run()
     else:
-        pg = st.navigation(pages, position='top')
+        pg = st.navigation(pages, position='hidden')
         pg.run()
 
 if __name__ == "__main__":
