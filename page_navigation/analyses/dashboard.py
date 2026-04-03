@@ -47,7 +47,6 @@ if len(analysis) == 0:
 else:
     with st.container():
         for item in analysis:
-            
             title = item['title']
             congregation = item['church']['name']
             sermon_date = datetime.strptime(item['sermon_date'], '%Y-%m-%d').strftime('%d-%m-%Y')

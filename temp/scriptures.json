@@ -1,0 +1,40 @@
+[
+    {
+        "original_scripture": "Genesis 3: 1 - 3",
+        "scriptures": [
+            {
+                "book": "Genesis",
+                "chapter": 3,
+                "verses": [
+                    {
+                        "number": 1,
+                        "text": "Van alle in het wild levende dieren die de HEER God gemaakt had, was de slang het sluwst. Dit dier vroeg aan de vrouw: \u2018Heeft God werkelijk gezegd dat jullie van geen enkele boom in de tuin mogen eten?\u2019"
+                    },
+                    {
+                        "number": 2,
+                        "text": "\u2018We mogen de vruchten van alle bomen eten,\u2019 antwoordde de vrouw, \u2018behalve die van de boom in het midden van de tuin. God heeft ons verboden van de vruchten van die boom te eten of ze zelfs maar aan te raken; doen we dat toch, dan zullen we sterven.\u2019"
+                    },
+                    {
+                        "number": 3,
+                        "text": "\u2018Jullie zullen helemaal niet sterven,\u2019 zei de slang. \u2018Integendeel, God weet dat jullie de ogen zullen opengaan zodra je daarvan eet, en dat jullie dan als God zullen zijn en kennis zullen hebben van goed en kwaad.\u2019"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "original_scripture": "Exodus 8: 7",
+        "scriptures": [
+            {
+                "book": "Exodus",
+                "chapter": 8,
+                "verses": [
+                    {
+                        "number": 7,
+                        "text": "Maar de magi\u00ebrs deden hetzelfde met hun toverkunst; ook zij lieten kikkers over het land Egypte komen."
+                    }
+                ]
+            }
+        ]
+    }
+]
