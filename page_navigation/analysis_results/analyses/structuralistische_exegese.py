@@ -200,7 +200,6 @@ def structuralistische_exegese(analysis: dict[str, Any]) -> None:
     result: dict[str, Any] = analysis.get("result", {})
     sermon: dict[str, Any] = analysis.get("sermon_analysis", {})
 
-    st.title(sermon.get("title", "Structuralistische exegese"))
     if sermon.get("sermon_date"):
         st.caption(f"**Preekdatum:** {sermon['sermon_date']}")
 
