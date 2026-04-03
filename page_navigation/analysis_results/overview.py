@@ -746,6 +746,36 @@ def preekschets_selectie_dialog(analysis_id: int, latest: dict, perspect_summary
         st.rerun()
 
 
+@st.dialog("Extra context bewerken")
+def extra_context_dialog() -> None:
+    """Dialoog om de extra context van de kerkdienstanalyse te bewerken."""
+    new_val = st.text_area(
+        "Extra context",
+        value=st.session_state.get("extra_context", ""),
+        height=150,
+        max_chars=1024,
+        label_visibility="collapsed",
+    )
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Opslaan", type="primary", use_container_width=True):
+            try:
+                sermon_analysis_id = st.session_state.get("current_analysis_id")
+                st.session_state["api_handler"].patch(
+                    f"api/sermon-analyses/{sermon_analysis_id}/",
+                    data={"extra_context": new_val},
+                )
+                st.session_state["extra_context"] = new_val
+                # Markeer de cache als vervuild zodat de pagina opnieuw laadt.
+                st.session_state["analysis_data_dirty"] = True
+                st.rerun()
+            except Exception as e:
+                st.error(f"Fout bij opslaan: {e}")
+    with col2:
+        if st.button("Annuleren", use_container_width=True):
+            st.rerun()
+
+
 # --- Tabbladnavigatie ---
 st.segmented_control(
     "Tabblad",
