@@ -26,6 +26,10 @@ user_name = st.text_input("Username")
 password = st.text_input("Password", type="password")
 login_button = st.button("Login", disabled=not user_name or not password)
 
+if st.session_state.get('login_error'):
+    st.error("Ongeldige gebruikersnaam of wachtwoord. Probeer het opnieuw.")
+    st.session_state['login_error'] = False
+
 if login_button:
 
     try:

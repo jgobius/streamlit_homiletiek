@@ -4,7 +4,7 @@ import requests
 import streamlit as st
 
 from src.models.church_model import ChurchModel
-from src.utils.utils import redirect_to_login
+from src.utils.utils import redirect_to_login, render_sidebar
 
 redirect_to_login()
 
