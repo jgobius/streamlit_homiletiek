@@ -75,21 +75,20 @@ def main():
     dashboard_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py", title='Overzicht preekanalyses')
     # settings_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/settings.py", title='Instellingen')
     new_analysis_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py", title='Nieuwe preekanalyse')
-
+    liturgisch_jaar_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analysis_results/liturgisch_jaar.py", title='Liturgisch jaar')
     church_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/churches/churches_overview.py", title='Overzicht gemeentes')
     new_church_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/churches/new_church.py", title='Nieuwe gemeente')
 
-    pages = {
-        "Preekanalyses": [dashboard_page, new_analysis_page],
-        "Gemeentes": [church_overview_page, new_church_page],
-        "Account": [logout_page],
-    }
+    analysis_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py", title='Analyse overzicht')
+
+    pages = [dashboard_page, new_analysis_page, liturgisch_jaar_page, church_overview_page, new_church_page, analysis_overview_page, logout_page]
 
     if 'api_handler' not in st.session_state:
         pg = st.navigation([welcome_page, login_page, register_page, dashboard_page], position='hidden')
         pg.run()
+
     else:
-        pg = st.navigation(pages, position='top')
+        pg = st.navigation(pages, position='hidden')
         pg.run()
 
 if __name__ == "__main__":
