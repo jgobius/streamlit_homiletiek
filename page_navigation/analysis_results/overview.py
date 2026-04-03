@@ -792,6 +792,26 @@ if current_tab == "Basis":
         commentaren(selected_analysis)
     elif analysis_type_name == "theology":
         theologie(selected_analysis)
+    elif analysis_type_name == "sociaal_maatschappelijk":
+        sociaal_maatschappelijk(selected_analysis)
+    elif analysis_type_name == "waardenorientatie":
+        waardenorientatie(selected_analysis)
+    elif analysis_type_name == "geloofsorientatie":
+        geloofsorientatie(selected_analysis)
+    elif analysis_type_name == "interpretatieve_synthese":
+        interpretatieve_synthese(selected_analysis)
+    elif analysis_type_name == "politieke_orientatie":
+        politieke_orientatie(selected_analysis)
+    elif analysis_type_name == "representatieve_hoorders":
+        representatieve_hoorders(selected_analysis)
+    elif analysis_type_name == "illustraties":
+        illustraties(selected_analysis)
+    elif analysis_type_name == "actueel_nieuws":
+        actueel_nieuws(selected_analysis)
+    elif analysis_type_name == "focus_en_functie":
+        focus_en_functie(selected_analysis)
+    elif analysis_type_name == "contextduiding":
+        contextduiding(selected_analysis)
 
 elif current_tab == "Verdieping":
     selected_verdiep = next(
