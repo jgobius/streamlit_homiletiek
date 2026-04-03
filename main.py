@@ -3,41 +3,6 @@ import streamlit as st
 st.session_state['page_navigation_dir'] = 'page_navigation'
 
 
-def _calc_token_totals(usage: dict) -> tuple[int, int, float]:
-    # Haal modelprijzen op uit st.secrets; ontbrekende sleutels leveren 0.0 op.
-    model_prices = st.secrets.get("model_prices", {})
-    fallback_model = st.secrets.get("CURRENT_MODEL", "")
-    total_input = total_output = 0
-    total_cost = 0.0
-    for model, counts in usage.items():
-        inp = counts.get("input_tokens", 0) or 0
-        out = counts.get("output_tokens", 0) or 0
-        # Gebruik modelprijzen als beschikbaar, anders de fallback.
-        prices = model_prices.get(model) or model_prices.get(fallback_model, {})
-        total_input += inp
-        total_output += out
-        total_cost += (inp / 1_000_000) * prices.get("input_eur", 0.0)
-        total_cost += (out / 1_000_000) * prices.get("output_eur", 0.0)
-    return total_input, total_output, total_cost
-
-
-def _render_cumulative_token_usage_sidebar() -> None:
-    # Toon het cumulatieve tokenverbruik van de ingelogde gebruiker in de sidebar.
-    handler = st.session_state.get('api_handler')
-    if not handler:
-        return
-    usage = handler.get("api/token-usage/cumulative/")
-    if not isinstance(usage, dict):
-        return
-    total_input, total_output, total_cost = _calc_token_totals(usage)
-    with st.sidebar:
-        st.divider()
-        st.caption(
-            f"Totaal tokenverbruik: {total_input:,} in / {total_output:,} uit  \n"
-            f"Totale kosten: €{total_cost:.2f}"
-        )
-
-
 def main():
     welcome_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/welcome.py", title='Welcome')
     login_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/login.py", title='Inloggen')
@@ -68,9 +33,6 @@ def main():
     else:
         pg = st.navigation(pages, position='hidden')
         pg.run()
-        # Toon cumulatief tokenverbruik op de hoofdpagina (dashboard).
-        if pg == dashboard_page:
-            _render_cumulative_token_usage_sidebar()
 
 
 if __name__ == "__main__":
