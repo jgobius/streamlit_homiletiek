@@ -1,0 +1,55 @@
+from typing import Any
+import streamlit as st
+from src.utils.utils import clean_md
+
+_META_LABELS = {"type":"Type","bron":"Bron","toon":"Toon","lowry_stadium":"Lowry","buttrick_plaatsing":"Buttrick","retorische_functie":"Functie","doelgroep":"Doelgroep","culturele_context":"Cultuur","pastorale_gevoeligheid":"Pastoraal","concreetheid":"Concreetheid","lengte":"Lengte","kernthema":"Thema","actualiteit":"Actualiteit"}
+
+def illustraties(analysis: dict[str, Any]) -> None:
+    result: dict[str, Any] = analysis.get("result", {})
+    preek_context: dict = result.get("preek_context", {})
+    illustraties_lijst: list = result.get("illustraties", [])
+    totaal: float = result.get("totaal_aantal_illustraties", len(illustraties_lijst))
+    diversiteit: dict = result.get("diversiteit_analyse", {})
+
+    with st.expander("Preekcontext", expanded=False):
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            if preek_context.get("bijbeltekst"):
+                st.markdown(f"**Bijbeltekst:** {clean_md(preek_context['bijbeltekst'])}")
+        with c2:
+            if preek_context.get("gemeente_context"):
+                st.markdown(f"**Gemeentecontext:** {clean_md(preek_context['gemeente_context'])}")
+
+    st.divider()
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.metric("Totaal illustraties", int(totaal))
+
+    alle_typen = sorted({ill.get("metadata", {}).get("type", "") for ill in illustraties_lijst if ill.get("metadata", {}).get("type")})
+    filter_type = st.selectbox("Filter op type", options=["Alle"] + alle_typen, index=0)
+    gefilterd = illustraties_lijst if filter_type == "Alle" else [ill for ill in illustraties_lijst if ill.get("metadata", {}).get("type", "") == filter_type]
+    st.caption(f"{len(gefilterd)} van {int(totaal)} illustraties")
+    st.divider()
+
+    for ill in gefilterd:
+        nummer: int = ill.get("nummer", 0)
+        titel: str = ill.get("titel", "")
+        meta: dict = ill.get("metadata", {})
+        ill_type = meta.get("type", "")
+        with st.expander(f"#{nummer} — {titel}  *({ill_type})*", expanded=False):
+            ill_tekst: str = ill.get("illustratie_tekst", "")
+            if ill_tekst:
+                st.markdown(clean_md(ill_tekst))
+            brug: str = ill.get("brug_naar_waarheid", "")
+            if brug:
+                st.info(f"**Brug naar de waarheid:** {clean_md(brug)}")
+            if meta:
+                badge_parts = [f"**{label}:** {meta[field]}" for field, label in _META_LABELS.items() if meta.get(field)]
+                if badge_parts:
+                    left = badge_parts[:len(badge_parts)//2+1]
+                    right = badge_parts[len(badge_parts)//2+1:]
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        for part in left: st.caption(part)
+                    with c2:
+                        for part in right: st.caption(part)

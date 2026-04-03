@@ -71,7 +71,7 @@ def aanpassen_dialog(result: dict) -> None:
         st.session_state["aanpassen_original"] = copy.deepcopy(_raw)
         st.session_state["aanpassen_session"] = st.session_state.get("aanpassen_session", 0) + 1
         st.session_state["aanpassen_result_id"] = result_id
-        # Pre-fill extra_context vanuit het sermon_analysis-object
+        # Vul extra_context voor uit het sermon_analysis-object
         st.session_state["extra_context"] = result.get("sermon_analysis", {}).get("extra_context", "")
 
     ses = st.session_state["aanpassen_session"]
@@ -97,15 +97,16 @@ def aanpassen_dialog(result: dict) -> None:
             handler = st.session_state["api_handler"]
             sermon_analysis_id = result["sermon_analysis"]["id"]
 
-            # Sla de brede extra context op bij de preekanalyse
+            # Werk de algemene context bij op het preekanalyse-niveau
             handler.patch(f"api/sermon-analyses/{sermon_analysis_id}/", data={"extra_context": extra_context_val})
 
-            # Sla de aangepaste analyseresultaten op
+            # Werk het specifieke analyseresultaat bij
             url = f"api/analysis-results/{result['id']}/?sermon_analysis_id={sermon_analysis_id}"
             handler.patch(url, data={"result": edited_data})
 
             st.session_state["aanpassen_original"] = None
             st.session_state["aanpassen_result_id"] = None
+            st.session_state["analysis_data_dirty"] = True
             st.toast("Opgeslagen.")
             st.rerun()
         except Exception as e:
