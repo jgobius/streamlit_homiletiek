@@ -50,10 +50,10 @@ else:
             title = item['title']
             congregation = item['church']['name']
             sermon_date = datetime.strptime(item['sermon_date'], '%Y-%m-%d').strftime('%d-%m-%Y')
-            scriptures = item['scriptures']
+            # scriptures = set_scripture(item['scripture_json'])
             
             with st.expander(f"{title} - {congregation} - {sermon_date}"):
                 st.write(f"**Titel:** {title}")
                 st.write(f"**Gemeente:** {congregation}")
                 st.write(f"**Datum:** {sermon_date}")
-                st.write(f"**Schriftlezingen:** {scriptures}")
+                # st.write(f"**Schriftlezingen:** {scriptures}")
