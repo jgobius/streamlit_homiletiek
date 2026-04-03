@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 
 from pydantic import BaseModel, Field
 from datetime import date
@@ -6,7 +6,7 @@ from datetime import date
 
 class SermonAnalysisModel(BaseModel):
     """
-    Pydantic model representing the analysis data for a sermon analysis.
+    Data model representing the analysis data for a sermon analysis.
     Attributes:
         title (str): The title of the sermon, maximum 64 characters.
         place (str): The location where the sermon was delivered, maximum 64 characters.
@@ -16,11 +16,17 @@ class SermonAnalysisModel(BaseModel):
         scriptures (list[str]): List of scripture references used in the sermon, each maximum 64 characters.
         extra_context (Optional[str | None]): Optional additional contextual information about the sermon, maximum 1024 characters.
     """
-    
+
     church: int
-    title: str = Field(..., max_length=64)
+    title: Optional[str | None] = Field(None, max_length=64)
     sermon_date: date
-    use_calender: bool
-    scriptures: str
-    song_books: list[int] = Field(default_factory=list, max_length=64)
+    # Verwijzing naar het liturgie-roosterobject wanneer 'Kerkelijk rooster volgen' is gekozen.
+    liturgy: Optional[int | None] = None
+    core_scriptures: Optional[str | None] = Field(None, max_length=64)
+    # Gestructureerde lezingsdata als JSON-lijst; gevuld via de agent bij eigen lezingen.
+    scripture_json: list[dict[str, Any]]
+    use_calendar: bool
     extra_context: Optional[str | None] = Field(None, max_length=1024)
+    song_books: Optional[list[int] | None] = Field(default_factory=list, max_length=64)
+    # Optionele bijbelvertaling; als None gebruikt de backend de standaard.
+    bible_version: Optional[int | None] = None
