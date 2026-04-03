@@ -46,7 +46,10 @@ class ChurchModel(BaseModel):
     validation and ensures maximum length constraints are enforced.
     """
     
-    name: str = Field(..., max_length=128)
-    place: str = Field(..., max_length=128)
-    website: Annotated[str, BeforeValidator(check_url_field)] = Field(..., max_length=200)
-    context: Optional[str | None] = Field(None, max_length=1024)
+    name:         str = Field(..., max_length=128)
+    place:        str = Field(..., max_length=128)
+    address:      Optional[str | None] = Field(None, max_length=200)
+    denomination: Optional[str | None] = Field(None, max_length=16)
+    modality:     Optional[str | None] = Field(None, max_length=32)
+    website:      Annotated[str, BeforeValidator(check_url_field)] = Field(..., max_length=200)
+    context:      Optional[str | None] = Field(None, max_length=1024)
