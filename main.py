@@ -1,3 +1,4 @@
+import requests
 import streamlit as st
 from streamlit_cookies_controller import CookieController
 
@@ -148,7 +149,11 @@ def _render_token_usage_sidebar() -> None:
         return
     analysis_id = st.session_state.get('current_analysis_id')
     endpoint = f"api/token-usage/?sermon_analysis_id={analysis_id}" if analysis_id else "api/token-usage/"
-    usage = handler.get(endpoint)
+    try:
+        usage = handler.get(endpoint)
+    except requests.exceptions.HTTPError:
+        # Endpoint nog niet beschikbaar in deze omgeving; sidebar stilletjes overslaan.
+        return
     if not isinstance(usage, dict):
         return
     total_input, total_output, total_cost = _calc_token_totals(usage)
@@ -165,7 +170,11 @@ def _render_cumulative_token_usage_sidebar() -> None:
     handler = st.session_state.get('api_handler')
     if not handler:
         return
-    usage = handler.get("api/token-usage/cumulative/")
+    try:
+        usage = handler.get("api/token-usage/cumulative/")
+    except requests.exceptions.HTTPError:
+        # Endpoint nog niet beschikbaar in deze omgeving; sidebar stilletjes overslaan.
+        return
     if not isinstance(usage, dict):
         return
     total_input, total_output, total_cost = _calc_token_totals(usage)
