@@ -26,6 +26,7 @@ from page_navigation.analysis_results.analyses.contextduiding import contextduid
 from page_navigation.analysis_results.analyses.verdieping import verdieping
 from page_navigation.analysis_results.analyses.preekschets import preekschets
 from page_navigation.analysis_results.analyses.feedback_analyse import feedback_analyse
+from page_navigation.analysis_results.analyses.volledige_preek import volledige_preek
 from src.components.user_feedback import render_feedback_trigger
 
 # --- Categorisatie van analyse-types per tabblad ---
@@ -594,6 +595,36 @@ def preekschets_selectie_dialog(analysis_id: int, latest: dict, perspect_summary
         st.rerun()
 
 
+@st.dialog("Extra context bewerken")
+def extra_context_dialog() -> None:
+    """Dialoog om de extra context van de kerkdienstanalyse te bewerken."""
+    new_val = st.text_area(
+        "Extra context",
+        value=st.session_state.get("extra_context", ""),
+        height=150,
+        max_chars=1024,
+        label_visibility="collapsed",
+    )
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Opslaan", type="primary", use_container_width=True):
+            try:
+                sermon_analysis_id = st.session_state.get("current_analysis_id")
+                st.session_state["api_handler"].patch(
+                    f"api/sermon-analyses/{sermon_analysis_id}/",
+                    data={"extra_context": new_val},
+                )
+                st.session_state["extra_context"] = new_val
+                # Markeer de cache als vervuild zodat de pagina opnieuw laadt.
+                st.session_state["analysis_data_dirty"] = True
+                st.rerun()
+            except Exception as e:
+                st.error(f"Fout bij opslaan: {e}")
+    with col2:
+        if st.button("Annuleren", use_container_width=True):
+            st.rerun()
+
+
 # --- Tabbladnavigatie ---
 st.segmented_control(
     "Tabblad",
@@ -616,6 +647,12 @@ if current_tab == "Basis":
     if not selected_analysis:
         st.stop()
 
+    analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")
+
+    # Toon de preektitel centraal, zodat de 'Extra context'-knop daarna (eronder) verschijnt
+    sermon_info = selected_analysis.get("sermon_analysis", {})
+    st.title(sermon_info.get("title", "Analyse"))
+
     _, btn_col = st.columns([7, 3])
     with btn_col:
         if st.button("Extra context", icon="✏️", use_container_width=True):
@@ -623,8 +660,6 @@ if current_tab == "Basis":
 
     if st.session_state.get("extra_context"):
         st.info(f"**Extra context:** {st.session_state['extra_context']}")
-
-    analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")
 
     if analysis_type_name == "postille":
         postille(selected_analysis)
@@ -640,6 +675,26 @@ if current_tab == "Basis":
         commentaren(selected_analysis)
     elif analysis_type_name == "theology":
         theologie(selected_analysis)
+    elif analysis_type_name == "sociaal_maatschappelijk":
+        sociaal_maatschappelijk(selected_analysis)
+    elif analysis_type_name == "waardenorientatie":
+        waardenorientatie(selected_analysis)
+    elif analysis_type_name == "geloofsorientatie":
+        geloofsorientatie(selected_analysis)
+    elif analysis_type_name == "interpretatieve_synthese":
+        interpretatieve_synthese(selected_analysis)
+    elif analysis_type_name == "politieke_orientatie":
+        politieke_orientatie(selected_analysis)
+    elif analysis_type_name == "representatieve_hoorders":
+        representatieve_hoorders(selected_analysis)
+    elif analysis_type_name == "illustraties":
+        illustraties(selected_analysis)
+    elif analysis_type_name == "actueel_nieuws":
+        actueel_nieuws(selected_analysis)
+    elif analysis_type_name == "focus_en_functie":
+        focus_en_functie(selected_analysis)
+    elif analysis_type_name == "contextduiding":
+        contextduiding(selected_analysis)
 
 elif current_tab == "Verdieping":
     selected_verdiep = next(
@@ -661,14 +716,39 @@ elif current_tab == "Preekschetsen":
     selected_preek = next(
         (r for r in preek_summary if r["id"] == st.session_state["selected_preek_id"]), None
     )
+    # Knop om de kerntekst- en focus-en-functie-selectie in te stellen of te wijzigen.
+    # Vereist is dat de dialog al gedefinieerd is (zie boven).
+    _, btn_col = st.columns([7, 3])
+    with btn_col:
+        if st.button("Selectie instellen / wijzigen", icon="🎯", use_container_width=True):
+            preekschets_selectie_dialog(int(analysis_id), latest, perspect_summary)
     if not preek_summary:
         st.info("Nog geen preekschetsen beschikbaar.")
-    # Render-functies voor preekschetsen worden in een volgende versie toegevoegd.
+    elif selected_preek:
+        preekschets(selected_preek)
 
 elif current_tab == "Feedback":
     selected_feedback = next(
         (r for r in feedback_nav_summary if r["id"] == st.session_state["selected_feedback_id"]), None
     )
+    # Sectie voor de eigen preektekst (volledige_preek).
+    # Dit type wordt apart beheerd: niet in de navigatie, maar inline bovenaan het tabblad.
+    volledige_preek_data = latest.get("volledige_preek")
+    if volledige_preek_data:
+        # Toon de inline bewerker voor de preektekst.
+        with st.expander("Eigen preektekst", expanded=not bool(selected_feedback)):
+            volledige_preek(volledige_preek_data, int(analysis_id))
+    else:
+        # Zoek het analysis-type op om het aan te kunnen maken via de agent.
+        vp_type = next((at for at in feedback_missing if at["name"] == "volledige_preek"), None)
+        if vp_type:
+            _, btn_col = st.columns([7, 3])
+            with btn_col:
+                _vp_lock_key = f"analysis_add_lock_{analysis_id}_volledige_preek"
+                if st.button("Eigen preek invoeren", icon="✏️", use_container_width=True,
+                             disabled=_reanalysis_is_locked(_vp_lock_key)):
+                    _trigger_analysis(int(analysis_id), vp_type, _vp_lock_key)
     if not feedback_nav_summary:
         st.info("Nog geen feedback-analyses beschikbaar.")
-    # Render-functies voor feedback worden in een volgende versie toegevoegd.
+    elif selected_feedback:
+        feedback_analyse(selected_feedback)
