@@ -15,15 +15,65 @@ _DARK_CSS = """<style>
     --secondary-background-color: #262730;
     --text-color: #FAFAFA;
 }
+/* Hoofdachtergrond */
 [data-testid="stApp"] {
     background-color: #0E1117;
     color: #FAFAFA;
 }
+/* Zijbalk */
 [data-testid="stSidebar"] > div:first-child {
     background-color: #262730;
 }
+/* Bovenste balk */
 [data-testid="stHeader"] {
     background-color: rgba(14, 17, 23, 0.9);
+}
+/* Secundaire knoppen */
+[data-testid="stBaseButton-secondary"] {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+    border-color: #4A4A5A !important;
+}
+/* Selectiemenu — zichtbare container */
+[data-baseweb="select"] > div:first-child {
+    background-color: #262730 !important;
+    border-color: #4A4A5A !important;
+}
+/* Selectiemenu — geselecteerde tekst */
+[data-baseweb="select"] span {
+    color: #FAFAFA !important;
+}
+/* Selectiemenu — dropdown lijst en opties */
+[data-baseweb="menu"] {
+    background-color: #262730 !important;
+}
+[data-baseweb="option"] {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+}
+[data-baseweb="option"]:hover {
+    background-color: #3D3D4F !important;
+}
+/* Tekst- en getalinvoervelden */
+[data-testid="stTextInput"] input,
+[data-testid="stNumberInput"] input,
+[data-testid="stTextArea"] textarea {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+    border-color: #4A4A5A !important;
+}
+/* Expanders */
+[data-testid="stExpander"] details {
+    background-color: #262730 !important;
+    border-color: #4A4A5A !important;
+}
+[data-testid="stExpander"] summary {
+    color: #FAFAFA !important;
+}
+/* Formuliercontainers */
+[data-testid="stForm"] {
+    background-color: #1A1C24 !important;
+    border-color: #4A4A5A !important;
 }
 </style>"""
 
