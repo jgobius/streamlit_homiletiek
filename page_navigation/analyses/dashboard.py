@@ -23,13 +23,7 @@ analysis = get_data("api/sermon-analyses/")
 st.title("Kerkdienstanalyses")
 st.write("Overzicht van alle kerkdienstanalyses.")
 
-new_analysis = st.button("Nieuwe analyse", type="primary")
-
-if new_analysis:
-    st.switch_page(
-        f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py"
-    )
-
+# Toon eerst de bestaande analyses, daarna de knop om een nieuwe te starten.
 if len(analysis) == 0:
     st.info("Er zijn nog geen kerkdienstanalyses gestart.")
 else:
@@ -50,6 +44,13 @@ else:
                 width="stretch",
                 on_click=lambda id=id: set_analysis_id(id)
             )
+
+new_analysis = st.button("Nieuwe analyse", type="primary")
+
+if new_analysis:
+    st.switch_page(
+        f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py"
+    )
 
 if "selected_analysis_id" in st.session_state:
     analysis_id = st.session_state.selected_analysis_id
