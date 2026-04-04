@@ -18,7 +18,11 @@ def format_title(title: str | None, congregation: str, sermon_date: str) -> str:
 def set_analysis_id(analysis_id: int) -> None:
     st.session_state.selected_analysis_id = analysis_id
 
-analysis = get_data("api/sermon-analyses/")
+# Cache de lijst om te voorkomen dat elke klik een API-roundtrip veroorzaakt.
+# De vlag `dashboard_data_dirty` wordt gezet na aanmaken of verwijderen van een analyse.
+if st.session_state.pop("dashboard_data_dirty", False) or "dashboard_analyses_cache" not in st.session_state:
+    st.session_state["dashboard_analyses_cache"] = get_data("api/sermon-analyses/")
+analysis = st.session_state["dashboard_analyses_cache"]
 
 st.title("Kerkdienstanalyses")
 st.write("Overzicht van alle kerkdienstanalyses.")
