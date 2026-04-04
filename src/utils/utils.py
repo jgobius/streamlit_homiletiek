@@ -197,6 +197,15 @@ def render_sidebar():
         if "api_handler" in st.session_state:
             render_suggestions_trigger(st.session_state["api_handler"])
 
+        st.divider()
+
+        # Thema-toggle: schakel tussen licht en donker thema met oranje accent.
+        # Standaard is licht thema; de voorkeur wordt opgeslagen in session_state
+        # zodat de CSS-injectie in main.py op elke render het juiste thema toepast.
+        if 'dark_mode' not in st.session_state:
+            st.session_state['dark_mode'] = False
+        st.toggle("Donker thema", key="dark_mode")
+
 
 def render_analysis_results_sidebar(analysis_results: list[dict[str, Any]]) -> None:
     
