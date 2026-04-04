@@ -696,6 +696,15 @@ if current_tab == "Basis":
     elif analysis_type_name == "contextduiding":
         contextduiding(selected_analysis)
 
+    # Toon de feedbackknop onderaan elke Basis-analyse zodat de gebruiker een beoordeling kan geven.
+    if selected_analysis:
+        render_feedback_trigger(
+            analysis_result_id=selected_analysis["id"],
+            section_name=selected_analysis["analysis_type"]["front_end_name"],
+            handler=st.session_state["api_handler"],
+            key=f"feedback_basis_{selected_analysis['id']}",
+        )
+
 elif current_tab == "Verdieping":
     selected_verdiep = next(
         (r for r in verdiep_summary if r["id"] == st.session_state["selected_verdiep_id"]), None
