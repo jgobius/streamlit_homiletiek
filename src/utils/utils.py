@@ -178,6 +178,16 @@ def load_scriptures() -> list[dict[str, Any]] | None:
         return json.load(f)
     
     
+def _sla_thema_voorkeur_op() -> None:
+    """Sla de thema-voorkeur op in de cookie zodat die na verversing behouden blijft."""
+    controller = st.session_state.get('cookie_controller')
+    if controller:
+        try:
+            controller.set('dark_mode', 'true' if st.session_state['dark_mode'] else 'false')
+        except TypeError:
+            pass  # controller nog niet gereed — volgende render probeert het opnieuw
+
+
 def render_sidebar():
     
     with st.sidebar:
@@ -192,19 +202,13 @@ def render_sidebar():
             
         with st.expander("Account"):
             st.page_link(label="Uitloggen", page=f"{st.session_state['page_navigation_dir']}/logout.py")
+            # Thema-toggle in de Account-sectie; voorkeur wordt in een cookie opgeslagen
+            # zodat de keuze behouden blijft na verversing of het opnieuw openen van de app.
+            st.toggle("Donker thema", key="dark_mode", on_change=_sla_thema_voorkeur_op)
 
         # Toon de suggesties-knop als de gebruiker ingelogd is (api_handler beschikbaar).
         if "api_handler" in st.session_state:
             render_suggestions_trigger(st.session_state["api_handler"])
-
-        st.divider()
-
-        # Thema-toggle: schakel tussen licht en donker thema met oranje accent.
-        # Standaard is licht thema; de voorkeur wordt opgeslagen in session_state
-        # zodat de CSS-injectie in main.py op elke render het juiste thema toepast.
-        if 'dark_mode' not in st.session_state:
-            st.session_state['dark_mode'] = False
-        st.toggle("Donker thema", key="dark_mode")
 
 
 def render_analysis_results_sidebar(analysis_results: list[dict[str, Any]]) -> None:

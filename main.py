@@ -131,6 +131,15 @@ def main():
     controller = CookieController()
     st.session_state['cookie_controller'] = controller
 
+    # Herstel thema-voorkeur uit cookie als die nog niet in session_state staat.
+    # Bij de eerste render zijn cookies nog niet beschikbaar (TypeError) — dan standaard licht.
+    if 'dark_mode' not in st.session_state:
+        try:
+            cookie_val = controller.get('dark_mode')
+            st.session_state['dark_mode'] = cookie_val == 'true'
+        except TypeError:
+            st.session_state['dark_mode'] = False
+
     # Schrijf een pending refresh token naar de cookie zodra de controller gereed is.
     # Dit token wordt door login.py klaargezet na een succesvolle login.
     pending = st.session_state.get('_pending_refresh_token')
