@@ -251,10 +251,18 @@ st.session_state['current_analysis_id'] = analysis_id
 
 _data_cache_key = f"overview_data_{analysis_id}"
 if st.session_state.pop("analysis_data_dirty", False) or _data_cache_key not in st.session_state:
-    st.session_state[_data_cache_key] = {
-        "analysis_results": get_data(f"api/analysis-results?sermon_analysis_id={analysis_id}"),
-        "sermon_analysis": get_data(f"api/sermon-analyses/{analysis_id}/"),
-    }
+    try:
+        st.session_state[_data_cache_key] = {
+            "analysis_results": get_data(f"api/analysis-results?sermon_analysis_id={analysis_id}"),
+            "sermon_analysis": get_data(f"api/sermon-analyses/{analysis_id}/"),
+        }
+    except requests.exceptions.HTTPError as e:
+        # Verouderde analysis_id in sessie (bijv. na wisselen van omgeving): stuur terug naar dashboard.
+        if e.response is not None and e.response.status_code == 404:
+            st.session_state.pop("current_analysis_id", None)
+            st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
+            st.stop()
+        raise
 _cached_data = st.session_state[_data_cache_key]
 analysis_results = _cached_data["analysis_results"]
 sermon_analysis = _cached_data["sermon_analysis"]
