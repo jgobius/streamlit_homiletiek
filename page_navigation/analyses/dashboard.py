@@ -34,6 +34,8 @@ def confirm_delete_analysis() -> None:
                 handler = st.session_state['api_handler']
                 handler.delete(f"api/sermon-analyses/{item['id']}/")
                 st.session_state.pop("_pending_delete_analysis", None)
+                # Markeer cache als vervuild zodat de lijst opnieuw opgehaald wordt.
+                st.session_state["dashboard_data_dirty"] = True
                 st.rerun()
             except Exception as e:
                 st.error(f"Fout bij verwijderen: {e}")
@@ -43,7 +45,11 @@ def confirm_delete_analysis() -> None:
             st.rerun()
 
 
-analysis = get_data("api/sermon-analyses/")
+# Cache de lijst om te voorkomen dat elke klik een API-roundtrip veroorzaakt.
+# De vlag `dashboard_data_dirty` wordt gezet na aanmaken of verwijderen van een analyse.
+if st.session_state.pop("dashboard_data_dirty", False) or "dashboard_analyses_cache" not in st.session_state:
+    st.session_state["dashboard_analyses_cache"] = get_data("api/sermon-analyses/")
+analysis = st.session_state["dashboard_analyses_cache"]
 
 st.title("Kerkdienstanalyses")
 st.write("Overzicht van alle kerkdienstanalyses.")

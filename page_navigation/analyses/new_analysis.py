@@ -450,6 +450,8 @@ if submit:
 
         _clean_up_session_state()
         _release_analysis_lock()
+        # Markeer de dashboard-cache als vervuild zodat de nieuwe analyse zichtbaar is.
+        st.session_state["dashboard_data_dirty"] = True
         st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
 
     except Exception as e:
