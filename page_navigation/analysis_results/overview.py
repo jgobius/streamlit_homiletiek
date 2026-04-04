@@ -750,8 +750,9 @@ elif current_tab == "Feedback":
         with st.expander("Eigen preektekst", expanded=not bool(selected_feedback)):
             volledige_preek(volledige_preek_data, int(analysis_id))
     else:
-        # Zoek het analysis-type op om het aan te kunnen maken via de agent.
-        vp_type = next((at for at in feedback_missing if at["name"] == "volledige_preek"), None)
+        # Zoek het analysis-type op in alle types (niet in feedback_missing, want
+        # volledige_preek heeft geen front_end_name en valt dan weg uit missing_types).
+        vp_type = next((at for at in all_analysis_types if at["name"] == "volledige_preek"), None)
         if vp_type:
             _, btn_col = st.columns([7, 3])
             with btn_col:
