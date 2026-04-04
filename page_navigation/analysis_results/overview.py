@@ -714,6 +714,12 @@ if current_tab == "Basis":
     if not selected_analysis:
         st.stop()
 
+    analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")
+
+    # Toon de preektitel centraal, zodat de 'Extra context'-knop daarna (eronder) verschijnt
+    sermon_info = selected_analysis.get("sermon_analysis", {})
+    st.title(sermon_info.get("title", "Analyse"))
+
     _, btn_col = st.columns([7, 3])
     with btn_col:
         if st.button("Extra context", icon="✏️", use_container_width=True):
@@ -721,8 +727,6 @@ if current_tab == "Basis":
 
     if st.session_state.get("extra_context"):
         st.info(f"**Extra context:** {st.session_state['extra_context']}")
-
-    analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")
 
     if analysis_type_name == "postille":
         postille(selected_analysis)

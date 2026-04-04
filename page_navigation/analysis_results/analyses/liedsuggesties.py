@@ -76,7 +76,6 @@ def liedsuggesties(analysis: dict[str, Any]) -> None:
     sermon: dict[str, Any] = analysis.get("sermon_analysis", {})
     liederen: list[dict] = result.get("liederen", [])
 
-    st.title(sermon.get("title", "Liedsuggesties"))
     if sermon.get("sermon_date"):
         st.caption(f"**Preekdatum:** {sermon['sermon_date']}")
     st.caption(f"{len(liederen)} liedsuggesties")

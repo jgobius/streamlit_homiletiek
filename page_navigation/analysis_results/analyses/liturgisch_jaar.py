@@ -28,8 +28,6 @@ def liturgisch_jaar(analysis: dict[str, Any]) -> None:
     bijzonder: dict = result.get("bijzondere_zondag_pkn", {})
 
     # ── Header ────────────────────────────────────────────────────────────────
-    st.title(sermon.get("title", "Liturgisch jaar"))
-
     col1, col2, col3 = st.columns(3)
     with col1:
         if positie.get("zondag_naam"):
