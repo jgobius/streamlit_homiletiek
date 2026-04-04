@@ -578,10 +578,12 @@ def preekschets_selectie_dialog(analysis_id: int, latest: dict, perspect_summary
         st.divider()
 
     # -- Opslaan --
-    _kan_opslaan = bool(selected_refs) and focus_optie_value is not None
+    # Focus-en-functie is alleen verplicht als de analyse al beschikbaar is.
+    _focus_beschikbaar = bool(opties)
+    _kan_opslaan = bool(selected_refs) and (not _focus_beschikbaar or focus_optie_value is not None)
     if not selected_refs:
         st.warning("Selecteer minimaal één kerntekst.")
-    if focus_optie_value is None:
+    if _focus_beschikbaar and focus_optie_value is None:
         st.warning("Selecteer een focus-en-functie optie.")
     if st.button("Opslaan", type="primary", use_container_width=True, disabled=not _kan_opslaan):
         st.session_state[f"preek_selectie_{analysis_id}"] = {
