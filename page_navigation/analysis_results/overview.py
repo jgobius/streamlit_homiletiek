@@ -26,6 +26,7 @@ from page_navigation.analysis_results.analyses.contextduiding import contextduid
 from page_navigation.analysis_results.analyses.verdieping import verdieping
 from page_navigation.analysis_results.analyses.preekschets import preekschets
 from page_navigation.analysis_results.analyses.feedback_analyse import feedback_analyse
+from page_navigation.analysis_results.analyses.volledige_preek import volledige_preek
 from src.components.user_feedback import render_feedback_trigger
 
 # --- Categorisatie van analyse-types per tabblad ---
@@ -773,6 +774,24 @@ elif current_tab == "Feedback":
     selected_feedback = next(
         (r for r in feedback_nav_summary if r["id"] == st.session_state["selected_feedback_id"]), None
     )
+    # Sectie voor de eigen preektekst (volledige_preek).
+    # Dit type wordt apart beheerd: niet in de navigatie, maar inline bovenaan het tabblad.
+    volledige_preek_data = latest.get("volledige_preek")
+    if volledige_preek_data:
+        # Toon de inline bewerker voor de preektekst.
+        with st.expander("Eigen preektekst", expanded=not bool(selected_feedback)):
+            volledige_preek(volledige_preek_data, int(analysis_id))
+    else:
+        # Zoek het analysis-type op om het aan te kunnen maken via de agent.
+        vp_type = next((at for at in feedback_missing if at["name"] == "volledige_preek"), None)
+        if vp_type:
+            _, btn_col = st.columns([7, 3])
+            with btn_col:
+                _vp_lock_key = f"analysis_add_lock_{analysis_id}_volledige_preek"
+                if st.button("Eigen preek invoeren", icon="✏️", use_container_width=True,
+                             disabled=_reanalysis_is_locked(_vp_lock_key)):
+                    _trigger_analysis(int(analysis_id), vp_type, _vp_lock_key)
     if not feedback_nav_summary:
         st.info("Nog geen feedback-analyses beschikbaar.")
-    # Render-functies voor feedback worden in een volgende versie toegevoegd.
+    elif selected_feedback:
+        feedback_analyse(selected_feedback)
