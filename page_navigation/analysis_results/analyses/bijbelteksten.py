@@ -12,6 +12,8 @@ def bijbelteksten(analysis: dict[str, Any]) -> None:
     result: dict[str, Any] = analysis.get("result", {})
     sermon: dict[str, Any] = analysis.get("sermon_analysis", {})
 
+    # De analytische naam tonen als paginatitel, niet de naam van de gemeente of dienst.
+    st.title("Bijbelteksten")
     if sermon.get("sermon_date"):
         st.caption(f"**Preekdatum:** {sermon['sermon_date']}")
 
