@@ -78,8 +78,8 @@ _MODALITEIT_LABELS = {
 }
 
 churches = get_data("api/churches/")
-st.title("Overzicht van gemeentes")
-st.write("Hieronder vind je een overzicht van alle toegevoegde gemeentes.")
+st.title("Overzicht van gemeenten")
+st.write("Hieronder vind je een overzicht van alle toegevoegde gemeenten.")
 
 for church in churches:
     name = church['name']
