@@ -7,6 +7,7 @@ from src.models.church_model import ChurchModel
 from src.utils.utils import redirect_to_login, render_sidebar
 
 redirect_to_login()
+render_sidebar()
 
 # Mogelijke denominaties met weergavelabels.
 # TODO: Deze lijst is nu hardcoded in de frontend. Beter is om de keuzes op te slaan als
