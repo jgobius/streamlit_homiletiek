@@ -54,6 +54,29 @@ div[data-testid="stHorizontalBlock"] > div:last-child button:hover {
 </style>
 """, unsafe_allow_html=True)
 
+# Leesbare labels voor denominatie en modaliteit, gelijk aan de keuzes in het gemeente-formulier.
+_DENOMINATIE_LABELS = {
+    "PKN":  "PKN (Protestantse Kerk in Nederland)",
+    "CGK":  "Christelijk Gereformeerde Kerken",
+    "NGK":  "Nederlands Gereformeerde Kerken",
+    "HHK":  "Hersteld Hervormde Kerk",
+    "EV":   "Evangelisch",
+    "BAPT": "Baptistengemeente",
+    "RK":   "Rooms-Katholiek",
+    "OVR":  "Overig",
+}
+
+_MODALITEIT_LABELS = {
+    "confessioneel":   "Confessioneel",
+    "gereformeerd":    "Gereformeerd",
+    "hervormd":        "Hervormd",
+    "midden_orthodox": "Midden-orthodox",
+    "evangelisch":     "Evangelisch",
+    "vrijzinnig":      "Vrijzinnig",
+    "oecumenisch":     "Oecumenisch",
+    "overig":          "Overig",
+}
+
 churches = get_data("api/churches/")
 st.title("Overzicht van gemeentes")
 st.write("Hieronder vind je een overzicht van alle toegevoegde gemeentes.")
@@ -62,10 +85,17 @@ for church in churches:
     name = church['name']
     place = church['place']
     website = church['website']
+    denomination = church.get('denomination') or ""
+    modality = church.get('modality') or ""
+    address = church.get('address') or ""
 
     with st.expander(f"{name} - {place}"):
         st.write(f"**Naam:** {name}")
         st.write(f"**Plaats:** {place}")
+        # Toon leesbaar label als de waarde bekend is, anders een streepje.
+        st.write(f"**Denominatie:** {_DENOMINATIE_LABELS.get(denomination, '—') if denomination else '—'}")
+        st.write(f"**Modaliteit:** {_MODALITEIT_LABELS.get(modality, '—') if modality else '—'}")
+        st.write(f"**Adres:** {address if address else '—'}")
         st.write(f"**Website:** {website}")
 
         # Drie kolommen: bewerkknop links, lege ruimte, kleine verwijderknop rechts.
