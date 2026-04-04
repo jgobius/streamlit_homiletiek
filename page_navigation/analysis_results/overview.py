@@ -235,6 +235,11 @@ redirect_to_login()
 # Haal analysis_id op uit query-params of session_state.
 analysis_id = st.query_params.get('analysis_id') or st.session_state.get('current_analysis_id')
 
+# Initialiseer het actieve tabblad vroeg zodat de zijbalk dit kan gebruiken vóór het gecachte blok.
+if 'current_tab' not in st.session_state:
+    st.session_state['current_tab'] = 'Basis'
+current_tab = st.session_state.get('current_tab', 'Basis')
+
 with st.sidebar:
     st.page_link(label="< Terug", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
 
@@ -242,78 +247,6 @@ if not analysis_id:
     st.warning("Geen analyse geselecteerd. Ga terug naar het overzicht en selecteer een analyse.")
     st.stop()
 
-st.session_state['current_analysis_id'] = analysis_id
-
-analysis_results = get_data(f"api/analysis-results?sermon_analysis_id={analysis_id}")
-
-# Houd per analysis_type alleen de nieuwste (hoogste id).
-latest: dict[str, dict] = {}
-for r in analysis_results:
-    name = r['analysis_type']['name']
-    if name not in latest or r['id'] > latest[name]['id']:
-        latest[name] = r
-
-# Splits resultaten op per tabblad, gesorteerd op de gewenste volgorde.
-_order_key = lambda r: r["analysis_type"].get("order", 99)
-analyse_summary  = sorted(
-    [r for r in latest.values() if r["analysis_type"]["name"] not in _ALL_NON_BASIS],
-    key=lambda r: _basis_sort_key(r["analysis_type"]["name"]),
-)
-verdiep_summary  = sorted([r for r in latest.values() if r["analysis_type"]["name"] in _VERDIEPING_NAMEN], key=_order_key)
-perspect_summary = sorted([r for r in latest.values() if r["analysis_type"]["name"] in _PERSPECTIEVEN_NAMEN], key=_order_key)
-preek_summary    = sorted([r for r in latest.values() if r["analysis_type"]["name"] in _PREEKSCHETSEN_NAMEN], key=_order_key)
-feedback_summary = sorted([r for r in latest.values() if r["analysis_type"]["name"] in _FEEDBACK_NAMEN], key=_order_key)
-# volledige_preek wordt niet in de navigatie getoond, maar apart beheerd.
-feedback_nav_summary = [r for r in feedback_summary if r["analysis_type"]["name"] != "volledige_preek"]
-
-# Haal alle bekende analyse-types op om vergrendelde knoppen te tonen voor
-# analyses die nog niet gedraaid zijn.
-if "all_analysis_types_cache" not in st.session_state:
-    st.session_state["all_analysis_types_cache"] = get_data("api/analysis-types/") or []
-all_analysis_types: list = st.session_state["all_analysis_types_cache"]
-
-# Typen die nog niet in de resultaten zitten.
-missing_types = sorted(
-    [at for at in all_analysis_types if at.get("front_end_name") and at["name"] not in latest],
-    key=lambda x: x.get("order", 99),
-)
-analyse_missing      = sorted([at for at in missing_types if at["name"] not in _ALL_NON_BASIS], key=lambda at: _basis_sort_key(at["name"]))
-verdiep_missing      = [at for at in missing_types if at["name"] in _VERDIEPING_NAMEN]
-perspect_missing     = [at for at in missing_types if at["name"] in _PERSPECTIEVEN_NAMEN]
-preek_missing        = [at for at in missing_types if at["name"] in _PREEKSCHETSEN_NAMEN]
-feedback_nav_missing = [at for at in missing_types if at["name"] in _FEEDBACK_NAMEN and at["name"] != "volledige_preek"]
-
-# Bewaar geselecteerde analyse-id per tabblad in session_state.
-if "selected_analysis_id" not in st.session_state or \
-        st.session_state["selected_analysis_id"] not in {r["id"] for r in analyse_summary}:
-    st.session_state["selected_analysis_id"] = analyse_summary[0]["id"] if analyse_summary else None
-
-if "selected_verdiep_id" not in st.session_state or \
-        st.session_state["selected_verdiep_id"] not in {r["id"] for r in verdiep_summary}:
-    st.session_state["selected_verdiep_id"] = verdiep_summary[0]["id"] if verdiep_summary else None
-
-if "selected_perspect_id" not in st.session_state or \
-        st.session_state["selected_perspect_id"] not in {r["id"] for r in perspect_summary}:
-    st.session_state["selected_perspect_id"] = perspect_summary[0]["id"] if perspect_summary else None
-
-if "selected_preek_id" not in st.session_state or \
-        st.session_state["selected_preek_id"] not in {r["id"] for r in preek_summary}:
-    st.session_state["selected_preek_id"] = preek_summary[0]["id"] if preek_summary else None
-
-if "selected_feedback_id" not in st.session_state or \
-        st.session_state["selected_feedback_id"] not in {r["id"] for r in feedback_nav_summary}:
-    st.session_state["selected_feedback_id"] = feedback_nav_summary[0]["id"] if feedback_nav_summary else None
-
-# Huidig tabblad wordt bewaard in session_state zodat de zijbalk weet wat te tonen.
-if 'current_tab' not in st.session_state:
-    st.session_state['current_tab'] = 'Basis'
-current_tab = st.session_state.get('current_tab', 'Basis')
-
-if not analysis_id:
-    st.warning("Geen analyse geselecteerd. Ga terug naar het overzicht en selecteer een analyse.")
-    st.stop()
-
-# Ensure it's stored in session state for consistency when navigating between internal results
 st.session_state['current_analysis_id'] = analysis_id
 
 _data_cache_key = f"overview_data_{analysis_id}"
