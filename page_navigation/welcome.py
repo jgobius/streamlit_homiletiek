@@ -1,12 +1,12 @@
 import streamlit as st
 
 
-st.title('Analyse eredienst')
+st.title('Analyse kerkdienst')
 
 st.write(
     """
-    Welkom bij de handreiking preekanalyses. 
-    Deze tool helpt je bij het analyseren van preken op verschillende aspecten.
+    Welkom bij de handreiking kerkdienstanalyses.
+    Deze tool helpt je bij het analyseren van kerkdiensten op verschillende aspecten.
     Kies hieronder of je wilt inloggen of registreren om verder te gaan.
     De analyses worden gegenereerd op basis van de specifieke locatie, 
     de kerkelijke gemeente en de datum van de viering, waardoor een goede 

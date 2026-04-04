@@ -7,6 +7,92 @@ from src.api.handler import APIHandler
 # Sleutel waaronder het refresh token in de browser-cookie wordt opgeslagen.
 _COOKIE_KEY = "auth_refresh_token"
 
+# CSS voor donker thema (oranje accent, donkere achtergronden).
+_DARK_CSS = """<style>
+:root {
+    --primary-color: #FF8000;
+    --background-color: #0E1117;
+    --secondary-background-color: #262730;
+    --text-color: #FAFAFA;
+}
+/* Hoofdachtergrond */
+[data-testid="stApp"] {
+    background-color: #0E1117;
+    color: #FAFAFA;
+}
+/* Zijbalk */
+[data-testid="stSidebar"] > div:first-child {
+    background-color: #262730;
+}
+/* Bovenste balk */
+[data-testid="stHeader"] {
+    background-color: rgba(14, 17, 23, 0.9);
+}
+/* Secundaire knoppen */
+[data-testid="stBaseButton-secondary"] {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+    border-color: #4A4A5A !important;
+}
+/* Selectiemenu — zichtbare container */
+[data-baseweb="select"] > div:first-child {
+    background-color: #262730 !important;
+    border-color: #4A4A5A !important;
+}
+/* Selectiemenu — geselecteerde tekst */
+[data-baseweb="select"] span {
+    color: #FAFAFA !important;
+}
+/* Selectiemenu — dropdown lijst en opties */
+[data-baseweb="menu"] {
+    background-color: #262730 !important;
+}
+[data-baseweb="option"] {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+}
+[data-baseweb="option"]:hover {
+    background-color: #3D3D4F !important;
+}
+/* Tekst- en getalinvoervelden */
+[data-testid="stTextInput"] input,
+[data-testid="stNumberInput"] input,
+[data-testid="stTextArea"] textarea {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+    border-color: #4A4A5A !important;
+}
+/* Expanders */
+[data-testid="stExpander"] details {
+    background-color: #262730 !important;
+    border-color: #4A4A5A !important;
+}
+[data-testid="stExpander"] summary {
+    color: #FAFAFA !important;
+}
+/* Formuliercontainers */
+[data-testid="stForm"] {
+    background-color: #1A1C24 !important;
+    border-color: #4A4A5A !important;
+}
+</style>"""
+
+# CSS voor licht thema (oranje accent, witte achtergronden).
+_LIGHT_CSS = """<style>
+:root {
+    --primary-color: #FF8000;
+    --background-color: #FFFFFF;
+    --secondary-background-color: #F0F2F6;
+    --text-color: #31333F;
+}
+</style>"""
+
+
+def _inject_theme_css() -> None:
+    """Injecteer CSS voor het huidige thema op basis van de voorkeur in session_state."""
+    dark = st.session_state.get('dark_mode', False)
+    st.markdown(_DARK_CSS if dark else _LIGHT_CSS, unsafe_allow_html=True)
+
 st.session_state['page_navigation_dir'] = 'page_navigation'
 
 
@@ -37,6 +123,60 @@ def _try_restore_session(controller: CookieController) -> bool:
         return False
 
 
+def _calc_token_totals(usage: dict) -> tuple[int, int, float]:
+    # Haal modelprijzen op uit st.secrets; ontbrekende sleutels leveren 0.0 op.
+    model_prices = st.secrets.get("model_prices", {})
+    fallback_model = st.secrets.get("CURRENT_MODEL", "")
+    total_input = total_output = 0
+    total_cost = 0.0
+    for model, counts in usage.items():
+        inp = counts.get("input_tokens", 0) or 0
+        out = counts.get("output_tokens", 0) or 0
+        # Gebruik modelprijzen als beschikbaar, anders de fallback.
+        prices = model_prices.get(model) or model_prices.get(fallback_model, {})
+        total_input += inp
+        total_output += out
+        total_cost += (inp / 1_000_000) * prices.get("input_eur", 0.0)
+        total_cost += (out / 1_000_000) * prices.get("output_eur", 0.0)
+    return total_input, total_output, total_cost
+
+
+def _render_token_usage_sidebar() -> None:
+    # Toon het tokenverbruik van de huidige analyse in de sidebar.
+    handler = st.session_state.get('api_handler')
+    if not handler:
+        return
+    analysis_id = st.session_state.get('current_analysis_id')
+    endpoint = f"api/token-usage/?sermon_analysis_id={analysis_id}" if analysis_id else "api/token-usage/"
+    usage = handler.get(endpoint)
+    if not isinstance(usage, dict):
+        return
+    total_input, total_output, total_cost = _calc_token_totals(usage)
+    with st.sidebar:
+        st.divider()
+        st.caption(
+            f"Tokens huidige analyse: {total_input:,} in / {total_output:,} uit  \n"
+            f"Kosten huidige analyse: €{total_cost:.2f}"
+        )
+
+
+def _render_cumulative_token_usage_sidebar() -> None:
+    # Toon het cumulatieve tokenverbruik van de ingelogde gebruiker in de sidebar.
+    handler = st.session_state.get('api_handler')
+    if not handler:
+        return
+    usage = handler.get("api/token-usage/cumulative/")
+    if not isinstance(usage, dict):
+        return
+    total_input, total_output, total_cost = _calc_token_totals(usage)
+    with st.sidebar:
+        st.divider()
+        st.caption(
+            f"Totaal tokenverbruik: {total_input:,} in / {total_output:,} uit  \n"
+            f"Totale kosten: €{total_cost:.2f}"
+        )
+
+
 def main():
     # Stel paginatitel en favicon in (oranje kruis-icoon).
     st.set_page_config(page_icon="static/favicon.png")
@@ -44,6 +184,15 @@ def main():
     # andere pagina's hem kunnen ophalen zonder hem opnieuw te initialiseren.
     controller = CookieController()
     st.session_state['cookie_controller'] = controller
+
+    # Herstel thema-voorkeur uit cookie als die nog niet in session_state staat.
+    # Bij de eerste render zijn cookies nog niet beschikbaar (TypeError) — dan standaard licht.
+    if 'dark_mode' not in st.session_state:
+        try:
+            cookie_val = controller.get('dark_mode')
+            st.session_state['dark_mode'] = cookie_val == 'true'
+        except TypeError:
+            st.session_state['dark_mode'] = False
 
     # Schrijf een pending refresh token naar de cookie zodra de controller gereed is.
     # Dit token wordt door login.py klaargezet na een succesvolle login.
@@ -74,16 +223,19 @@ def main():
     login_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/login.py", title='Inloggen')
     logout_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/logout.py", title='Uitloggen')
     register_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/register.py", title='Registreren')
-    dashboard_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py", title='Overzicht preekanalyses')
+    dashboard_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py", title='Overzicht kerkdienstanalyses')
     # settings_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/settings.py", title='Instellingen')
-    new_analysis_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py", title='Nieuwe preekanalyse')
+    new_analysis_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py", title='Nieuwe kerkdienstanalyse')
     liturgisch_jaar_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analysis_results/liturgisch_jaar.py", title='Liturgisch jaar')
-    church_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/churches/churches_overview.py", title='Overzicht gemeentes')
+    church_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/churches/churches_overview.py", title='Overzicht gemeenten')
     new_church_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/churches/new_church.py", title='Nieuwe gemeente')
 
     analysis_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py", title='Analyse overzicht')
 
     pages = [dashboard_page, new_analysis_page, liturgisch_jaar_page, church_overview_page, new_church_page, analysis_overview_page, logout_page]
+
+    # Injecteer thema-CSS op elke render op basis van de huidige voorkeur.
+    _inject_theme_css()
 
     if 'api_handler' not in st.session_state:
         pg = st.navigation([welcome_page, login_page, register_page, dashboard_page], position='hidden')
@@ -91,6 +243,12 @@ def main():
     else:
         pg = st.navigation(pages, position='hidden')
         pg.run()
+        # Toon tokenverbruik van de huidige analyse op de analyse-overzichtspagina.
+        if pg == analysis_overview_page:
+            _render_token_usage_sidebar()
+        # Toon cumulatief tokenverbruik op de hoofdpagina (dashboard).
+        if pg == dashboard_page:
+            _render_cumulative_token_usage_sidebar()
 
 if __name__ == "__main__":
     main()
