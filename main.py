@@ -7,6 +7,42 @@ from src.api.handler import APIHandler
 # Sleutel waaronder het refresh token in de browser-cookie wordt opgeslagen.
 _COOKIE_KEY = "auth_refresh_token"
 
+# CSS voor donker thema (oranje accent, donkere achtergronden).
+_DARK_CSS = """<style>
+:root {
+    --primary-color: #FF8000;
+    --background-color: #0E1117;
+    --secondary-background-color: #262730;
+    --text-color: #FAFAFA;
+}
+[data-testid="stApp"] {
+    background-color: #0E1117;
+    color: #FAFAFA;
+}
+[data-testid="stSidebar"] > div:first-child {
+    background-color: #262730;
+}
+[data-testid="stHeader"] {
+    background-color: rgba(14, 17, 23, 0.9);
+}
+</style>"""
+
+# CSS voor licht thema (oranje accent, witte achtergronden).
+_LIGHT_CSS = """<style>
+:root {
+    --primary-color: #FF8000;
+    --background-color: #FFFFFF;
+    --secondary-background-color: #F0F2F6;
+    --text-color: #31333F;
+}
+</style>"""
+
+
+def _inject_theme_css() -> None:
+    """Injecteer CSS voor het huidige thema op basis van de voorkeur in session_state."""
+    dark = st.session_state.get('dark_mode', False)
+    st.markdown(_DARK_CSS if dark else _LIGHT_CSS, unsafe_allow_html=True)
+
 st.session_state['page_navigation_dir'] = 'page_navigation'
 
 
@@ -84,6 +120,9 @@ def main():
     analysis_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py", title='Analyse overzicht')
 
     pages = [dashboard_page, new_analysis_page, liturgisch_jaar_page, church_overview_page, new_church_page, analysis_overview_page, logout_page]
+
+    # Injecteer thema-CSS op elke render op basis van de huidige voorkeur.
+    _inject_theme_css()
 
     if 'api_handler' not in st.session_state:
         pg = st.navigation([welcome_page, login_page, register_page, dashboard_page], position='hidden')
