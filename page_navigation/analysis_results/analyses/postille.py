@@ -12,7 +12,6 @@ def postille(analysis: dict[str, Any]) -> None:
     liturgische_aanwijzingen: dict[str, Any] = preekschets.get("liturgische_aanwijzingen", {})
 
     # ── Header ────────────────────────────────────────────────────────────────
-    st.title(sermon.get("title", "Preekschets"))
     col_left, col_right = st.columns([2, 1])
     with col_left:
         if metadata.get("perikoop"):
