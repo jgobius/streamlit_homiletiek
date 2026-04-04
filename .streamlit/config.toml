@@ -1,3 +1,4 @@
 [theme]
-# Primaire kleur gebaseerd op de oranje kleur van het favicon (kruis-icoon)
+# Lichte modus als standaard; donker thema wordt via CSS-injectie ingeschakeld.
+base = "light"
 primaryColor = "#FF8000"
