@@ -90,7 +90,8 @@ website = st.text_input(
 # ── Adres met ophaal-knop ─────────────────────────────────────────────────────
 # Het adresveld wordt voorgevuld vanuit de bestaande gemeente of leeg gelaten.
 st.markdown("**Adres \\***")
-col_addr, col_btn = st.columns([3, 1])
+# vertical_alignment="bottom" zorgt dat de knop op hetzelfde hoogte staat als het invoerveld.
+col_addr, col_btn = st.columns([3, 1], vertical_alignment="bottom")
 
 if "fetched_address" not in st.session_state:
     st.session_state["fetched_address"] = church_data.get("address", "") or ""
@@ -98,7 +99,6 @@ if "address_error" not in st.session_state:
     st.session_state["address_error"] = ""
 
 with col_btn:
-    st.write("")  # verticale uitlijning met het tekstinvoerveld
     if st.button("Adres ophalen", disabled=not name or not place, use_container_width=True):
         with st.spinner("Adres opzoeken via Google Search..."):
             try:
