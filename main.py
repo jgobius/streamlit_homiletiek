@@ -29,6 +29,12 @@ _DARK_CSS = """<style>
 [data-testid="stHeader"] {
     background-color: rgba(14, 17, 23, 0.9);
 }
+/* Uitgeschakelde primaire knoppen */
+[data-testid="stBaseButton-primary"]:disabled,
+[data-testid="stBaseButton-primary"][disabled] {
+    border: 1px solid #4A4A5A !important;
+    color: #8B8FA8 !important;
+}
 /* Secundaire knoppen */
 [data-testid="stBaseButton-secondary"] {
     background-color: #262730 !important;
