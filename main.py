@@ -87,7 +87,8 @@ _DARK_CSS = """<style>
 [data-baseweb="tab-list"] {
     background-color: #0E1117 !important;
 }
-/* Tabbladen — individuele labels */
+/* Tabbladen — individuele labels (Streamlit 1.38+ gebruikt segmented_control) */
+[data-testid="stBaseButton-segmented_control"],
 [data-testid="stTabs"] button[role="tab"],
 [data-baseweb="tab"] {
     background-color: #0E1117 !important;
