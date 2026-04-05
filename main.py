@@ -134,6 +134,10 @@ div[role="dialog"] {
 [data-testid="stAlert"] [data-testid="stMarkdownContainer"] p {
     color: #FAFAFA !important;
 }
+/* Hyperlinks in markdown-tekst */
+[data-testid="stMarkdownContainer"] a {
+    color: #6BA3FF !important;
+}
 /* Horizontale lijn (st.divider / --- in markdown) */
 [data-testid="stMarkdownContainer"] hr {
     border-color: #4A4A5A !important;
