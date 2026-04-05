@@ -605,36 +605,6 @@ def preekschets_selectie_dialog(analysis_id: int, latest: dict, perspect_summary
         st.rerun()
 
 
-@st.dialog("Extra context bewerken")
-def extra_context_dialog() -> None:
-    """Dialoog om de extra context van de kerkdienstanalyse te bewerken."""
-    new_val = st.text_area(
-        "Extra context",
-        value=st.session_state.get("extra_context", ""),
-        height=150,
-        max_chars=1024,
-        label_visibility="collapsed",
-    )
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Opslaan", type="primary", use_container_width=True):
-            try:
-                sermon_analysis_id = st.session_state.get("current_analysis_id")
-                st.session_state["api_handler"].patch(
-                    f"api/sermon-analyses/{sermon_analysis_id}/",
-                    data={"extra_context": new_val},
-                )
-                st.session_state["extra_context"] = new_val
-                # Markeer de cache als vervuild zodat de pagina opnieuw laadt.
-                st.session_state["analysis_data_dirty"] = True
-                st.rerun()
-            except Exception as e:
-                st.error(f"Fout bij opslaan: {e}")
-    with col2:
-        if st.button("Annuleren", use_container_width=True):
-            st.rerun()
-
-
 @st.dialog("Eigen preek invoeren", width="large")
 def volledige_preek_dialog(analysis_id: int, latest: dict, all_analysis_types: list) -> None:
     """Dialoog voor het invoeren of bewerken van de volledige preektekst."""
@@ -717,18 +687,6 @@ if current_tab == "Basis":
         st.stop()
 
     analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")
-
-    # Toon de preektitel centraal, zodat de 'Extra context'-knop daarna (eronder) verschijnt
-    sermon_info = selected_analysis.get("sermon_analysis", {})
-    st.title(sermon_info.get("title", "Analyse"))
-
-    _, btn_col = st.columns([7, 3])
-    with btn_col:
-        if st.button("Extra context", icon="✏️", use_container_width=True):
-            extra_context_dialog()
-
-    if st.session_state.get("extra_context"):
-        st.info(f"**Extra context:** {st.session_state['extra_context']}")
 
     if analysis_type_name == "postille":
         postille(selected_analysis)
