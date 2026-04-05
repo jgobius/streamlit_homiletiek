@@ -50,8 +50,9 @@ _DARK_CSS = """<style>
     background-color: #262730 !important;
     border-color: #4A4A5A !important;
 }
-/* Selectiemenu — geselecteerde tekst */
-[data-baseweb="select"] span {
+/* Selectiemenu — geselecteerde tekst en placeholder */
+[data-baseweb="select"] span,
+[data-baseweb="select"] div[value] {
     color: #FAFAFA !important;
 }
 /* Selectiemenu — dropdown lijst en opties */
