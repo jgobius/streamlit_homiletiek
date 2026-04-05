@@ -93,6 +93,7 @@ _DARK_CSS = """<style>
 [data-baseweb="tab"] {
     background-color: #0E1117 !important;
     color: #FAFAFA !important;
+    border-color: #4A4A5A !important;
 }
 /* Tabbladen — inhoudsgebied */
 [data-testid="stTabs"] div[role="tabpanel"],
@@ -116,6 +117,13 @@ div[role="dialog"] {
 /* Dialoogvensters — sluit- en headerknop */
 [data-testid="stDialog"] button,
 [data-testid="stBaseButton-headerNoPadding"] {
+    color: #FAFAFA !important;
+}
+/* Toggle-label tekst (bijv. 'Donker thema') — zichtbaar op donkere achtergrond */
+[data-testid="stToggle"] p,
+[data-testid="stToggle"] span,
+[data-testid="stCheckbox"] p,
+[data-testid="stCheckbox"] span {
     color: #FAFAFA !important;
 }
 /* Paginalinks (st.page_link) — o.a. '< Terug' in de zijbalk */
