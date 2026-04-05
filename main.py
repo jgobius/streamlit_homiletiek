@@ -63,6 +63,11 @@ _DARK_CSS = """<style>
     color: #FAFAFA !important;
     border-color: #4A4A5A !important;
 }
+/* Placeholder-tekst in invoervelden */
+[data-testid="stTextInput"] input::placeholder,
+[data-testid="stTextArea"] textarea::placeholder {
+    color: #8B8FA8 !important;
+}
 /* Expanders — container en rand */
 [data-testid="stExpander"] details,
 details:has([data-testid="stExpanderDetails"]) {
