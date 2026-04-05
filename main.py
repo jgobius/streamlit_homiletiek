@@ -76,29 +76,51 @@ _DARK_CSS = """<style>
     background-color: #1A1C24 !important;
     border-color: #4A4A5A !important;
 }
-/* Tabbladen — labelrij */
+/* Tabbladen — gehele container */
+[data-testid="stTabs"] {
+    background-color: #0E1117 !important;
+}
+/* Tabbladen — labelrij (role-selector stabieler dan data-baseweb in Streamlit 1.38+) */
+[data-testid="stTabs"] div[role="tablist"],
 [data-baseweb="tab-list"] {
     background-color: #0E1117 !important;
 }
-/* Tabbladen — individueel label (inactief en actief) */
+/* Tabbladen — individuele labels */
+[data-testid="stTabs"] button[role="tab"],
 [data-baseweb="tab"] {
     background-color: #0E1117 !important;
     color: #FAFAFA !important;
 }
 /* Tabbladen — inhoudsgebied */
+[data-testid="stTabs"] div[role="tabpanel"],
 [data-baseweb="tab-panel"] {
     background-color: #0E1117 !important;
 }
-/* Dialoogvensters (@st.dialog) — inhoudcontainer */
+/* Dialoogvensters (@st.dialog) — achtergrond van de pop-up */
 [data-testid="stDialogContent"],
 [data-testid="stDialog"] > div > div,
 div[role="dialog"] {
     background-color: #1A1C24 !important;
     color: #FAFAFA !important;
 }
-/* Dialoogvensters — sluitknop */
-[data-testid="stDialog"] button[aria-label="Close"] {
+/* Dialoogvensters — titel bovenaan de pop-up */
+[data-testid="stDialogTitle"],
+[data-testid="stDialog"] p,
+[data-testid="stDialog"] h1,
+[data-testid="stDialog"] h2 {
     color: #FAFAFA !important;
+}
+/* Dialoogvensters — sluit- en headerknop */
+[data-testid="stDialog"] button,
+[data-testid="stBaseButton-headerNoPadding"] {
+    color: #FAFAFA !important;
+}
+/* Paginalinks (st.page_link) — o.a. '< Terug' in de zijbalk */
+[data-testid="stPageLink"] a,
+[data-testid="stPageLink"] a span,
+[data-testid="stPageLink-NavLink"],
+[data-testid="stPageLink-NavLink"] span {
+    color: #FF8000 !important;
 }
 </style>"""
 
