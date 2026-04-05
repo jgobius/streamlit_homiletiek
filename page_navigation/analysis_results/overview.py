@@ -371,17 +371,19 @@ with st.sidebar:
                 st.session_state['current_tab'] = current_tab
                 st.rerun()
 
-        if verdiep_missing:
-            with st.expander("Verdieping toevoegen"):
-                for at in verdiep_missing:
-                    _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
-                    _add_locked = _reanalysis_is_locked(_add_lock_key)
-                    _ok, _ontbr = _deps_ok(at, latest)
-                    _label = f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
-                    _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
-                    if st.button(_label, key=f"vadd_{at['name']}", use_container_width=True,
-                                 disabled=_add_locked or not _ok, help=_help):
-                        _trigger_analysis(int(analysis_id), at, _add_lock_key)
+        # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
+        with st.expander("Verdieping toevoegen"):
+            if not verdiep_missing:
+                st.caption("Geen types beschikbaar.")
+            for at in verdiep_missing:
+                _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+                _add_locked = _reanalysis_is_locked(_add_lock_key)
+                _ok, _ontbr = _deps_ok(at, latest)
+                _label = f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
+                _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
+                if st.button(_label, key=f"vadd_{at['name']}", use_container_width=True,
+                             disabled=_add_locked or not _ok, help=_help):
+                    _trigger_analysis(int(analysis_id), at, _add_lock_key)
 
     elif current_tab == "Perspectieven":
         for r in perspect_summary:
@@ -393,17 +395,19 @@ with st.sidebar:
                 st.session_state['current_tab'] = current_tab
                 st.rerun()
 
-        if perspect_missing:
-            with st.expander("Perspectief toevoegen"):
-                for at in perspect_missing:
-                    _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
-                    _add_locked = _reanalysis_is_locked(_add_lock_key)
-                    _ok, _ontbr = _deps_ok(at, latest)
-                    _label = f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
-                    _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
-                    if st.button(_label, key=f"padd_{at['name']}", use_container_width=True,
-                                 disabled=_add_locked or not _ok, help=_help):
-                        _trigger_analysis(int(analysis_id), at, _add_lock_key)
+        # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
+        with st.expander("Perspectief toevoegen"):
+            if not perspect_missing:
+                st.caption("Geen types beschikbaar.")
+            for at in perspect_missing:
+                _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+                _add_locked = _reanalysis_is_locked(_add_lock_key)
+                _ok, _ontbr = _deps_ok(at, latest)
+                _label = f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
+                _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
+                if st.button(_label, key=f"padd_{at['name']}", use_container_width=True,
+                             disabled=_add_locked or not _ok, help=_help):
+                    _trigger_analysis(int(analysis_id), at, _add_lock_key)
 
     elif current_tab == "Preekschetsen":
         for r in preek_summary:
@@ -447,17 +451,19 @@ with st.sidebar:
                 st.session_state['current_tab'] = current_tab
                 st.rerun()
 
-        if feedback_nav_missing:
-            with st.expander("Feedback toevoegen"):
-                for at in feedback_nav_missing:
-                    _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
-                    _add_locked = _reanalysis_is_locked(_add_lock_key)
-                    _ok, _ontbr = _deps_ok(at, latest)
-                    _label = f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
-                    _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
-                    if st.button(_label, key=f"fbadd_{at['name']}", use_container_width=True,
-                                 disabled=_add_locked or not _ok, help=_help):
-                        _trigger_analysis(int(analysis_id), at, _add_lock_key)
+        # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
+        with st.expander("Feedback toevoegen"):
+            if not feedback_nav_missing:
+                st.caption("Geen types beschikbaar.")
+            for at in feedback_nav_missing:
+                _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+                _add_locked = _reanalysis_is_locked(_add_lock_key)
+                _ok, _ontbr = _deps_ok(at, latest)
+                _label = f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
+                _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
+                if st.button(_label, key=f"fbadd_{at['name']}", use_container_width=True,
+                             disabled=_add_locked or not _ok, help=_help):
+                    _trigger_analysis(int(analysis_id), at, _add_lock_key)
 
 if not analysis_results:
     st.info("Bijbelteksten wordt geanalyseerd. Ververs de pagina over enkele minuten.")
@@ -767,9 +773,11 @@ elif current_tab == "Feedback":
     selected_feedback = next(
         (r for r in feedback_nav_summary if r["id"] == st.session_state["selected_feedback_id"]), None
     )
-    # Knop altijd zichtbaar, zodat de gebruiker de preektekst kan invoeren of bewerken.
-    if st.button("Eigen preek invoeren", icon="✏️"):
-        volledige_preek_dialog(int(analysis_id), latest, all_analysis_types)
+    # Knop rechts uitlijnen via kolommen, consistent met andere actieknoppen.
+    _, btn_col = st.columns([7, 3])
+    with btn_col:
+        if st.button("Eigen preek invoeren", icon="✏️", use_container_width=True):
+            volledige_preek_dialog(int(analysis_id), latest, all_analysis_types)
     _vp = latest.get("volledige_preek")
     if _vp:
         # Toon de opgeslagen titel als bevestiging dat er al een preektekst is.
