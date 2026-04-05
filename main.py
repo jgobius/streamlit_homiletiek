@@ -123,11 +123,22 @@ div[role="dialog"] {
 [data-testid="stWidgetLabel"] span {
     color: #FAFAFA !important;
 }
+/* Koppen (st.header, st.subheader, st.markdown ###) door de hele app */
+[data-testid="stHeading"] h1,
+[data-testid="stHeading"] h2,
+[data-testid="stHeading"] h3,
+[data-testid="stHeading"] h4,
+[data-testid="stHeading"] h5,
+[data-testid="stHeading"] h6 {
+    color: #FAFAFA !important;
+}
 /* Dialoogvensters — titel bovenaan de pop-up */
 [data-testid="stDialogTitle"],
 [data-testid="stDialog"] p,
 [data-testid="stDialog"] h1,
-[data-testid="stDialog"] h2 {
+[data-testid="stDialog"] h2,
+[data-testid="stDialog"] h3,
+[data-testid="stDialog"] h4 {
     color: #FAFAFA !important;
 }
 /* Dialoogvensters — sluit- en headerknop */
