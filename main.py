@@ -117,6 +117,12 @@ div[role="dialog"] {
     border: 1px solid #4A4A5A !important;
     border-radius: 8px !important;
 }
+/* Alert-blokken (st.info, st.warning, st.error, st.success) — tekst leesbaar */
+[data-testid="stAlert"] p,
+[data-testid="stAlert"] li,
+[data-testid="stAlert"] [data-testid="stMarkdownContainer"] p {
+    color: #FAFAFA !important;
+}
 /* Caption-tekst (st.caption) */
 [data-testid="stCaptionContainer"] p {
     color: #FAFAFA !important;
