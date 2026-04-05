@@ -37,6 +37,8 @@ def theologie(analysis: dict[str, Any]) -> None:
     """Render theologie analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
 
+    # Toon de analysenaam als paginatitel.
+    st.title(analysis.get("analysis_type", {}).get("front_end_name", "Theologie"))
     st.divider()
 
     # ── Synthese ──────────────────────────────────────────────────────────────
