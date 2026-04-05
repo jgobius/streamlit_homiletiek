@@ -41,6 +41,10 @@ _DARK_CSS = """<style>
     color: #FAFAFA !important;
     border-color: #4A4A5A !important;
 }
+[data-testid="stBaseButton-secondary"] p,
+[data-testid="stBaseButton-secondary"] span {
+    color: #FAFAFA !important;
+}
 /* Selectiemenu — zichtbare container */
 [data-baseweb="select"] > div:first-child {
     background-color: #262730 !important;
