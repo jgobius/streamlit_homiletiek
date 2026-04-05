@@ -65,7 +65,7 @@ _ALL_NON_BASIS = _PERSPECTIEVEN_NAMEN | _VERDIEPING_NAMEN | _PREEKSCHETSEN_NAMEN
 
 _TABS = ["Basis", "Verdieping", "Perspectieven", "Preekschetsen", "Feedback"]
 
-# Gewenste volgorde van basis-analyses in de zijbalk (conform develop-versie).
+# Gewenste volgorde van basis-analyses in de zijbalk. Postille staat altijd onderaan.
 _BASIS_ORDER = [
     "bijbelteksten",
     "liturgisch_jaar",
@@ -82,14 +82,18 @@ _BASIS_ORDER = [
     "illustraties",
     "actueel_nieuws",
     "focus_en_functie",
-    "postille",
 ]
 
 
 def _basis_sort_key(name: str) -> int:
+    # Postille krijgt altijd een hoog getal zodat het gegarandeerd onderaan staat,
+    # ook als er onbekende analysetypes uit de API komen.
+    if name == "postille":
+        return 9999
     try:
         return _BASIS_ORDER.index(name)
     except ValueError:
+        # Onbekend type: achteraan, maar vóór postille
         return len(_BASIS_ORDER)
 
 
@@ -103,33 +107,6 @@ def _deps_ok(at: dict, latest: dict) -> tuple[bool, list[str]]:
         if dep_name and dep_name not in latest:
             ontbrekend.append(dep_label or dep_name)
     return (len(ontbrekend) == 0, ontbrekend)
-_TABS = ["Basis", "Verdieping", "Perspectieven", "Preekschetsen", "Feedback"]
-
-_BASIS_ORDER = [
-    "bijbelteksten",
-    "liturgisch_jaar",
-    "structuralistische_exegese",
-    "theology",
-    "commentaries",
-    "liedsuggesties",
-    "sociaal_maatschappelijk",
-    "waardenorientatie",
-    "geloofsorientatie",
-    "interpretatieve_synthese",
-    "politieke_orientatie",
-    "representatieve_hoorders",
-    "illustraties",
-    # overige basis-items — worden achteraan geplaatst
-    "actueel_nieuws",
-    "focus_en_functie",
-    "postille",
-]
-
-def _basis_sort_key(name: str) -> int:
-    try:
-        return _BASIS_ORDER.index(name)
-    except ValueError:
-        return len(_BASIS_ORDER)
 
 
 def _reanalysis_is_locked(lock_key: str) -> bool:
