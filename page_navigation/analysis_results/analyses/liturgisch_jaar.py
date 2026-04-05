@@ -15,7 +15,9 @@ def _render_list(values: list) -> None:
 def liturgisch_jaar(analysis: dict[str, Any]) -> None:
     """Render liturgisch jaar analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
-    sermon: dict[str, Any] = analysis.get("sermon_analysis", {})
+
+    # Toon de analysenaam als paginatitel.
+    st.title(analysis.get("analysis_type", {}).get("front_end_name", "Liturgisch jaar"))
 
     positie: dict = result.get("positie_kerkelijk_jaar", {})
     traditionele_naam: dict = result.get("traditionele_naam", {})
