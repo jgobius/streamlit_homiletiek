@@ -117,6 +117,12 @@ div[role="dialog"] {
     border: 1px solid #4A4A5A !important;
     border-radius: 8px !important;
 }
+/* Widget-labels (kopjes boven invoervelden, selecties, etc.) */
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] label,
+[data-testid="stWidgetLabel"] span {
+    color: #FAFAFA !important;
+}
 /* Dialoogvensters — titel bovenaan de pop-up */
 [data-testid="stDialogTitle"],
 [data-testid="stDialog"] p,
