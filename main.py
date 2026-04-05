@@ -108,12 +108,14 @@ details:has([data-testid="stExpanderDetails"]) summary {
 [data-baseweb="tab-panel"] {
     background-color: #0E1117 !important;
 }
-/* Dialoogvensters (@st.dialog) — achtergrond van de pop-up */
+/* Dialoogvensters (@st.dialog) — achtergrond en rand van de pop-up */
 [data-testid="stDialogContent"],
 [data-testid="stDialog"] > div > div,
 div[role="dialog"] {
     background-color: #1A1C24 !important;
     color: #FAFAFA !important;
+    border: 1px solid #4A4A5A !important;
+    border-radius: 8px !important;
 }
 /* Dialoogvensters — titel bovenaan de pop-up */
 [data-testid="stDialogTitle"],
@@ -125,6 +127,16 @@ div[role="dialog"] {
 /* Dialoogvensters — sluit- en headerknop */
 [data-testid="stDialog"] button,
 [data-testid="stBaseButton-headerNoPadding"] {
+    color: #FAFAFA !important;
+}
+/* Radio-knoppen — cirkelachtergrond donker en rand zichtbaar */
+[data-baseweb="radio"] > div {
+    background-color: #262730 !important;
+    border-color: #8B8FA8 !important;
+}
+/* Radio-knoppen — label tekst */
+[data-testid="stRadio"] label p,
+[data-testid="stRadio"] label span {
     color: #FAFAFA !important;
 }
 /* Toggle-label tekst (bijv. 'Donker thema') — zichtbaar op donkere achtergrond */
