@@ -22,11 +22,9 @@ def _render_exegese(exegese: dict) -> None:
 def commentaren(analysis: dict[str, Any]) -> None:
     """Render commentaries (commentaren) analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
-    sermon: dict[str, Any] = analysis.get("sermon_analysis", {})
 
-    if sermon.get("sermon_date"):
-        st.caption(f"**Preekdatum:** {sermon['sermon_date']}")
-
+    # Toon de analysenaam als paginatitel.
+    st.title(analysis.get("analysis_type", {}).get("front_end_name", "Commentaren"))
     st.divider()
 
     # ── Eerste lezing ─────────────────────────────────────────────────────────

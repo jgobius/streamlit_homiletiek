@@ -73,11 +73,8 @@ def _render_lied(lied: dict[str, Any]) -> None:
 def liedsuggesties(analysis: dict[str, Any]) -> None:
     """Render liedsuggesties analysis result, grouped by bundel."""
     result: dict[str, Any] = analysis.get("result", {})
-    sermon: dict[str, Any] = analysis.get("sermon_analysis", {})
     liederen: list[dict] = result.get("liederen", [])
 
-    if sermon.get("sermon_date"):
-        st.caption(f"**Preekdatum:** {sermon['sermon_date']}")
     st.caption(f"{len(liederen)} liedsuggesties")
 
     st.divider()

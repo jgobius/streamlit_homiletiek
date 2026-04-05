@@ -36,10 +36,6 @@ def _render_notie(notie: dict) -> None:
 def theologie(analysis: dict[str, Any]) -> None:
     """Render theologie analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
-    sermon: dict[str, Any] = analysis.get("sermon_analysis", {})
-
-    if sermon.get("sermon_date"):
-        st.caption(f"**Preekdatum:** {sermon['sermon_date']}")
 
     st.divider()
 

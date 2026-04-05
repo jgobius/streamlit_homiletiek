@@ -198,11 +198,9 @@ def _render_lezing(lezing: dict) -> None:
 def structuralistische_exegese(analysis: dict[str, Any]) -> None:
     """Render structuralistische exegese analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
-    sermon: dict[str, Any] = analysis.get("sermon_analysis", {})
 
-    if sermon.get("sermon_date"):
-        st.caption(f"**Preekdatum:** {sermon['sermon_date']}")
-
+    # Toon de analysenaam als paginatitel.
+    st.title(analysis.get("analysis_type", {}).get("front_end_name", "Structuralistische exegese"))
     st.divider()
 
     # ── Per lezing ────────────────────────────────────────────────────────────
