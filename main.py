@@ -76,6 +76,30 @@ _DARK_CSS = """<style>
     background-color: #1A1C24 !important;
     border-color: #4A4A5A !important;
 }
+/* Tabbladen — labelrij */
+[data-baseweb="tab-list"] {
+    background-color: #0E1117 !important;
+}
+/* Tabbladen — individueel label (inactief en actief) */
+[data-baseweb="tab"] {
+    background-color: #0E1117 !important;
+    color: #FAFAFA !important;
+}
+/* Tabbladen — inhoudsgebied */
+[data-baseweb="tab-panel"] {
+    background-color: #0E1117 !important;
+}
+/* Dialoogvensters (@st.dialog) — inhoudcontainer */
+[data-testid="stDialogContent"],
+[data-testid="stDialog"] > div > div,
+div[role="dialog"] {
+    background-color: #1A1C24 !important;
+    color: #FAFAFA !important;
+}
+/* Dialoogvensters — sluitknop */
+[data-testid="stDialog"] button[aria-label="Close"] {
+    color: #FAFAFA !important;
+}
 </style>"""
 
 # CSS voor licht thema (oranje accent, witte achtergronden).
