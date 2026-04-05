@@ -406,7 +406,7 @@ with st.sidebar:
                 _ok, _ontbr = _deps_ok(at, latest)
                 if not _preek_ready:
                     _label = f"🔒 {at['front_end_name']}"
-                    _help = "Stel eerst de selectie in via 'Selectie instellen / wijzigen'."
+                    _help = "Stel eerst de selectie in via 'Selectie instellen'."
                 elif not _ok:
                     _label = f"🔒 {at['front_end_name']}"
                     _help = "Vereist eerst: " + ", ".join(_ontbr)
@@ -739,7 +739,7 @@ elif current_tab == "Preekschetsen":
     # Vereist is dat de dialog al gedefinieerd is (zie boven).
     _, btn_col = st.columns([7, 3])
     with btn_col:
-        if st.button("Selectie instellen / wijzigen", icon="🎯", use_container_width=True):
+        if st.button("Selectie instellen", icon="🎯", use_container_width=True):
             preekschets_selectie_dialog(int(analysis_id), latest, perspect_summary)
     if not preek_summary:
         st.info("Nog geen preekschetsen beschikbaar.")
