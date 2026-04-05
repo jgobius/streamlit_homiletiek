@@ -635,6 +635,65 @@ def extra_context_dialog() -> None:
             st.rerun()
 
 
+@st.dialog("Eigen preek invoeren", width="large")
+def volledige_preek_dialog(analysis_id: int, latest: dict, all_analysis_types: list) -> None:
+    """Dialoog voor het invoeren of bewerken van de volledige preektekst."""
+    existing = latest.get("volledige_preek")
+    existing_result = existing.get("result", {}) if existing else {}
+    if not isinstance(existing_result, dict):
+        existing_result = {}
+
+    titel = existing_result.get("titel", "")
+    ondertitel = existing_result.get("ondertitel", "")
+    preektekst = existing_result.get("preektekst", "")
+
+    st.caption("Voer de preektekst in (kopieer/plak uit tekstverwerker of schrijf direct).")
+
+    new_titel = st.text_input("Titel", value=titel,
+                              placeholder="bijv. Het brood dat leven geeft")
+    new_ondertitel = st.text_input("Ondertitel", value=ondertitel,
+                                   placeholder="bijv. Johannes 6:35 — preek gehouden op 30 maart 2025")
+    new_preektekst = st.text_area("Preektekst", value=preektekst, height=500,
+                                  placeholder="Plak hier de volledige uitgeschreven preektekst...")
+
+    _kan_opslaan = bool(new_preektekst.strip())
+    if st.button("Opslaan", type="primary", use_container_width=True, disabled=not _kan_opslaan):
+        updated = {
+            **existing_result,
+            "titel": new_titel,
+            "ondertitel": new_ondertitel,
+            "preektekst": new_preektekst,
+        }
+        try:
+            handler = st.session_state["api_handler"]
+            if existing:
+                # Bestaande preektekst bijwerken via PATCH.
+                handler.patch(
+                    f"api/analysis-results/{existing['id']}/?sermon_analysis_id={analysis_id}",
+                    data={"result": updated},
+                )
+            else:
+                # Nieuwe preektekst aanmaken via POST.
+                vp_at = next((x for x in all_analysis_types if x["name"] == "volledige_preek"), None)
+                if not vp_at:
+                    st.error("Analyse-type 'volledige_preek' niet gevonden.")
+                    return
+                handler.post(
+                    "api/analysis-results/",
+                    data={
+                        "analysis_type": vp_at["id"],
+                        "sermon_analysis": analysis_id,
+                        "result": updated,
+                    },
+                )
+            st.toast("Preektekst opgeslagen.")
+            # Markeer de cache als vervuild zodat de pagina opnieuw laadt.
+            st.session_state["analysis_data_dirty"] = True
+            st.rerun()
+        except Exception as e:
+            st.error(f"Fout bij opslaan: {e}")
+
+
 # --- Tabbladnavigatie ---
 st.segmented_control(
     "Tabblad",
@@ -750,26 +809,19 @@ elif current_tab == "Feedback":
     selected_feedback = next(
         (r for r in feedback_nav_summary if r["id"] == st.session_state["selected_feedback_id"]), None
     )
-    # Sectie voor de eigen preektekst (volledige_preek).
-    # Dit type wordt apart beheerd: niet in de navigatie, maar inline bovenaan het tabblad.
-    volledige_preek_data = latest.get("volledige_preek")
-    if volledige_preek_data:
-        # Toon de inline bewerker voor de preektekst.
-        with st.expander("Eigen preektekst", expanded=not bool(selected_feedback)):
-            volledige_preek(volledige_preek_data, int(analysis_id))
-    else:
-        # Zoek het analysis-type op om het aan te kunnen maken via de agent.
-        # Zoek het analysis-type op in alle types (niet in feedback_missing, want
-        # volledige_preek heeft geen front_end_name en valt dan weg uit missing_types).
-        vp_type = next((at for at in all_analysis_types if at["name"] == "volledige_preek"), None)
-        if vp_type:
-            _, btn_col = st.columns([7, 3])
-            with btn_col:
-                _vp_lock_key = f"analysis_add_lock_{analysis_id}_volledige_preek"
-                if st.button("Eigen preek invoeren", icon="✏️", use_container_width=True,
-                             disabled=_reanalysis_is_locked(_vp_lock_key)):
-                    _trigger_analysis(int(analysis_id), vp_type, _vp_lock_key)
+    # Knop altijd zichtbaar, zodat de gebruiker de preektekst kan invoeren of bewerken.
+    if st.button("Eigen preek invoeren", icon="✏️"):
+        volledige_preek_dialog(int(analysis_id), latest, all_analysis_types)
+    _vp = latest.get("volledige_preek")
+    if _vp:
+        # Toon de opgeslagen titel als bevestiging dat er al een preektekst is.
+        _vp_titel = _vp.get("result", {}).get("titel", "") if isinstance(_vp.get("result"), dict) else ""
+        if _vp_titel:
+            st.caption(f"Opgeslagen: {_vp_titel[:50]}")
     if not feedback_nav_summary:
-        st.info("Nog geen feedback-analyses beschikbaar.")
+        if not latest.get("volledige_preek"):
+            st.info("Voer eerst een preektekst in via de knop hierboven.")
+        else:
+            st.info("Voeg feedbackanalyses toe via 'Feedback toevoegen' in de zijbalk.")
     elif selected_feedback:
         feedback_analyse(selected_feedback)
