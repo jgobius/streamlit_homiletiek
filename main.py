@@ -63,13 +63,21 @@ _DARK_CSS = """<style>
     color: #FAFAFA !important;
     border-color: #4A4A5A !important;
 }
-/* Expanders */
-[data-testid="stExpander"] details {
+/* Expanders — container en rand */
+[data-testid="stExpander"] details,
+details:has([data-testid="stExpanderDetails"]) {
     background-color: #262730 !important;
     border-color: #4A4A5A !important;
 }
-[data-testid="stExpander"] summary {
+/* Expanders — koptekst (summary) met expliciete achtergrond */
+[data-testid="stExpander"] summary,
+details:has([data-testid="stExpanderDetails"]) summary {
+    background-color: #262730 !important;
     color: #FAFAFA !important;
+}
+/* Expanders — inhoudsgebied */
+[data-testid="stExpanderDetails"] {
+    background-color: #262730 !important;
 }
 /* Formuliercontainers */
 [data-testid="stForm"] {
