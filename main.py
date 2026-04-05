@@ -76,11 +76,13 @@ _DARK_CSS = """<style>
     background-color: #1A1C24 !important;
     border-color: #4A4A5A !important;
 }
-/* Tabbladen — gehele container */
-[data-testid="stTabs"] {
+/* Tabbladen — gehele container inclusief alle wrapper-divs */
+[data-testid="stTabs"],
+[data-testid="stTabs"] > div,
+[data-testid="stTabs"] > div > div {
     background-color: #0E1117 !important;
 }
-/* Tabbladen — labelrij (role-selector stabieler dan data-baseweb in Streamlit 1.38+) */
+/* Tabbladen — labelrij */
 [data-testid="stTabs"] div[role="tablist"],
 [data-baseweb="tab-list"] {
     background-color: #0E1117 !important;
