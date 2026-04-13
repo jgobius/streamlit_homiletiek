@@ -100,7 +100,7 @@ if "address_error" not in st.session_state:
 with col_btn:
     st.write("")  # verticale uitlijning met het tekstinvoerveld
     if st.button("Adres ophalen", disabled=not name or not place, use_container_width=True):
-        with st.spinner("Adres opzoeken via Google Search..."):
+        with st.spinner("Adres opzoeken via internet..."):
             try:
                 agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
                 resp = requests.post(
