@@ -210,7 +210,13 @@ def _render_preekschets_result(selected_preek: dict, latest: dict) -> None:
 redirect_to_login()
 
 # Haal analysis_id op uit query-params of session_state.
-analysis_id = st.query_params.get('analysis_id') or st.session_state.get('current_analysis_id')
+# Converteer naar int zodat de string "None" (bijv. bij een foute navigatie) niet
+# per ongeluk de guard hieronder passeert — "None" is truthy als string.
+_raw_id = st.query_params.get('analysis_id') or st.session_state.get('current_analysis_id')
+try:
+    analysis_id = int(_raw_id)
+except (TypeError, ValueError):
+    analysis_id = None
 
 # Initialiseer het actieve tabblad vroeg zodat de zijbalk dit kan gebruiken vóór het gecachte blok.
 if 'current_tab' not in st.session_state:

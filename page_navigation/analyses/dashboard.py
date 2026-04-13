@@ -93,7 +93,10 @@ if new_analysis:
 if "selected_analysis_id" in st.session_state:
     analysis_id = st.session_state.selected_analysis_id
     del st.session_state.selected_analysis_id
-    st.switch_page(
-        f'{st.session_state["page_navigation_dir"]}/analysis_results/overview.py',
-        query_params={"analysis_id": analysis_id}
-    )
+    # Navigeer alleen als het ID een geldig geheel getal is; een None-waarde
+    # zou ?analysis_id=None in de URL produceren en de overzichtspagina laten crashen.
+    if analysis_id is not None:
+        st.switch_page(
+            f'{st.session_state["page_navigation_dir"]}/analysis_results/overview.py',
+            query_params={"analysis_id": analysis_id}
+        )
