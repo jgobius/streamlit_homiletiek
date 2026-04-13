@@ -729,7 +729,8 @@ elif current_tab == "Perspectieven":
     )
     if not perspect_summary:
         st.info("Nog geen perspectieven beschikbaar.")
-    # Render-functies voor perspectieven worden in een volgende versie toegevoegd.
+    elif selected_perspect:
+        contextduiding(selected_perspect)
 
 elif current_tab == "Preekschetsen":
     selected_preek = next(
