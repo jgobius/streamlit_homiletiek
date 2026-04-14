@@ -141,10 +141,10 @@ def _trigger_analysis(analysis_id: int, at: dict, lock_key: str) -> None:
     try:
         agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
         response = requests.post(
-            f"{agent_url}/run_single_analysis/",
+            f"{agent_url}/single_analysis/",
             json={
                 "sermon_analysis_id": analysis_id,
-                "analysis_type_name": at["name"],
+                "analysis_type_id": at["id"],
             },
             timeout=30,
         )
