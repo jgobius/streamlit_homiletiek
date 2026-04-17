@@ -1,0 +1,4 @@
+[theme]
+# Lichte modus als standaard; donker thema wordt via CSS-injectie ingeschakeld.
+base = "light"
+primaryColor = "#FF8000"

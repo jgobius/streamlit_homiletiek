@@ -126,3 +126,37 @@ class APIHandler:
         response.raise_for_status()
         return response.json()
 
+    def delete(self, endpoint: str, timeout: int = 30) -> None:
+        # Verwijder de resource op het opgegeven endpoint.
+        # timeout=30 is voldoende voor DELETE-verzoeken die geen zware verwerking vereisen.
+        url = f"{self.base_url}/{endpoint}"
+        headers = {
+            "Authorization": f"Bearer {self.jwt_handler.token}",
+            "Content-Type": "application/json",
+        }
+        response = requests.delete(url, headers=headers, timeout=timeout)
+        response.raise_for_status()
+
+    def patch(
+        self, endpoint: str, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Send a PATCH request to the specified endpoint with the given data.
+        Args:
+            endpoint (str): The API endpoint to send the PATCH request to.
+            data (dict[str, Any]): The data to be sent in the request body as JSON.
+        Returns:
+            dict[str, Any]: The JSON response from the API as a dictionary.
+        Raises:
+            requests.exceptions.HTTPError: If the HTTP request returns an unsuccessful status code.
+            requests.exceptions.RequestException: If there is a network-related error during the request.
+        """
+
+        url = f"{self.base_url}{endpoint}"
+        headers = {
+            "Authorization": f"Bearer {self.jwt_handler.token}",
+            "Content-Type": "application/json",
+        }
+        response = self.session.patch(url, json=data, headers=headers)
+        response.raise_for_status()
+        return response.json()

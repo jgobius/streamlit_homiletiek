@@ -31,7 +31,7 @@ def validate_data(
     
     return json.dumps(user_model.model_dump())
 
-st.title('Registreren voor preekanalyses')
+st.title('Registreren voor kerkdienstanalyses')
 
 first_name = st.text_input('Voornaam', max_chars=150)
 last_name = st.text_input('Achternaam', max_chars=150)
