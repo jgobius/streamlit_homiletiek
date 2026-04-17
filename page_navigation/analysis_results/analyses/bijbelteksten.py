@@ -39,7 +39,7 @@ def _extra_context_dialog() -> None:
 
 def bijbelteksten(analysis: dict[str, Any]) -> None:
     """Render bijbelteksten analysis result."""
-    result: dict[str, Any] = analysis.get("result", {})
+    result: Any = analysis.get("result")
 
     # De analytische naam tonen als paginatitel.
     st.title("Bijbelteksten")
@@ -52,14 +52,26 @@ def bijbelteksten(analysis: dict[str, Any]) -> None:
 
     st.divider()
 
-    for scripture_ref, scripture_data in result.items():
-        st.subheader(scripture_ref.rstrip(".").strip())
-        verses: list[dict] = scripture_data.get("verses", [])
+    # `result` is een lijst van lezing-entries in liturgische leesvolgorde
+    # (eerste lezing → psalm → tweede lezing → evangelie). Elke entry heeft
+    # een 'reference'-veld met de originele referentie. We gebruiken een
+    # lijst in plaats van een dict-op-referentie omdat Postgres jsonb
+    # object-key-volgorde niet bewaart, maar list-volgorde wél.
+    if not isinstance(result, list):
+        st.info("Nog geen bijbeltekst beschikbaar.")
+        return
+
+    for scripture in result:
+        if not isinstance(scripture, dict):
+            continue
+        scripture_ref = (scripture.get("reference") or "").rstrip(".").strip()
+        st.subheader(scripture_ref)
+        verses: list[dict] = scripture.get("verses", [])
 
         for verse in verses:
             number = verse.get("number", "")
-            modern_text = verse.get("modern_text", "").strip()
-            source_text = verse.get("source_text", "").strip()
+            modern_text = (verse.get("modern_text") or "").strip()
+            source_text = (verse.get("source_text") or "").strip()
 
             st.markdown(
                 f"<span style='color:grey;font-size:0.85em;font-weight:bold;'>{number}</span>"
