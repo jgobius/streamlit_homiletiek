@@ -91,7 +91,8 @@ def _show_own_readings_dialog() -> None:
         if count < len(READING_TYPES):
             if st.button("+ Lezing toevoegen"):
                 st.session_state["own_readings_count"] = count + 1
-                st.rerun()
+                # scope="fragment" herstart alleen het dialoogvenster, zodat het open blijft
+                st.rerun(scope="fragment")
     with btn_col2:
         if count > 1:
             if st.button("- Lezing verwijderen"):
@@ -100,7 +101,8 @@ def _show_own_readings_dialog() -> None:
                 st.session_state.pop(f"book_select_{last_rt}", None)
                 st.session_state.pop(f"cv_input_{last_rt}", None)
                 st.session_state["own_readings_count"] = count - 1
-                st.rerun()
+                # scope="fragment" herstart alleen het dialoogvenster, zodat het open blijft
+                st.rerun(scope="fragment")
 
     st.markdown("---")
     if st.button("Opslaan en sluiten", type="primary"):
