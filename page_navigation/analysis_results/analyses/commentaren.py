@@ -23,8 +23,7 @@ def commentaren(analysis: dict[str, Any]) -> None:
     """Render commentaries (commentaren) analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
 
-    # Toon de analysenaam als paginatitel.
-    st.title(analysis.get("analysis_type", {}).get("front_end_name", "Commentaren"))
+    # Titel wordt centraal in overview.py getoond, boven de actieknoppen.
     st.divider()
 
     # ── Eerste lezing ─────────────────────────────────────────────────────────

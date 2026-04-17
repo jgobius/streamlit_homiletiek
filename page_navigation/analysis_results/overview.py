@@ -675,6 +675,15 @@ def confirm_rerun_analysis(result: dict) -> None:
             st.rerun()
 
 
+def _render_titel_en_actieknoppen(result: dict, key_prefix: str) -> None:
+    """Render de titel (front_end_name) gevolgd door de vier actieknoppen.
+
+    Gebundeld zodat alle tabs dezelfde volgorde hanteren: titel → knoppen → inhoud.
+    """
+    st.title(result["analysis_type"]["front_end_name"])
+    _render_actieknoppen(result, key_prefix)
+
+
 def _render_actieknoppen(result: dict, key_prefix: str) -> None:
     """Render de vier actieknoppen (Verwijder / Opnieuw / Aanpassen / ℹ️) onder een analysetitel.
 
@@ -971,8 +980,8 @@ if current_tab == "Basis":
 
     analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")
 
-    # Actieknoppen (Verwijder / Opnieuw / Aanpassen / ℹ️) direct boven de analyse.
-    _render_actieknoppen(selected_analysis, key_prefix="basis")
+    # Titel en actieknoppen (Verwijder / Opnieuw / Aanpassen / ℹ️) direct boven de analyse.
+    _render_titel_en_actieknoppen(selected_analysis, key_prefix="basis")
 
     if analysis_type_name == "postille":
         postille(selected_analysis)
@@ -1031,7 +1040,7 @@ elif current_tab == "Verdieping":
         st.info("Nog geen verdieping beschikbaar.")
     elif selected_verdiep:
         # Actieknoppen ook in Verdieping-tab; render-functies volgen in een latere versie.
-        _render_actieknoppen(selected_verdiep, key_prefix="verdieping")
+        _render_titel_en_actieknoppen(selected_verdiep, key_prefix="verdieping")
 
 elif current_tab == "Perspectieven":
     selected_perspect = next(
@@ -1045,7 +1054,7 @@ elif current_tab == "Perspectieven":
     if not perspect_summary:
         st.info("Nog geen perspectieven beschikbaar.")
     elif selected_perspect:
-        _render_actieknoppen(selected_perspect, key_prefix="perspectieven")
+        _render_titel_en_actieknoppen(selected_perspect, key_prefix="perspectieven")
         contextduiding(selected_perspect)
 
 elif current_tab == "Preekschetsen":
@@ -1063,7 +1072,7 @@ elif current_tab == "Preekschetsen":
         st.info("Nog geen preekschetsen beschikbaar.")
     elif selected_preek:
         # Actieknoppen boven de preekschets; 'Selectie instellen' blijft als aparte knop erboven.
-        _render_actieknoppen(selected_preek, key_prefix="preekschets")
+        _render_titel_en_actieknoppen(selected_preek, key_prefix="preekschets")
         preekschets(selected_preek)
 
 elif current_tab == "Feedback":
@@ -1097,5 +1106,5 @@ elif current_tab == "Feedback":
             st.info("Voeg feedbackanalyses toe via 'Feedback toevoegen' in de zijbalk.")
     elif selected_feedback:
         # Actieknoppen boven de feedback-analyse; 'Eigen preek invoeren' blijft erboven staan.
-        _render_actieknoppen(selected_feedback, key_prefix="feedback")
+        _render_titel_en_actieknoppen(selected_feedback, key_prefix="feedback")
         feedback_analyse(selected_feedback)

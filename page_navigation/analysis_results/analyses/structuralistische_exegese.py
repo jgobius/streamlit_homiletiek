@@ -199,8 +199,7 @@ def structuralistische_exegese(analysis: dict[str, Any]) -> None:
     """Render structuralistische exegese analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
 
-    # Toon de analysenaam als paginatitel.
-    st.title(analysis.get("analysis_type", {}).get("front_end_name", "Structuralistische exegese"))
+    # Titel wordt centraal in overview.py getoond, boven de actieknoppen.
     st.divider()
 
     # ── Per lezing ────────────────────────────────────────────────────────────

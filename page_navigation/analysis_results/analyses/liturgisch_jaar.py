@@ -16,8 +16,7 @@ def liturgisch_jaar(analysis: dict[str, Any]) -> None:
     """Render liturgisch jaar analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
 
-    # Toon de analysenaam als paginatitel.
-    st.title(analysis.get("analysis_type", {}).get("front_end_name", "Liturgisch jaar"))
+    # Titel wordt centraal in overview.py getoond, boven de actieknoppen.
 
     positie: dict = result.get("positie_kerkelijk_jaar", {})
     traditionele_naam: dict = result.get("traditionele_naam", {})
