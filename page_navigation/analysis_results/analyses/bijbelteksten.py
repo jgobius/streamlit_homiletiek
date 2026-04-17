@@ -53,6 +53,9 @@ def bijbelteksten(analysis: dict[str, Any]) -> None:
     st.divider()
 
     for scripture_ref, scripture_data in result.items():
+        # Sla niet-dict waarden over (bijv. metadata-velden op het root-niveau van result).
+        if not isinstance(scripture_data, dict):
+            continue
         st.subheader(scripture_ref.rstrip(".").strip())
         verses: list[dict] = scripture_data.get("verses", [])
 
