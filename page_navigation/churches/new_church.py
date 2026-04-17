@@ -111,13 +111,24 @@ with col_btn:
                     timeout=30,
                 )
                 resp.raise_for_status()
-                st.session_state["address_input"] = resp.json().get("adres", "")
-                st.session_state["address_error"] = ""
+                payload = resp.json()
+                st.session_state["address_input"] = payload.get("adres", "")
+                if payload.get("gevonden"):
+                    st.session_state["address_error"] = ""
+                else:
+                    # Geen (volledig) adres gevonden; waarschuw de gebruiker
+                    st.session_state["address_error"] = (
+                        "Geen adres gevonden via OpenStreetMap. Vul het adres handmatig in."
+                    )
             except Exception as e:
                 st.session_state["address_error"] = f"Adres ophalen mislukt: {e}"
 
 if st.session_state["address_error"]:
-    st.error(st.session_state["address_error"])
+    # Technische fouten als error tonen, "niet gevonden" als warning
+    if st.session_state["address_error"].startswith("Adres ophalen mislukt"):
+        st.error(st.session_state["address_error"])
+    else:
+        st.warning(st.session_state["address_error"])
 
 with col_addr:
     address = st.text_input(
