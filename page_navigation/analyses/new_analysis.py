@@ -430,8 +430,8 @@ if submit:
             scripture_json=st.session_state.get("structured_scriptures") or [],
             use_calendar=(scriptures_choice == "Kerkelijk rooster volgen"),
             song_books=[book["id"] for book in song_books],
-            extra_context=extra_context,
-            bible_version=bible_version["id"] if bible_version else None,
+            bible_version=bible_version.get("id", None),
+            extra_context=extra_context
         )
 
         data = json.loads(sermon_analysis_model.model_dump_json())
