@@ -92,8 +92,10 @@ website = st.text_input(
 st.markdown("**Adres \\***")
 col_addr, col_btn = st.columns([3, 1])
 
-if "fetched_address" not in st.session_state:
-    st.session_state["fetched_address"] = church_data.get("address", "") or ""
+# address_input is de key van de text_input; zo kan session_state de waarde
+# bijwerken na het ophalen via de API (zonder key negeert Streamlit de update).
+if "address_input" not in st.session_state:
+    st.session_state["address_input"] = church_data.get("address", "") or ""
 if "address_error" not in st.session_state:
     st.session_state["address_error"] = ""
 
@@ -109,7 +111,7 @@ with col_btn:
                     timeout=30,
                 )
                 resp.raise_for_status()
-                st.session_state["fetched_address"] = resp.json().get("adres", "")
+                st.session_state["address_input"] = resp.json().get("adres", "")
                 st.session_state["address_error"] = ""
             except Exception as e:
                 st.session_state["address_error"] = f"Adres ophalen mislukt: {e}"
@@ -121,12 +123,10 @@ with col_addr:
     address = st.text_input(
         "Adres",
         max_chars=200,
-        value=st.session_state["fetched_address"],
+        key="address_input",
         label_visibility="collapsed",
         placeholder="Straat huisnummer, postcode plaats",
     )
-    # Sla het ingetypte adres op zodat het niet verloren gaat bij een herrender
-    st.session_state["fetched_address"] = address
 
 context = st.text_area(
     "Extra context over de gemeente",
@@ -167,11 +167,11 @@ if add_church:
 
         if is_edit:
             st.session_state["api_handler"].put(f"api/churches/{church_id}/", data)
-            st.session_state.pop("fetched_address", None)
+            st.session_state.pop("address_input", None)
             st.switch_page(f"{st.session_state['page_navigation_dir']}/churches/churches_overview.py")
         else:
             st.session_state["api_handler"].post("api/churches/", data)
-            st.session_state.pop("fetched_address", None)
+            st.session_state.pop("address_input", None)
             if st.query_params.get("from_page"):
                 st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/{st.query_params.get('from_page')}")
             else:
