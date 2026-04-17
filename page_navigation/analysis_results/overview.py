@@ -190,10 +190,10 @@ def _trigger_analysis(analysis_id: int, at: dict, lock_key: str) -> None:
     try:
         agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
         response = requests.post(
-            f"{agent_url}/single_analysis/",
+            f"{agent_url}/run_single_analysis/",
             json={
                 "sermon_analysis_id": analysis_id,
-                "analysis_type_id": at["id"],
+                "analysis_type_name": at["name"],
             },
             timeout=30,
         )
@@ -603,10 +603,6 @@ with st.sidebar:
                 ):
                     _trigger_analysis(int(analysis_id), at, _add_lock_key)
 
-if not analysis_results:
-    st.info("Bijbelteksten wordt geanalyseerd. Ververs de pagina over enkele minuten.")
-    st.stop()
-
 # --- Dialogs ---
 
 
@@ -876,6 +872,7 @@ if current_tab == "Basis":
         None,
     )
     if not selected_analysis:
+        st.info("Bijbelteksten wordt geanalyseerd. Ververs de pagina over enkele minuten.")
         st.stop()
 
     analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")
