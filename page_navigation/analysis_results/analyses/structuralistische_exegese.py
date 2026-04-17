@@ -172,6 +172,37 @@ def _render_lezing(lezing: dict) -> None:
             if synth.get("theologische_betekenis"):
                 st.markdown(f"*Theologische betekenis:* {synth['theologische_betekenis']}")
 
+    # ── Zoekmodellen Snoek ────────────────────────────────────────────────────
+    # Drie theologisch-existentiële zoekmodellen van Hans Snoek: Godsbeelden en
+    # Mensbeelden voor OT-lezingen, Jezusbeelden voor NT-lezingen. Elk sub-object
+    # bevat doorgaans dominant_beeld, onderbouwing_grondtaal en spanning; we
+    # tonen die als aanwezig, en vallen defensief terug op een generieke key-
+    # value weergave als het schema ooit wordt uitgebreid.
+    zoekmodellen: dict = lezing.get("zoekmodellen_snoek", {}) or {}
+    if any(zoekmodellen.get(k) for k in ("godsbeelden_ot", "mensbeelden_ot", "jezusbeelden_nt")):
+        with st.expander("🧭 Zoekmodellen (Snoek)", expanded=False):
+            for veld, label in [
+                ("godsbeelden_ot", "Godsbeelden (OT)"),
+                ("mensbeelden_ot", "Mensbeelden (OT)"),
+                ("jezusbeelden_nt", "Jezusbeelden (NT)"),
+            ]:
+                model: dict | None = zoekmodellen.get(veld)
+                if not model:
+                    continue
+                st.markdown(f"**{label}**")
+                if model.get("dominant_beeld"):
+                    st.markdown(f"*Dominant beeld:* {model['dominant_beeld']}")
+                if model.get("onderbouwing_grondtaal"):
+                    st.markdown(f"*Onderbouwing (grondtaal):* {model['onderbouwing_grondtaal']}")
+                if model.get("spanning"):
+                    st.markdown(f"*Spanning:* {model['spanning']}")
+                # Fallback voor eventuele extra/andere sleutels zodat toekomstige
+                # prompt-uitbreidingen niet stilletjes onzichtbaar blijven.
+                bekende_keys = {"dominant_beeld", "onderbouwing_grondtaal", "spanning"}
+                overig = {k: v for k, v in model.items() if k not in bekende_keys and v}
+                for k, v in overig.items():
+                    st.markdown(f"*{k.replace('_', ' ').capitalize()}:* {v}")
+
     # ── Theologische analyse ──────────────────────────────────────────────────
     with st.expander("✝️ Theologische analyse", expanded=False):
         theo: dict = lezing.get("theologische_analyse", {})
