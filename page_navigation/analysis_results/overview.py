@@ -1060,8 +1060,19 @@ elif current_tab == "Verdieping":
     if not verdiep_summary:
         st.info("Nog geen verdieping beschikbaar.")
     elif selected_verdiep:
-        # Actieknoppen ook in Verdieping-tab; render-functies volgen in een latere versie.
+        # Titel + actieknoppen, daarna dispatcht de generieke verdieping-renderer
+        # op basis van het analyse-type (bv. gebeden_profetisch → render_gebeden).
         _render_titel_en_actieknoppen(selected_verdiep, key_prefix="verdieping")
+        verdieping(
+            selected_verdiep,
+            analysis_type_name=selected_verdiep["analysis_type"]["name"],
+        )
+        render_feedback_trigger(
+            analysis_result_id=selected_verdiep["id"],
+            section_name=selected_verdiep["analysis_type"]["front_end_name"],
+            handler=st.session_state["api_handler"],
+            key=f"feedback_verdieping_{selected_verdiep['id']}",
+        )
 
 elif current_tab == "Perspectieven":
     selected_perspect = next(
