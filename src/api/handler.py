@@ -152,11 +152,11 @@ class APIHandler:
             requests.exceptions.RequestException: If there is a network-related error during the request.
         """
 
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self.base_url}/{endpoint}"
         headers = {
             "Authorization": f"Bearer {self.jwt_handler.token}",
             "Content-Type": "application/json",
         }
-        response = self.session.patch(url, json=data, headers=headers)
+        response = requests.patch(url, json=data, headers=headers)
         response.raise_for_status()
         return response.json()
