@@ -103,20 +103,57 @@ def render_gebeden(analysis: dict) -> None:
         st.info("Geen resultaat beschikbaar.")
         return
 
+    # Stijl-analyse bovenaan als korte duiding (nieuw schema gebeden_profetisch).
+    stijl = result.get("stijl_analyse", "")
+    if stijl:
+        st.info(_md(stijl))
+
     scenario = result.get("gekozen_scenario", "")
     if scenario:
         st.info(f"**Scenario:** {_md(scenario)}")
 
+    # Render alleen de bekende gebed-keys, in vaste volgorde — voorkomt dat
+    # ongerelateerde velden (zoals profetische_elementen bij malformed data
+    # uit de vorige schema-versie) per ongeluk als gebed worden getoond.
     gebeden = result.get("gebeden", {})
-    if gebeden:
-        # Drempelgebed altijd bovenaan
-        if "drempelgebed" in gebeden and isinstance(gebeden["drempelgebed"], dict):
-            _render_gebed("drempelgebed", gebeden["drempelgebed"])
-        for naam, g in gebeden.items():
-            if naam == "drempelgebed":
-                continue
+    if isinstance(gebeden, dict) and gebeden:
+        _VOLGORDE = ("drempelgebed", "kyrie", "epiclese", "dankgebed", "voorbeden")
+        for naam in _VOLGORDE:
+            g = gebeden.get(naam)
             if isinstance(g, dict):
                 _render_gebed(naam, g)
+
+    # NBV21-psalm gebruik: verantwoording welke psalm als bron is gebruikt en
+    # hoe die in de gebeden is verwerkt (profetische variant, Brueggemann).
+    psalm = result.get("nbv21_psalm_gebruik")
+    if isinstance(psalm, dict) and psalm:
+        nr = psalm.get("psalm_nummer", "")
+        label = f"NBV21-psalm {nr}" if nr else "NBV21-psalm"
+        with st.expander(label, expanded=False):
+            gebruikt_in = psalm.get("gebruikt_in_gebeden", [])
+            if gebruikt_in:
+                st.markdown("**Verwerkt in:** " + ", ".join(str(x) for x in gebruikt_in))
+            voorbeelden = psalm.get("concrete_voorbeelden", [])
+            if voorbeelden:
+                st.markdown("**Concrete voorbeelden:**")
+                for v in voorbeelden:
+                    st.markdown(f"- {_md(str(v))}")
+
+    # Profetische elementen: door Brueggemann-prompt gevraagde stijlmiddelen.
+    prof = result.get("profetische_elementen")
+    if isinstance(prof, dict) and prof:
+        with st.expander("Profetische elementen", expanded=False):
+            _PROF_LABELS = {
+                "gevaarlijke_werkwoorden": "Gevaarlijke werkwoorden",
+                "moderne_metaforen": "Moderne metaforen",
+                "anti_status_quo": "Anti-status-quo zinnen",
+            }
+            for key, label in _PROF_LABELS.items():
+                items = prof.get(key, [])
+                if items:
+                    st.markdown(f"**{label}**")
+                    for item in items:
+                        st.markdown(f"- {_md(str(item))}")
 
     echo = result.get("echo_techniek", "")
     if echo:
