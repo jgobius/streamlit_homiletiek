@@ -438,13 +438,18 @@ if submit:
         result = st.session_state["api_handler"].post(endpoint="api/sermon-analyses/", data=data)
         sermon_analysis_id = result.get("id")
 
-        # Auto-start bijbelteksten-analyse via de agent (mislukken blokkeert de gebruiker niet)
+        # Auto-start het ophalen en koppelen van de bijbelteksten. Dit is een
+        # mechanische stap (verzen uit de DB matchen aan de geselecteerde lezingen),
+        # dus we gebruiken /original_scriptures/ in plaats van een AI-agent.
+        # Zo worden alle lezingen (rooster of eigen) consistent verwerkt.
+        # Een fout hier mag de gebruiker niet blokkeren; de tab 'Bijbelteksten'
+        # toont dan simpelweg geen resultaat tot de analyse opnieuw gestart wordt.
         if sermon_analysis_id:
             agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
             try:
                 requests.post(
-                    f"{agent_url}/run_single_analysis/",
-                    json={"sermon_analysis_id": sermon_analysis_id, "analysis_type_name": "bijbelteksten"},
+                    f"{agent_url}/original_scriptures/",
+                    json={"sermon_analysis_id": sermon_analysis_id},
                     timeout=30,
                 )
             except Exception:
