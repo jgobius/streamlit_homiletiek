@@ -198,6 +198,10 @@ def _trigger_analysis(analysis_id: int, at: dict, lock_key: str) -> None:
             timeout=30,
         )
         response.raise_for_status()
+        # Invalideer de sessiecache zodat een volgende rerun (bv. tab-klik)
+        # de nieuwe analyse ophaalt zodra de agent klaar is, zonder dat de
+        # gebruiker hoeft te hard-refreshen.
+        st.session_state["analysis_data_dirty"] = True
         st.toast(
             f"'{at['front_end_name']}' wordt uitgevoerd. Ververs de pagina over enkele minuten."
         )
@@ -237,6 +241,10 @@ def _trigger_preekschets(analysis_id: int, at: dict, lock_key: str) -> None:
             timeout=30,
         )
         response.raise_for_status()
+        # Invalideer de sessiecache zodat een volgende rerun (bv. tab-klik)
+        # de nieuwe preekschets ophaalt zodra de agent klaar is, zonder dat
+        # de gebruiker hoeft te hard-refreshen.
+        st.session_state["analysis_data_dirty"] = True
         st.toast(
             f"'{at['front_end_name']}' wordt uitgevoerd. Ververs de pagina over enkele minuten."
         )
