@@ -603,10 +603,6 @@ with st.sidebar:
                 ):
                     _trigger_analysis(int(analysis_id), at, _add_lock_key)
 
-if not analysis_results:
-    st.info("Bijbelteksten wordt geanalyseerd. Ververs de pagina over enkele minuten.")
-    st.stop()
-
 # --- Dialogs ---
 
 
@@ -876,6 +872,10 @@ if current_tab == "Basis":
         None,
     )
     if not selected_analysis:
+        # Zelfde melding als bij een volledig lege analyse; hier geraak je
+        # wanneer er wel resultaten zijn, maar nog geen Basis-tab-entry (bv.
+        # de bijbelteksten-stap is nog bezig in de achtergrond).
+        st.info("Bijbelteksten wordt geanalyseerd. Ververs de pagina over enkele minuten.")
         st.stop()
 
     analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")
