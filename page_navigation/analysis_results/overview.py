@@ -627,6 +627,10 @@ with st.sidebar:
 with st.sidebar:
     if st.button("🔄 Ververs", use_container_width=True, key="sidebar_refresh"):
         st.session_state["analysis_data_dirty"] = True
+        # Behoud het actieve tabblad expliciet — zonder deze regel valt het
+        # segmented_control bij een rerun terug op "Basis". Alle andere zijbalk-
+        # knoppen hergebruiken dit patroon om dezelfde reden.
+        st.session_state["current_tab"] = current_tab
         st.rerun()
 
 # --- Dialogs ---
