@@ -293,13 +293,6 @@ with st.sidebar:
         label="< Terug",
         page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py",
     )
-    # Handmatige ververs-knop: invalideer de per-analyse sessiecache
-    # (`overview_data_{analysis_id}`) zodat extern gestarte analyses (bv.
-    # liedsuggesties via de agent) direct zichtbaar worden zonder dat de
-    # gebruiker hoeft uit te loggen of de server opnieuw moet starten.
-    if st.button("🔄 Ververs", use_container_width=True, key="sidebar_refresh"):
-        st.session_state["analysis_data_dirty"] = True
-        st.rerun()
 
 if not analysis_id:
     st.warning(
@@ -626,6 +619,15 @@ with st.sidebar:
                     help=_help,
                 ):
                     _trigger_analysis(int(analysis_id), at, _add_lock_key)
+
+# Ververs-knop onderaan de zijbalk: invalideert de per-analyse sessiecache
+# (`overview_data_{analysis_id}`) zodat extern gestarte analyses (bv.
+# liedsuggesties via de agent) zichtbaar worden zonder dat de gebruiker
+# hoeft uit te loggen of de server opnieuw moet starten.
+with st.sidebar:
+    if st.button("🔄 Ververs", use_container_width=True, key="sidebar_refresh"):
+        st.session_state["analysis_data_dirty"] = True
+        st.rerun()
 
 # --- Dialogs ---
 
