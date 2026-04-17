@@ -10,10 +10,19 @@ def _render_list(values: list) -> None:
         st.markdown(f"- {clean_md(str(item))}")
 
 
+def _render_bronnen(urls: list[str]) -> None:
+    # Toon bronnen als klikbare links; compact onder de samenvatting.
+    if not urls:
+        return
+    links = " · ".join(f"[bron {i + 1}]({u})" for i, u in enumerate(urls))
+    st.caption(f"Bronnen: {links}")
+
+
 _CATEGORIE_ICONS = {
     "conflict": "⚔️", "oorlog": "⚔️", "klimaat": "🌍", "natuur": "🌿",
     "politiek": "🏛️", "economie": "💶", "kerk": "⛪", "religie": "✝️",
-    "sociaal": "🤝", "gezondheid": "🏥",
+    "sociaal": "🤝", "gezondheid": "🏥", "terrorisme": "💥",
+    "vluchtelingen": "🧳", "humanitair": "🤲", "natuurramp": "🌋",
 }
 
 
@@ -25,13 +34,9 @@ def _categorie_icon(cat: str) -> str:
     return "📰"
 
 
-def actueel_nieuws(analysis: dict[str, Any]) -> None:
-    """Render actueel nieuws analysis result."""
+def wereldnieuws(analysis: dict[str, Any]) -> None:
+    """Render wereldnieuws-analyse: wereldgebeurtenissen, Nederlands en kerkelijk nieuws."""
     result: dict[str, Any] = analysis.get("result", {})
-
-    place: str = st.session_state.get("church_place", "")
-    if place:
-        st.caption(f"**Plaats:** {place}")
 
     datum: str = result.get("nieuwsoverzicht_datum", "")
     zoek_verificatie: str = result.get("zoek_verificatie", "")
@@ -58,6 +63,10 @@ def actueel_nieuws(analysis: dict[str, Any]) -> None:
                 with c1:
                     if item.get("samenvatting"):
                         st.markdown(clean_md(item["samenvatting"]))
+                    if item.get("emotionele_impact"):
+                        st.markdown(
+                            f"**Emotionele impact:** {clean_md(item['emotionele_impact'])}"
+                        )
                 with c2:
                     if item.get("locatie"):
                         st.caption(f"Locatie: {item['locatie']}")
@@ -74,6 +83,7 @@ def actueel_nieuws(analysis: dict[str, Any]) -> None:
                             val = relevantie.get(dim)
                             if val:
                                 st.markdown(f"**{dim.capitalize()}:** {clean_md(val)}")
+                _render_bronnen(item.get("bronnen_urls", []))
 
     st.divider()
 
@@ -82,17 +92,42 @@ def actueel_nieuws(analysis: dict[str, Any]) -> None:
             for item in nl_nieuws:
                 with st.container(border=True):
                     st.markdown(f"**{item.get('titel', '')}**")
+                    if item.get("datum_item"):
+                        st.caption(f"Datum: {item['datum_item']}")
                     if item.get("samenvatting"):
                         st.markdown(clean_md(item["samenvatting"]))
+                    if item.get("lokale_relevantie"):
+                        st.markdown(
+                            f"*Lokale relevantie:* {clean_md(item['lokale_relevantie'])}"
+                        )
+                    if item.get("relevantie_preek"):
+                        st.markdown(
+                            f"*Relevantie voor de preek:* {clean_md(item['relevantie_preek'])}"
+                        )
+                    _render_bronnen(item.get("bronnen_urls", []))
 
     if kerkelijk:
         with st.expander(f"Kerkelijk nieuws ({len(kerkelijk)})", expanded=False):
             for item in kerkelijk:
                 with st.container(border=True):
-                    st.markdown(f"**{item.get('titel', '')}**  — *{item.get('categorie', '')}*")
-                    st.caption(f"Bron: {item.get('bron', '')}")
+                    st.markdown(
+                        f"**{item.get('titel', '')}**  — *{item.get('categorie', '')}*"
+                    )
+                    if item.get("bron"):
+                        st.caption(f"Bron: {item['bron']}")
+                    if item.get("datum_item"):
+                        st.caption(f"Datum: {item['datum_item']}")
                     if item.get("samenvatting"):
                         st.markdown(clean_md(item["samenvatting"]))
+                    if item.get("relevantie_oecumenisch"):
+                        st.markdown(
+                            f"*Oecumenische relevantie:* {clean_md(item['relevantie_oecumenisch'])}"
+                        )
+                    if item.get("relevantie_preek"):
+                        st.markdown(
+                            f"*Relevantie voor de preek:* {clean_md(item['relevantie_preek'])}"
+                        )
+                    _render_bronnen(item.get("bronnen_urls", []))
 
     st.divider()
 

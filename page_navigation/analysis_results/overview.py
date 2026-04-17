@@ -27,7 +27,8 @@ from page_navigation.analysis_results.analyses.geloofsorientatie import (
 from page_navigation.analysis_results.analyses.interpretatieve_synthese import (
     interpretatieve_synthese,
 )
-from page_navigation.analysis_results.analyses.actueel_nieuws import actueel_nieuws
+from page_navigation.analysis_results.analyses.wereldnieuws import wereldnieuws
+from page_navigation.analysis_results.analyses.lokaal_nieuws import lokaal_nieuws
 from page_navigation.analysis_results.analyses.focus_en_functie import focus_en_functie
 from page_navigation.analysis_results.analyses.representatieve_hoorders import (
     representatieve_hoorders,
@@ -129,7 +130,8 @@ _BASIS_ORDER = [
     "politieke_orientatie",
     "representatieve_hoorders",
     "illustraties",
-    "actueel_nieuws",
+    "wereldnieuws",
+    "lokaal_nieuws",
     "focus_en_functie",
 ]
 
@@ -1019,8 +1021,10 @@ if current_tab == "Basis":
         representatieve_hoorders(selected_analysis)
     elif analysis_type_name == "illustraties":
         illustraties(selected_analysis)
-    elif analysis_type_name == "actueel_nieuws":
-        actueel_nieuws(selected_analysis)
+    elif analysis_type_name == "wereldnieuws":
+        wereldnieuws(selected_analysis)
+    elif analysis_type_name == "lokaal_nieuws":
+        lokaal_nieuws(selected_analysis)
     elif analysis_type_name == "focus_en_functie":
         focus_en_functie(selected_analysis)
     elif analysis_type_name == "contextduiding":
