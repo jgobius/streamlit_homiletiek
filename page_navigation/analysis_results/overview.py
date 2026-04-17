@@ -293,9 +293,16 @@ if not analysis_id:
 st.session_state["current_analysis_id"] = analysis_id
 
 _data_cache_key = f"overview_data_{analysis_id}"
+_cached_entry = st.session_state.get(_data_cache_key)
+# Behandel een lege analysis_results-cache als niet-gecached. Zo wordt de
+# Bijbelteksten-stap (die in de achtergrond via /original_scriptures/ draait)
+# automatisch zichtbaar zodra de volgende rerun plaatsvindt (een tab-klik,
+# een button, enz.), zonder dat de gebruiker hard hoeft te refreshen.
+# Zodra er resultaten zijn blijft de cache sticky.
 if (
     st.session_state.pop("analysis_data_dirty", False)
-    or _data_cache_key not in st.session_state
+    or _cached_entry is None
+    or not _cached_entry.get("analysis_results")
 ):
     try:
         st.session_state[_data_cache_key] = {
