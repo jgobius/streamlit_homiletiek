@@ -613,6 +613,90 @@ with st.sidebar:
 # --- Dialogs ---
 
 
+@st.dialog("Analyse-element verwijderen")
+def confirm_delete_result(result: dict) -> None:
+    """Bevestigingsdialoog voor het permanent verwijderen van een analyseresultaat."""
+    label = result["analysis_type"]["front_end_name"]
+    st.write(
+        f"Weet je zeker dat je **'{label}'** wilt verwijderen? "
+        "Dit kan niet ongedaan worden gemaakt."
+    )
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Ja, verwijderen", type="primary", use_container_width=True):
+            try:
+                handler = st.session_state["api_handler"]
+                # sermon_analysis_id is vereist als query-parameter door de DRF-viewset
+                # (zie analysis_result/views.py:AnalysisResultViewSet.get_queryset).
+                sermon_analysis_id = result["sermon_analysis"]["id"]
+                handler.delete(
+                    f"api/analysis-results/{result['id']}/"
+                    f"?sermon_analysis_id={sermon_analysis_id}"
+                )
+                # Markeer de cache als vervuild zodat de overzichtspagina ververst.
+                st.session_state["analysis_data_dirty"] = True
+                st.toast("Analyse verwijderd.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Fout bij verwijderen: {e}")
+    with col2:
+        if st.button("Annuleren", use_container_width=True):
+            st.rerun()
+
+
+@st.dialog("Analyse opnieuw uitvoeren")
+def confirm_rerun_analysis(result: dict) -> None:
+    """Bevestigingsdialoog voor het opnieuw uitvoeren van een analyse via de agent.
+
+    Dispatcht op preekschets vs. standaard-analyse zodat het lock-mechanisme
+    en de juiste endpoint van het bestaande trigger-helperpaar hergebruikt worden.
+    """
+    at = result["analysis_type"]
+    front_end_name = at["front_end_name"]
+    st.write(
+        f"Weet je zeker dat je **'{front_end_name}'** opnieuw wilt uitvoeren? "
+        "Dit kan enkele minuten duren."
+    )
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Ja, opnieuw uitvoeren", type="primary", use_container_width=True):
+            # Hergebruik dezelfde lock-key-conventie als de 'Analyse toevoegen'-knoppen,
+            # zodat dubbele triggers (toevoegen én rerun) elkaar ook blokkeren.
+            lock_key = f"analysis_add_lock_{result['sermon_analysis']['id']}_{at['name']}"
+            if at["name"] in _PREEKSCHETSEN_NAMEN:
+                # Preekschetsen hebben een opgeslagen selectie nodig (kernteksten,
+                # focus-en-functie, perspectieven, illustraties, hoorders).
+                _trigger_preekschets(int(result["sermon_analysis"]["id"]), at, lock_key)
+            else:
+                _trigger_analysis(int(result["sermon_analysis"]["id"]), at, lock_key)
+            st.rerun()
+    with col2:
+        if st.button("Annuleren", use_container_width=True):
+            st.rerun()
+
+
+def _render_actieknoppen(result: dict, key_prefix: str) -> None:
+    """Render de vier actieknoppen (Verwijder / Opnieuw / Aanpassen / ℹ️) onder een analysetitel.
+
+    key_prefix voorkomt sleutelbotsingen tussen tabbladen (bv. 'basis', 'verdieping').
+    """
+    col_del, col_rerun, col_ctx, col_info = st.columns([3, 3, 3, 1])
+    with col_del:
+        if st.button("Verwijder", icon="🗑️", key=f"{key_prefix}_del"):
+            confirm_delete_result(result)
+    with col_rerun:
+        if st.button("Opnieuw", icon="🔄", key=f"{key_prefix}_rerun"):
+            confirm_rerun_analysis(result)
+    with col_ctx:
+        if st.button("Aanpassen", icon="✏️", key=f"{key_prefix}_ctx"):
+            aanpassen_dialog(result)
+    with col_info:
+        _desc = result["analysis_type"].get("description")
+        if _desc:
+            with st.popover("ℹ️", use_container_width=False):
+                st.markdown(_desc)
+
+
 @st.dialog("Selectie van input voor preekschetsen", width="large")
 def preekschets_selectie_dialog(
     analysis_id: int, latest: dict, perspect_summary: list
@@ -887,6 +971,9 @@ if current_tab == "Basis":
 
     analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")
 
+    # Actieknoppen (Verwijder / Opnieuw / Aanpassen / ℹ️) direct boven de analyse.
+    _render_actieknoppen(selected_analysis, key_prefix="basis")
+
     if analysis_type_name == "postille":
         postille(selected_analysis)
     elif analysis_type_name == "bijbelteksten":
@@ -942,7 +1029,9 @@ elif current_tab == "Verdieping":
     )
     if not verdiep_summary:
         st.info("Nog geen verdieping beschikbaar.")
-    # Render-functies voor verdieping worden in een volgende versie toegevoegd.
+    elif selected_verdiep:
+        # Actieknoppen ook in Verdieping-tab; render-functies volgen in een latere versie.
+        _render_actieknoppen(selected_verdiep, key_prefix="verdieping")
 
 elif current_tab == "Perspectieven":
     selected_perspect = next(
@@ -956,6 +1045,7 @@ elif current_tab == "Perspectieven":
     if not perspect_summary:
         st.info("Nog geen perspectieven beschikbaar.")
     elif selected_perspect:
+        _render_actieknoppen(selected_perspect, key_prefix="perspectieven")
         contextduiding(selected_perspect)
 
 elif current_tab == "Preekschetsen":
@@ -972,6 +1062,8 @@ elif current_tab == "Preekschetsen":
     if not preek_summary:
         st.info("Nog geen preekschetsen beschikbaar.")
     elif selected_preek:
+        # Actieknoppen boven de preekschets; 'Selectie instellen' blijft als aparte knop erboven.
+        _render_actieknoppen(selected_preek, key_prefix="preekschets")
         preekschets(selected_preek)
 
 elif current_tab == "Feedback":
@@ -1004,4 +1096,6 @@ elif current_tab == "Feedback":
         else:
             st.info("Voeg feedbackanalyses toe via 'Feedback toevoegen' in de zijbalk.")
     elif selected_feedback:
+        # Actieknoppen boven de feedback-analyse; 'Eigen preek invoeren' blijft erboven staan.
+        _render_actieknoppen(selected_feedback, key_prefix="feedback")
         feedback_analyse(selected_feedback)
