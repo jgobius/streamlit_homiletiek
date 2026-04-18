@@ -63,6 +63,15 @@ _DARK_CSS = """<style>
     color: #FAFAFA !important;
     border-color: #4A4A5A !important;
 }
+/* Placeholder-tekst in invoervelden — standaard te donker in donker thema. */
+[data-testid="stTextInput"] input::placeholder,
+[data-testid="stNumberInput"] input::placeholder,
+[data-testid="stTextArea"] textarea::placeholder,
+input::placeholder,
+textarea::placeholder {
+    color: #B0B0C0 !important;
+    opacity: 1 !important;
+}
 /* Expanders — oud <details>/<summary>-patroon. Lichtere randkleur zodat de
    scheidingslijn tussen header en inhoud zichtbaar blijft op donkere bg. */
 [data-testid="stExpander"] details {
