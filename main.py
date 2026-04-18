@@ -111,13 +111,40 @@ li[role="option"][aria-selected="true"] * {
 [data-baseweb="popover"] div[style*="will-change: transform"] {
     background-color: #262730 !important;
 }
-/* Tekst- en getalinvoervelden */
+/* Tekst-, getal- en datum-invoervelden */
 [data-testid="stTextInput"] input,
 [data-testid="stNumberInput"] input,
-[data-testid="stTextArea"] textarea {
+[data-testid="stTextArea"] textarea,
+[data-testid="stDateInput"] input,
+[data-testid="stDateInput"] [data-baseweb="input"],
+[data-testid="stDateInput"] [data-baseweb="input"] > div,
+[data-testid="stTimeInput"] input {
     background-color: #262730 !important;
     color: #FAFAFA !important;
     border-color: #4A4A5A !important;
+}
+/* Datumkiezer (popover-kalender van st.date_input). */
+[data-baseweb="calendar"],
+[data-baseweb="calendar"] > div,
+[data-baseweb="datepicker"],
+[data-baseweb="calendar-header"] {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+}
+[data-baseweb="calendar"] * {
+    color: #FAFAFA !important;
+}
+/* Dagen die niet in de huidige maand vallen of disabled zijn: iets doffer. */
+[data-baseweb="calendar"] [aria-disabled="true"] {
+    color: #6A6A7A !important;
+}
+/* Geselecteerde datum: oranje bg met witte tekst. */
+[data-baseweb="calendar"] [aria-selected="true"] {
+    background-color: #FF8000 !important;
+    color: #FFFFFF !important;
+}
+[data-baseweb="calendar"] [aria-selected="true"] * {
+    color: #FFFFFF !important;
 }
 /* Hyperlinks in markdown — standaard donkerblauw, onleesbaar op dark bg.
    Uitgezonderd st.page_link dat al zijn eigen styling heeft. */
@@ -221,11 +248,12 @@ label[data-baseweb="checkbox"] > div:first-child {
     background-color: #3D3D4F !important;
     border-color: #6A6A7A !important;
 }
-/* Geselecteerde radio/checkbox houdt oranje accent. */
+/* Geselecteerde radio/checkbox houdt oranje accent — alleen de cirkel/
+   box (eerste div van het label), niet de tekst-div die ná de input
+   staat. Daarom geen ' input:checked + div'-selector: die zou de
+   tekst-container oranje kleuren. */
 label[data-baseweb="radio"][aria-checked="true"] > div:first-child,
-label[data-baseweb="checkbox"][aria-checked="true"] > div:first-child,
-label[data-baseweb="radio"] input:checked + div,
-label[data-baseweb="checkbox"] input:checked + div {
+label[data-baseweb="checkbox"][aria-checked="true"] > div:first-child {
     background-color: #FF8000 !important;
     border-color: #FF8000 !important;
 }
