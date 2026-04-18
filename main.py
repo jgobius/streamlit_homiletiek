@@ -35,6 +35,37 @@ _DARK_CSS = """<style>
     color: #FAFAFA !important;
     border-color: #4A4A5A !important;
 }
+/* Primaire knoppen — actieve staat (oranje) en uitgeschakelde staat
+   (leesbaar grijs). Standaard disabled werd bijna onzichtbaar. */
+[data-testid="stBaseButton-primary"] {
+    background-color: #FF8000 !important;
+    color: #FFFFFF !important;
+    border-color: #FF8000 !important;
+}
+[data-testid="stBaseButton-primary"] * {
+    color: #FFFFFF !important;
+}
+[data-testid="stBaseButton-primary"]:disabled,
+[data-testid="stBaseButton-primary"][disabled] {
+    background-color: #3D3D4F !important;
+    color: #B0B0C0 !important;
+    border-color: #6A6A7A !important;
+}
+[data-testid="stBaseButton-primary"]:disabled *,
+[data-testid="stBaseButton-primary"][disabled] * {
+    color: #B0B0C0 !important;
+}
+/* Secundaire knoppen in uitgeschakelde staat — ook leesbaar houden. */
+[data-testid="stBaseButton-secondary"]:disabled,
+[data-testid="stBaseButton-secondary"][disabled] {
+    background-color: #1A1C24 !important;
+    color: #B0B0C0 !important;
+    border-color: #6A6A7A !important;
+}
+[data-testid="stBaseButton-secondary"]:disabled *,
+[data-testid="stBaseButton-secondary"][disabled] * {
+    color: #B0B0C0 !important;
+}
 /* Selectiemenu — zichtbare container */
 [data-baseweb="select"] > div:first-child {
     background-color: #262730 !important;
