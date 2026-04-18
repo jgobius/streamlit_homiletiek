@@ -63,6 +63,12 @@ _DARK_CSS = """<style>
     color: #FAFAFA !important;
     border-color: #4A4A5A !important;
 }
+/* Caption-tekst (st.caption) — standaard dof grijs, te donker tegen bg. */
+[data-testid="stCaptionContainer"],
+[data-testid="stCaptionContainer"] p,
+small {
+    color: #B0B0C0 !important;
+}
 /* Placeholder-tekst in invoervelden — standaard te donker in donker thema. */
 [data-testid="stTextInput"] input::placeholder,
 [data-testid="stNumberInput"] input::placeholder,
