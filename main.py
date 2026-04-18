@@ -72,6 +72,14 @@ a:not([data-testid="stPageLink-NavLink"]):visited {
 a:not([data-testid="stPageLink-NavLink"]):hover {
     color: #79BBFF !important;
 }
+/* Widget-labels (st.text_input, st.selectbox, st.number_input, ...) —
+   labels boven invoervelden werden te dof grijs gerenderd. */
+[data-testid="stWidgetLabel"],
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] label,
+label[data-testid="stWidgetLabel"] {
+    color: #FAFAFA !important;
+}
 /* Caption-tekst (st.caption) — standaard dof grijs, te donker tegen bg. */
 [data-testid="stCaptionContainer"],
 [data-testid="stCaptionContainer"] p,
