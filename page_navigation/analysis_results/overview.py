@@ -664,16 +664,30 @@ def confirm_delete_result(result: dict) -> None:
                 # sermon_analysis_id is vereist als query-parameter door de DRF-viewset
                 # (zie analysis_result/views.py:AnalysisResultViewSet.get_queryset).
                 sermon_analysis_id = result["sermon_analysis"]["id"]
-                # Preekschetsen hebben vaak zware gekoppelde AnalysisRun-records
-                # (agent_messages kan megabytes groot zijn); een cascade-delete
-                # kan langer duren dan de standaard 30s. Timeout verhoogd naar 120s
-                # en spinner laat de gebruiker zien dat de actie loopt.
+                analysis_type_id = result["analysis_type"]["id"]
+                # De overzichtspagina toont per analyse-type alleen het meest recente
+                # resultaat; door eerdere 'Opnieuw'-runs kunnen er meerdere records
+                # zijn. We verwijderen daarom alle records voor dit (sermon_analysis,
+                # analysis_type)-paar, anders duikt de vorige versie meteen weer op.
+                #
+                # Preekschetsen hebben zware gekoppelde AnalysisRun-records (agent_messages
+                # kan megabytes groot zijn); cascade-delete kan lang duren, dus 120s timeout.
                 with st.spinner("Bezig met verwijderen..."):
-                    handler.delete(
-                        f"api/analysis-results/{result['id']}/"
-                        f"?sermon_analysis_id={sermon_analysis_id}",
-                        timeout=120,
+                    alle_records = handler.get(
+                        "api/analysis-results/",
+                        params={
+                            "sermon_analysis_id": sermon_analysis_id,
+                            "analysis_type_id": analysis_type_id,
+                        },
                     )
+                    verwijderde_ids: list[int] = []
+                    for rec in alle_records or []:
+                        handler.delete(
+                            f"api/analysis-results/{rec['id']}/"
+                            f"?sermon_analysis_id={sermon_analysis_id}",
+                            timeout=120,
+                        )
+                        verwijderde_ids.append(rec["id"])
                 # Ruim lokale selectie-state op voor het zojuist verwijderde resultaat,
                 # zodat de tab niet blijft wijzen naar een id dat niet meer bestaat.
                 for _key in (
