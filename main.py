@@ -46,16 +46,39 @@ _DARK_CSS = """<style>
 [data-baseweb="select"] div[role="combobox"] div {
     color: #FAFAFA !important;
 }
-/* Selectiemenu — dropdown lijst en opties */
-[data-baseweb="menu"] {
+/* Selectiemenu — dropdown lijst en opties. Streamlit rendert de opties
+   via li[role="option"] binnen een virtueel gescrolde div; we dekken
+   beide patronen (baseweb én role-based). */
+[data-baseweb="menu"],
+ul[role="listbox"],
+[role="listbox"] {
     background-color: #262730 !important;
 }
-[data-baseweb="option"] {
+[data-baseweb="option"],
+li[role="option"] {
     background-color: #262730 !important;
     color: #FAFAFA !important;
 }
-[data-baseweb="option"]:hover {
+[data-baseweb="option"] *,
+li[role="option"] * {
+    color: #FAFAFA !important;
+}
+[data-baseweb="option"]:hover,
+li[role="option"]:hover {
     background-color: #3D3D4F !important;
+}
+/* Geselecteerde optie krijgt oranje accent. */
+li[role="option"][aria-selected="true"] {
+    background-color: #3D3D4F !important;
+}
+li[role="option"][aria-selected="true"] * {
+    color: #FF8000 !important;
+}
+/* Virtuele scroller (de div-wrapper rond de li-opties) — achtergrond
+   moet ook donker zijn anders lekt wit door tussen de items. */
+[data-baseweb="popover"] div[style*="overflow: auto"],
+[data-baseweb="popover"] div[style*="will-change: transform"] {
+    background-color: #262730 !important;
 }
 /* Tekst- en getalinvoervelden */
 [data-testid="stTextInput"] input,
