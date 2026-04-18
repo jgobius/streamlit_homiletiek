@@ -76,6 +76,70 @@ _DARK_CSS = """<style>
     background-color: #1A1C24 !important;
     border-color: #4A4A5A !important;
 }
+/* Dialoog-/modaal-venster (st.dialog) — standaard witte kaart wordt donker. */
+div[role="dialog"],
+[data-testid="stDialog"],
+[data-testid="stDialog"] > div {
+    background-color: #1A1C24 !important;
+    color: #FAFAFA !important;
+}
+[data-testid="stDialog"] h1,
+[data-testid="stDialog"] h2,
+[data-testid="stDialog"] h3,
+[data-testid="stDialog"] p,
+[data-testid="stDialog"] label,
+[data-testid="stDialog"] span {
+    color: #FAFAFA !important;
+}
+/* Sluit-kruisje in dialoog zichtbaar houden op donkere achtergrond. */
+[data-testid="stDialog"] button svg,
+div[role="dialog"] [aria-label="Close"] svg {
+    fill: #FAFAFA !important;
+}
+/* Tabbladen (st.tabs) — inactieve tabs waren wit. */
+[data-baseweb="tab-list"] {
+    background-color: transparent !important;
+    border-bottom: 1px solid #4A4A5A !important;
+}
+[data-baseweb="tab"] {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+}
+[data-baseweb="tab"][aria-selected="true"] {
+    background-color: #1A1C24 !important;
+    color: #FF8000 !important;
+}
+/* Popover / info-knop (st.popover) — trigger en paneel. */
+[data-testid="stPopover"] button,
+[data-testid="stPopoverButton"],
+button[data-testid="baseButton-headerNoPadding"] {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+    border-color: #4A4A5A !important;
+}
+[data-baseweb="popover"],
+[data-baseweb="popover"] > div {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+}
+/* Page-links (st.page_link) — actieve pagina toonde witte balk; tekst was te donker. */
+a[data-testid="stPageLink-NavLink"] {
+    color: #FAFAFA !important;
+}
+a[data-testid="stPageLink-NavLink"] span,
+a[data-testid="stPageLink-NavLink"] p {
+    color: #FAFAFA !important;
+}
+a[data-testid="stPageLink-NavLink"][aria-current="page"],
+a[data-testid="stPageLink-NavLink"][data-current="true"] {
+    background-color: #262730 !important;
+}
+a[data-testid="stPageLink-NavLink"][aria-current="page"] span,
+a[data-testid="stPageLink-NavLink"][aria-current="page"] p,
+a[data-testid="stPageLink-NavLink"][data-current="true"] span,
+a[data-testid="stPageLink-NavLink"][data-current="true"] p {
+    color: #FF8000 !important;
+}
 </style>"""
 
 # CSS voor licht thema (oranje accent, witte achtergronden).
