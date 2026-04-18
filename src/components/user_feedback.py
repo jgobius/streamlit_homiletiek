@@ -89,13 +89,20 @@ def _user_feedback_dialog(
             st.rerun()
 
 
+def _normalize_newlines(value: str) -> str:
+    """Normaliseer Windows-/oude-Mac-regeleindes naar \n zodat Streamlit de tekst
+    daadwerkelijk over meerdere regels rendert. In de database staat veelal \r\n."""
+    return value.replace("\r\n", "\n").replace("\r", "\n")
+
+
 @st.dialog("LLM-prompt (debug)", width="large")
 def _prompt_debug_dialog(analysis: dict) -> None:
     """Toon het LLM-prompt zoals opgeslagen in de database voor deze analyse.
 
     Tijdelijke debug-hulp: het prompt wordt bij elke analyse-run in AnalysisResult.prompt
-    (JSONField) bewaard. We lezen het rechtstreeks uit het reeds opgehaalde
-    analysis-dictonary en renderen het leesbaar (JSON met indent, anders als tekst).
+    (JSONField) bewaard. We renderen elke string-waarde expliciet als code-block met
+    echte regeleindes; alleen niet-string-waarden worden als JSON getoond. Zo blijven
+    meerregelige prompts leesbaar i.p.v. één lange regel met \\r\\n-escapes.
     """
     analysis_type = analysis.get("analysis_type", {}) or {}
     naam = analysis_type.get("front_end_name") or analysis_type.get("name", "")
@@ -104,11 +111,23 @@ def _prompt_debug_dialog(analysis: dict) -> None:
     if prompt is None or prompt == {} or prompt == "":
         st.info("Geen prompt opgeslagen voor deze analyse.")
         return
-    # JSON/dict-achtige prompts (de gebruikelijke vorm) mooi inspringen;
-    # strings (bv. voor handmatig ingevoerde resultaten) tonen we als platte code.
-    if isinstance(prompt, (dict, list)):
-        pretty = json.dumps(prompt, indent=2, ensure_ascii=False)
-        st.code(pretty, language="json")
+
+    if isinstance(prompt, dict):
+        # Per sleutel renderen zodat lange multiline-waardes (system_prompt e.d.)
+        # niet door json.dumps als één regel met \r\n-escapes verschijnen.
+        for key, value in prompt.items():
+            st.markdown(f"**`{key}`**")
+            if isinstance(value, str):
+                st.code(_normalize_newlines(value), language=None)
+            else:
+                st.code(
+                    json.dumps(value, indent=2, ensure_ascii=False),
+                    language="json",
+                )
+    elif isinstance(prompt, list):
+        st.code(json.dumps(prompt, indent=2, ensure_ascii=False), language="json")
+    elif isinstance(prompt, str):
+        st.code(_normalize_newlines(prompt), language=None)
     else:
         st.code(str(prompt))
 
