@@ -92,10 +92,6 @@ def _render_gebed(naam: str, g: dict) -> None:
         if taalveld:
             st.caption(f"Bijbels taalveld: {_md(taalveld)}")
 
-        amen = g.get("amen")
-        if amen is True:
-            st.caption("— Amen.")
-
 
 def render_gebeden(analysis: dict) -> None:
     result = _result(analysis)
