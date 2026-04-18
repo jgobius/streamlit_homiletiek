@@ -300,7 +300,39 @@ label[data-baseweb="checkbox"][aria-checked="true"] > div:first-child {
     background-color: #FF8000 !important;
     border-color: #FF8000 !important;
 }
-/* Stepper-knopjes van st.number_input (+/−) — standaard witte bg. */
+/* Tooltip (hover) op knoppen / page_links — standaard wit. */
+[data-baseweb="tooltip"],
+[data-baseweb="tooltip"] > div,
+[role="tooltip"] {
+    background-color: #1A1C24 !important;
+    color: #FAFAFA !important;
+    border: 1px solid #6A6A7A !important;
+}
+[data-baseweb="tooltip"] *,
+[role="tooltip"] * {
+    color: #FAFAFA !important;
+}
+/* Cache-/running-status ('Running get_cached_data(...)') en spinners. */
+[data-testid="stStatusWidget"],
+[data-testid="stStatusWidget"] > div,
+[data-testid="stSpinner"],
+[data-testid="stSpinner"] > div,
+[data-testid="stToolbar"] {
+    background-color: #1A1C24 !important;
+    color: #FAFAFA !important;
+}
+[data-testid="stStatusWidget"] *,
+[data-testid="stSpinner"] * {
+    color: #FAFAFA !important;
+}
+/* Code-span in de statusbanner (bv. get_cached_data(...)) houdt oranje
+   tekst, maar achtergrond matcht de banner. */
+[data-testid="stStatusWidget"] code,
+[data-testid="stSpinner"] code {
+    background-color: #262730 !important;
+    color: #FF8000 !important;
+    border-color: #4A4A5A !important;
+}
 [data-testid="stNumberInputStepDown"],
 [data-testid="stNumberInputStepUp"] {
     background-color: #262730 !important;
