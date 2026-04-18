@@ -63,27 +63,30 @@ _DARK_CSS = """<style>
     color: #FAFAFA !important;
     border-color: #4A4A5A !important;
 }
-/* Expanders — oud <details>/<summary>-patroon. */
+/* Expanders — oud <details>/<summary>-patroon. Lichtere randkleur zodat de
+   scheidingslijn tussen header en inhoud zichtbaar blijft op donkere bg. */
 [data-testid="stExpander"] details {
     background-color: #262730 !important;
-    border-color: #4A4A5A !important;
+    border-color: #6A6A7A !important;
 }
 [data-testid="stExpander"] summary {
     background-color: #262730 !important;
     color: #FAFAFA !important;
+    border-bottom: 1px solid #6A6A7A !important;
 }
 /* Expanders — nieuw div-gebaseerd patroon (headerblok is geen <summary> meer). */
 [data-testid="stExpander"],
 [data-testid="stExpander"] > div,
 [data-testid="stExpander"] > div > div {
     background-color: #262730 !important;
-    border-color: #4A4A5A !important;
+    border-color: #6A6A7A !important;
 }
 [data-testid="stExpander"] [role="button"],
 [data-testid="stExpanderHeader"],
 [data-testid="stExpanderDetails"] {
     background-color: #262730 !important;
     color: #FAFAFA !important;
+    border-bottom: 1px solid #6A6A7A !important;
 }
 [data-testid="stExpander"] p,
 [data-testid="stExpander"] span,
