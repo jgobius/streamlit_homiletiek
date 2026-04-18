@@ -818,12 +818,20 @@ def preekschets_selectie_dialog(
     st.divider()
 
     # -- Perspectieven --
+    # Globale max: de gebruiker mag in totaal maximaal 5 perspectief-onderdelen
+    # aanvinken over alle perspectieven heen. We tellen aan het begin van de
+    # render hoeveel checkboxes momenteel aangevinkt staan (via session_state)
+    # en gebruiken die telling om verder aanvinken te blokkeren zodra 5 bereikt is.
+    _MAX_PERSPECTIEF_SELECTIE = 5
     selected_perspectieven: dict[str, list] = {}
     if perspect_summary:
         st.subheader("Perspectieven")
+
+        # Bouw eerst een lijst van (perspectief, analyses) zodat we de widget-keys
+        # alvast kennen en kunnen tellen hoeveel checkboxes nu aan staan.
+        _perspect_blocks: list[tuple[dict, list, set]] = []
         for perspect in perspect_summary:
             name = perspect["analysis_type"]["name"]
-            front_end_name = perspect["analysis_type"]["front_end_name"]
             result = perspect.get("result", {})
             if isinstance(result, str):
                 cleaned = result.strip()
@@ -836,22 +844,58 @@ def preekschets_selectie_dialog(
                 except (json.JSONDecodeError, ValueError):
                     result = {}
             analyses = result.get("analyses", []) if isinstance(result, dict) else []
-            if analyses:
-                _saved_per_perspect = set(_saved_perspectieven.get(name, []) or [])
-                # Expander open tonen als dit perspectief eerder onderdelen geselecteerd had.
-                with st.expander(front_end_name, expanded=bool(_saved_per_perspect)):
-                    selected_onderdelen = []
-                    for item in analyses:
-                        nummer = item.get("nummer", "")
-                        titel = item.get("titel", "")
-                        label = f"{nummer}. {titel}" if nummer else titel
-                        if st.checkbox(
-                            label,
-                            value=nummer in _saved_per_perspect,
-                            key=f"dlg_perspect_{analysis_id}_{name}_{nummer}",
-                        ):
-                            selected_onderdelen.append(nummer)
-                    selected_perspectieven[name] = selected_onderdelen
+            if not analyses:
+                continue
+            _saved_per_perspect = set(_saved_perspectieven.get(name, []) or [])
+            _perspect_blocks.append((perspect, analyses, _saved_per_perspect))
+
+        # Tel huidige aangevinkte checkboxes. Bij de eerste render (voor een
+        # checkbox nog niet in session_state zit) valt de telling terug op
+        # de eerder opgeslagen selectie — zo voorkomen we dat de limiet bij
+        # het openen van de dialoog klopt vóór de eerste rerun.
+        _huidige_aangevinkt = 0
+        for perspect, analyses, _saved in _perspect_blocks:
+            name = perspect["analysis_type"]["name"]
+            for item in analyses:
+                nummer = item.get("nummer", "")
+                key = f"dlg_perspect_{analysis_id}_{name}_{nummer}"
+                if key in st.session_state:
+                    if st.session_state[key]:
+                        _huidige_aangevinkt += 1
+                elif nummer in _saved:
+                    _huidige_aangevinkt += 1
+
+        _limiet_bereikt = _huidige_aangevinkt >= _MAX_PERSPECTIEF_SELECTIE
+        st.caption(
+            f"Maximaal {_MAX_PERSPECTIEF_SELECTIE} onderdelen over alle "
+            f"perspectieven heen — nu aangevinkt: "
+            f"**{_huidige_aangevinkt}/{_MAX_PERSPECTIEF_SELECTIE}**."
+        )
+
+        for perspect, analyses, _saved_per_perspect in _perspect_blocks:
+            name = perspect["analysis_type"]["name"]
+            front_end_name = perspect["analysis_type"]["front_end_name"]
+            # Expander open tonen als dit perspectief eerder onderdelen geselecteerd had.
+            with st.expander(front_end_name, expanded=bool(_saved_per_perspect)):
+                selected_onderdelen = []
+                for item in analyses:
+                    nummer = item.get("nummer", "")
+                    titel = item.get("titel", "")
+                    label = f"{nummer}. {titel}" if nummer else titel
+                    key = f"dlg_perspect_{analysis_id}_{name}_{nummer}"
+                    # Een checkbox is uitgeschakeld zodra de globale limiet is
+                    # bereikt, tenzij hij al aangevinkt staat (dan mag de
+                    # gebruiker hem nog uitzetten).
+                    _is_aangevinkt = st.session_state.get(key, nummer in _saved_per_perspect)
+                    _disabled = _limiet_bereikt and not _is_aangevinkt
+                    if st.checkbox(
+                        label,
+                        value=nummer in _saved_per_perspect,
+                        key=key,
+                        disabled=_disabled,
+                    ):
+                        selected_onderdelen.append(nummer)
+                selected_perspectieven[name] = selected_onderdelen
         st.divider()
 
     # -- Illustraties --
