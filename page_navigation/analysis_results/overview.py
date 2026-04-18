@@ -980,8 +980,19 @@ st.segmented_control(
 # Herlaad na de widget-render zodat de widget-waarde van deze render gebruikt wordt.
 current_tab = st.session_state.get("current_tab", "Basis")
 
+# Als er nog geen resultaten zijn, komt dat bijna altijd door één van twee situaties:
+# (1) de analyse is net aangemaakt en de bijbelteksten worden op de achtergrond opgehaald,
+# (2) er staat wel data in de database maar de sessie-cache is nog niet ververst.
+# De tekst moet daarom beide gevallen dekken en gebruikers expliciet naar de
+# Ververs-knop in de zijbalk verwijzen in plaats van "bijbelteksten wordt geanalyseerd"
+# te beweren alsof dat altijd waar is.
 if not analysis_results:
-    st.info("Bijbelteksten wordt geanalyseerd. Ververs de pagina over enkele minuten.")
+    st.info(
+        "Er zijn nog geen analyseresultaten zichtbaar. "
+        "Als u net een analyse heeft aangemaakt, worden de bijbelteksten op de "
+        "achtergrond opgehaald — dit kan even duren. "
+        "Klik op '🔄 Ververs' in de zijbalk om opnieuw op te halen."
+    )
     st.stop()
 
 # --- Hoofdinhoud per tabblad ---
@@ -995,10 +1006,14 @@ if current_tab == "Basis":
         None,
     )
     if not selected_analysis:
-        # Zelfde melding als bij een volledig lege analyse; hier geraak je
-        # wanneer er wel resultaten zijn, maar nog geen Basis-tab-entry (bv.
-        # de bijbelteksten-stap is nog bezig in de achtergrond).
-        st.info("Bijbelteksten wordt geanalyseerd. Ververs de pagina over enkele minuten.")
+        # Er zijn wél resultaten, maar niet in het Basis-tabblad. Dat kan komen doordat
+        # de bijbelteksten-stap nog loopt, of doordat alleen andere tabs al entries
+        # hebben. De melding is neutraler dan voorheen en verwijst naar de Ververs-knop.
+        st.info(
+            "Nog geen Basis-analyses beschikbaar. "
+            "Klik op '🔄 Ververs' in de zijbalk om recente resultaten op te halen, "
+            "of kies een ander tabblad."
+        )
         st.stop()
 
     analysis_type_name = selected_analysis.get("analysis_type", {}).get("name", "")
