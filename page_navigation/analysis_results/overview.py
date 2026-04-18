@@ -228,6 +228,9 @@ def _trigger_preekschets(analysis_id: int, at: dict, lock_key: str) -> None:
         selected_perspectieven = selectie.get("perspectieven", {})
         selected_illustraties = selectie.get("illustraties", [])
         selected_hoorders = selectie.get("hoorders", [])
+        # Fallback naar lege dict als de dialoog nog niet is opgeslagen — de
+        # backend verwacht een dict-vorm en defaultt intern naar alles-uit.
+        selected_exegese_commentaar = selectie.get("exegese_commentaar", {}) or {}
         agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
         response = requests.post(
             f"{agent_url}/run_single_analysis/",
@@ -239,6 +242,7 @@ def _trigger_preekschets(analysis_id: int, at: dict, lock_key: str) -> None:
                 "selected_perspectieven": selected_perspectieven,
                 "selected_illustraties": selected_illustraties,
                 "selected_hoorders": selected_hoorders,
+                "selected_exegese_commentaar": selected_exegese_commentaar,
             },
             timeout=30,
         )
@@ -749,6 +753,11 @@ def preekschets_selectie_dialog(
     _saved_perspectieven: dict[str, list] = _saved.get("perspectieven", {}) or {}
     _saved_illustraties: set[int] = set(_saved.get("illustraties", []))
     _saved_hoorders: set[str] = set(_saved.get("hoorders", []))
+    # Theologie + Commentaren samen: dict met keys 'theology' (lijst
+    # notie-namen) en 'commentaries' (lijst identifiers, zie hieronder).
+    _saved_exegese: dict[str, list] = _saved.get("exegese_commentaar", {}) or {}
+    _saved_theology: set[str] = set(_saved_exegese.get("theology", []) or [])
+    _saved_commentaries: set[str] = set(_saved_exegese.get("commentaries", []) or [])
 
     # -- Focus-en-functie --
     focus = latest.get("focus_en_functie", {})
@@ -898,6 +907,146 @@ def preekschets_selectie_dialog(
                 selected_perspectieven[name] = selected_onderdelen
         st.divider()
 
+    # -- Exegese & Commentaren (Theologie + Commentaren samen, max 5) --
+    # De structuralistische exegese wordt altijd automatisch geïnjecteerd en
+    # hoort dus níét in deze selectielijst. Voor de overige analyses mag de
+    # prediker maximaal 5 onderdelen aanvinken — gecombineerd over Theologie
+    # (noties) en Commentaren (exegeses + reflectie-lijnen). De telling werkt
+    # identiek aan de perspectieven-limiet: we inventariseren eerst de items
+    # en tellen hoeveel checkboxes momenteel aanstaan, zodat we boven de
+    # limiet verder aanvinken kunnen blokkeren.
+    _MAX_EXEGESE_SELECTIE = 5
+
+    def _lees_json_result(raw: object) -> dict:
+        """Parseer een dict-result; accepteer ook een string (LLM-JSON in ```-blok)."""
+        if isinstance(raw, dict):
+            return raw
+        if isinstance(raw, str):
+            cleaned = raw.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("\n", 1)[-1]
+                if cleaned.endswith("```"):
+                    cleaned = cleaned[: cleaned.rfind("```")]
+            try:
+                parsed = json.loads(cleaned)
+                return parsed if isinstance(parsed, dict) else {}
+            except (json.JSONDecodeError, ValueError):
+                return {}
+        return {}
+
+    theology_data = latest.get("theology", {}) or {}
+    theology_result = _lees_json_result(theology_data.get("result"))
+    noties: list[dict] = (
+        theology_result.get("theologische_analyse", {}).get("noties", []) or []
+    )
+
+    commentaries_data = latest.get("commentaries", {}) or {}
+    commentaries_result = _lees_json_result(commentaries_data.get("result"))
+
+    # Bouw eerst de lijst van commentaar-items (id, label) zodat zowel de
+    # pre-telling als de render dezelfde keys gebruiken.
+    comm_items: list[tuple[str, str]] = []
+    for _sleutel, _veld in (
+        ("exegese_eerste_lezing", "Eerste lezing"),
+        ("exegese_evangelielezing", "Evangelielezing"),
+    ):
+        _blok = commentaries_result.get(_sleutel) or {}
+        if isinstance(_blok, dict) and (_blok.get("tekst") or _blok.get("korte_samenvatting")):
+            _schrift = (_blok.get("schriftgedeelte") or "").strip()
+            _titel = (_blok.get("titel") or "").strip()
+            _label = f"{_veld}" + (f" — {_schrift}" if _schrift else "")
+            if _titel:
+                _label += f" ({_titel})"
+            comm_items.append((_sleutel, _label))
+
+    _reflectie = commentaries_result.get("reflectie") or {}
+    if isinstance(_reflectie, dict):
+        for _idx, _lijn in enumerate(_reflectie.get("theologische_lijnen", []) or []):
+            if isinstance(_lijn, str) and _lijn.strip():
+                _preview = _lijn.strip()[:110] + ("…" if len(_lijn.strip()) > 110 else "")
+                comm_items.append((f"reflectie:{_idx}", f"Theologische lijn — {_preview}"))
+        _hp = _reflectie.get("homiletische_potentie")
+        if isinstance(_hp, str) and _hp.strip():
+            _preview = _hp.strip()[:110] + ("…" if len(_hp.strip()) > 110 else "")
+            comm_items.append(("reflectie:homiletische_potentie", f"Homiletische potentie — {_preview}"))
+
+    selected_theology: list[str] = []
+    selected_commentaries: list[str] = []
+
+    if noties or comm_items:
+        st.subheader("Exegese & Commentaren")
+        st.caption(
+            "De structuralistische exegese wordt standaard volledig meegegeven. "
+            "Kies hieronder aanvullend maximaal "
+            f"**{_MAX_EXEGESE_SELECTIE}** onderdelen uit Theologie en/of Commentaren."
+        )
+
+        # Tel aangevinkte checkboxes vóór de eerste rerun-stabilisatie: check
+        # session_state, val anders terug op de opgeslagen selectie. Zelfde
+        # patroon als bij de perspectieven-telling hierboven.
+        _ex_aangevinkt = 0
+        for _notie in noties:
+            _naam = _notie.get("naam", "")
+            if not _naam:
+                continue
+            _key = f"dlg_theo_{analysis_id}_{_naam}"
+            if _key in st.session_state:
+                if st.session_state[_key]:
+                    _ex_aangevinkt += 1
+            elif _naam in _saved_theology:
+                _ex_aangevinkt += 1
+        for _cid, _ in comm_items:
+            _key = f"dlg_comm_{analysis_id}_{_cid}"
+            if _key in st.session_state:
+                if st.session_state[_key]:
+                    _ex_aangevinkt += 1
+            elif _cid in _saved_commentaries:
+                _ex_aangevinkt += 1
+
+        _ex_limiet_bereikt = _ex_aangevinkt >= _MAX_EXEGESE_SELECTIE
+        st.caption(
+            f"Aangevinkt: **{_ex_aangevinkt}/{_MAX_EXEGESE_SELECTIE}**."
+        )
+
+        # -- Theologische noties --
+        if noties:
+            with st.expander("Theologie — noties", expanded=bool(_saved_theology)):
+                for _notie in noties:
+                    _naam = _notie.get("naam", "")
+                    if not _naam:
+                        continue
+                    _type = _notie.get("type", "")
+                    _samenvatting = (_notie.get("korte_samenvatting") or "").strip()
+                    _preview = (_samenvatting[:110] + "…") if len(_samenvatting) > 110 else _samenvatting
+                    _label = f"**{_naam}** — _{_type}_" + (f"  ·  {_preview}" if _preview else "")
+                    _key = f"dlg_theo_{analysis_id}_{_naam}"
+                    _is_aan = st.session_state.get(_key, _naam in _saved_theology)
+                    _disabled = _ex_limiet_bereikt and not _is_aan
+                    if st.checkbox(
+                        _label,
+                        value=_naam in _saved_theology,
+                        key=_key,
+                        disabled=_disabled,
+                    ):
+                        selected_theology.append(_naam)
+
+        # -- Commentaar-onderdelen --
+        if comm_items:
+            with st.expander("Commentaren — onderdelen", expanded=bool(_saved_commentaries)):
+                for _cid, _label in comm_items:
+                    _key = f"dlg_comm_{analysis_id}_{_cid}"
+                    _is_aan = st.session_state.get(_key, _cid in _saved_commentaries)
+                    _disabled = _ex_limiet_bereikt and not _is_aan
+                    if st.checkbox(
+                        _label,
+                        value=_cid in _saved_commentaries,
+                        key=_key,
+                        disabled=_disabled,
+                    ):
+                        selected_commentaries.append(_cid)
+
+        st.divider()
+
     # -- Illustraties --
     selected_illustraties: list[int] = []
     illustraties_data = latest.get("illustraties", {})
@@ -967,6 +1116,12 @@ def preekschets_selectie_dialog(
             "perspectieven": selected_perspectieven,
             "illustraties": selected_illustraties,
             "hoorders": selected_hoorders,
+            # Gecombineerde Theologie + Commentaren selectie (max 5);
+            # de agent splitst dit weer uit via `selected_exegese_commentaar`.
+            "exegese_commentaar": {
+                "theology": selected_theology,
+                "commentaries": selected_commentaries,
+            },
             "opgeslagen": True,
         }
         st.rerun()
