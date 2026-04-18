@@ -557,6 +557,29 @@ a[data-testid="stPageLink-NavLink"][data-current="true"] span,
 a[data-testid="stPageLink-NavLink"][data-current="true"] p {
     color: #FF8000 !important;
 }
+/* Toast (st.toast) — standaard wit/dof grijs en daarmee onleesbaar tegen
+   de donkere app-achtergrond. Zelfde donkere kaart als dialog/tooltip zodat
+   de melding (bv. "… wordt uitgevoerd") duidelijk leesbaar blijft. */
+[data-testid="stToast"],
+[data-testid="stToastContainer"],
+div[data-baseweb="toast"],
+div[role="alert"][data-baseweb="toast"] {
+    background-color: #1A1C24 !important;
+    color: #FAFAFA !important;
+    border: 1px solid #6A6A7A !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6) !important;
+}
+[data-testid="stToast"] *,
+[data-testid="stToastContainer"] *,
+div[data-baseweb="toast"] * {
+    color: #FAFAFA !important;
+}
+/* Sluit-kruisje in toast — zelfde behandeling als dialog-close. */
+[data-testid="stToast"] button svg,
+div[data-baseweb="toast"] button svg {
+    fill: #FAFAFA !important;
+    stroke: #FAFAFA !important;
+}
 </style>"""
 
 # CSS voor licht thema (oranje accent, witte achtergronden).
