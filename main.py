@@ -63,13 +63,33 @@ _DARK_CSS = """<style>
     color: #FAFAFA !important;
     border-color: #4A4A5A !important;
 }
-/* Expanders */
+/* Expanders — oud <details>/<summary>-patroon. */
 [data-testid="stExpander"] details {
     background-color: #262730 !important;
     border-color: #4A4A5A !important;
 }
 [data-testid="stExpander"] summary {
+    background-color: #262730 !important;
     color: #FAFAFA !important;
+}
+/* Expanders — nieuw div-gebaseerd patroon (headerblok is geen <summary> meer). */
+[data-testid="stExpander"],
+[data-testid="stExpander"] > div,
+[data-testid="stExpander"] > div > div {
+    background-color: #262730 !important;
+    border-color: #4A4A5A !important;
+}
+[data-testid="stExpander"] [role="button"],
+[data-testid="stExpanderHeader"],
+[data-testid="stExpanderDetails"] {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+}
+[data-testid="stExpander"] p,
+[data-testid="stExpander"] span,
+[data-testid="stExpander"] svg {
+    color: #FAFAFA !important;
+    fill: #FAFAFA !important;
 }
 /* Formuliercontainers */
 [data-testid="stForm"] {
