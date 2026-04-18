@@ -653,6 +653,9 @@ def confirm_delete_result(result: dict) -> None:
         f"Weet je zeker dat je **'{label}'** wilt verwijderen? "
         "Dit kan niet ongedaan worden gemaakt."
     )
+    # Placeholder bovenaan zodat een eventuele foutmelding zichtbaar blijft
+    # boven de knoppen, ook als de dialoog opnieuw wordt gerenderd.
+    _error_slot = st.empty()
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Ja, verwijderen", type="primary", use_container_width=True):
@@ -661,16 +664,42 @@ def confirm_delete_result(result: dict) -> None:
                 # sermon_analysis_id is vereist als query-parameter door de DRF-viewset
                 # (zie analysis_result/views.py:AnalysisResultViewSet.get_queryset).
                 sermon_analysis_id = result["sermon_analysis"]["id"]
-                handler.delete(
-                    f"api/analysis-results/{result['id']}/"
-                    f"?sermon_analysis_id={sermon_analysis_id}"
-                )
+                # Preekschetsen hebben vaak zware gekoppelde AnalysisRun-records
+                # (agent_messages kan megabytes groot zijn); een cascade-delete
+                # kan langer duren dan de standaard 30s. Timeout verhoogd naar 120s
+                # en spinner laat de gebruiker zien dat de actie loopt.
+                with st.spinner("Bezig met verwijderen..."):
+                    handler.delete(
+                        f"api/analysis-results/{result['id']}/"
+                        f"?sermon_analysis_id={sermon_analysis_id}",
+                        timeout=120,
+                    )
+                # Ruim lokale selectie-state op voor het zojuist verwijderde resultaat,
+                # zodat de tab niet blijft wijzen naar een id dat niet meer bestaat.
+                for _key in (
+                    "selected_analysis_id",
+                    "selected_verdiep_id",
+                    "selected_perspect_id",
+                    "selected_preek_id",
+                    "selected_feedback_id",
+                ):
+                    if st.session_state.get(_key) == result["id"]:
+                        st.session_state.pop(_key, None)
                 # Markeer de cache als vervuild zodat de overzichtspagina ververst.
                 st.session_state["analysis_data_dirty"] = True
                 st.toast("Analyse verwijderd.")
                 st.rerun()
             except Exception as e:
-                st.error(f"Fout bij verwijderen: {e}")
+                # Toon de volledige fout (incl. HTTP-respons als die er is) zodat
+                # stille backend-fouten (bv. 500, timeout) niet onzichtbaar blijven.
+                resp_text = ""
+                resp = getattr(e, "response", None)
+                if resp is not None:
+                    try:
+                        resp_text = f" — status {resp.status_code}: {resp.text[:500]}"
+                    except Exception:
+                        resp_text = ""
+                _error_slot.error(f"Fout bij verwijderen: {e}{resp_text}")
     with col2:
         if st.button("Annuleren", use_container_width=True):
             st.rerun()
