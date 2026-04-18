@@ -127,10 +127,23 @@ div[role="dialog"],
 [data-testid="stDialog"] span {
     color: #FAFAFA !important;
 }
-/* Sluit-kruisje in dialoog zichtbaar houden op donkere achtergrond. */
+/* Sluit-kruisje en andere iconen in dialoog zichtbaar houden op donkere
+   achtergrond. De pictogrammen gebruiken vaak stroke: currentcolor, dus
+   zowel fill/stroke expliciet zetten als color op de knop-ouder. */
+[data-testid="stDialog"] button,
+div[role="dialog"] button[aria-label="Close"],
+div[role="dialog"] [data-testid="stDialogCloseButton"] {
+    color: #FAFAFA !important;
+}
 [data-testid="stDialog"] button svg,
+div[role="dialog"] button svg,
 div[role="dialog"] [aria-label="Close"] svg {
     fill: #FAFAFA !important;
+    stroke: #FAFAFA !important;
+}
+[data-testid="stDialog"] button svg path,
+div[role="dialog"] button svg path {
+    stroke: #FAFAFA !important;
 }
 /* Tabbladen (st.tabs) — inactieve tabs waren wit. */
 [data-baseweb="tab-list"] {
