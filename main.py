@@ -123,28 +123,71 @@ li[role="option"][aria-selected="true"] * {
     color: #FAFAFA !important;
     border-color: #4A4A5A !important;
 }
-/* Datumkiezer (popover-kalender van st.date_input). */
+/* Datumkiezer (popover-kalender van st.date_input). De baseweb-kalender
+   heeft geen eigen data-baseweb="calendar" attribuut op alle lagen;
+   daarom targeten we via role/aria en de nav-knop labels. */
 [data-baseweb="calendar"],
 [data-baseweb="calendar"] > div,
 [data-baseweb="datepicker"],
-[data-baseweb="calendar-header"] {
+[data-baseweb="calendar-header"],
+[role="grid"][aria-roledescription="Calendar month"],
+[role="grid"][aria-roledescription="Calendar month"] [role="row"],
+[role="gridcell"] {
     background-color: #262730 !important;
     color: #FAFAFA !important;
 }
-[data-baseweb="calendar"] * {
+[data-baseweb="calendar"] *,
+[role="gridcell"] > div {
     color: #FAFAFA !important;
+    background-color: transparent !important;
 }
-/* Dagen die niet in de huidige maand vallen of disabled zijn: iets doffer. */
-[data-baseweb="calendar"] [aria-disabled="true"] {
+/* Navigatie- en maand/jaar-knoppen in de kalenderheader. */
+button[aria-label="Previous month."],
+button[aria-label="Next month."],
+button[aria-live="polite"] {
+    background-color: transparent !important;
+    color: #FAFAFA !important;
+    border-color: transparent !important;
+}
+button[aria-label="Previous month."] svg,
+button[aria-label="Next month."] svg,
+button[aria-live="polite"] svg {
+    fill: #FAFAFA !important;
+}
+button[aria-label="Previous month."]:disabled,
+button[aria-label="Next month."]:disabled {
     color: #6A6A7A !important;
 }
-/* Geselecteerde datum: oranje bg met witte tekst. */
-[data-baseweb="calendar"] [aria-selected="true"] {
+button[aria-label="Previous month."]:disabled svg,
+button[aria-label="Next month."]:disabled svg {
+    fill: #6A6A7A !important;
+}
+/* Weekdag-kopjes (Su Mo Tu We Th Fr Sa) — via alt-attribuut. */
+div[alt="Sunday"],
+div[alt="Monday"],
+div[alt="Tuesday"],
+div[alt="Wednesday"],
+div[alt="Thursday"],
+div[alt="Friday"],
+div[alt="Saturday"] {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+}
+/* Niet-beschikbare datums (buiten range/verleden) — doffer grijs. */
+[role="gridcell"][aria-label*="Not available"],
+[role="gridcell"][aria-label*="Not available"] > div {
+    color: #6A6A7A !important;
+}
+/* Geselecteerde datum — oranje accent. */
+[data-baseweb="calendar"] [aria-selected="true"],
+[role="gridcell"][aria-label*="Selected"] {
     background-color: #FF8000 !important;
     color: #FFFFFF !important;
 }
-[data-baseweb="calendar"] [aria-selected="true"] * {
+[data-baseweb="calendar"] [aria-selected="true"] *,
+[role="gridcell"][aria-label*="Selected"] > div {
     color: #FFFFFF !important;
+    background-color: transparent !important;
 }
 /* Hyperlinks in markdown — standaard donkerblauw, onleesbaar op dark bg.
    Uitgezonderd st.page_link dat al zijn eigen styling heeft. */
