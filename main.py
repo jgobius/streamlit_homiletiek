@@ -207,6 +207,21 @@ pre code {
 [data-testid="stCodeBlock"] {
     background-color: #1A1C24 !important;
 }
+/* Radio-knoppen (st.radio) en checkboxes — de buitencirkel/box werd
+   fel wit. Zachter grijs zodat hij niet overstraalt op donker thema. */
+label[data-baseweb="radio"] > div:first-child,
+label[data-baseweb="checkbox"] > div:first-child {
+    background-color: #3D3D4F !important;
+    border-color: #6A6A7A !important;
+}
+/* Geselecteerde radio/checkbox houdt oranje accent. */
+label[data-baseweb="radio"][aria-checked="true"] > div:first-child,
+label[data-baseweb="checkbox"][aria-checked="true"] > div:first-child,
+label[data-baseweb="radio"] input:checked + div,
+label[data-baseweb="checkbox"] input:checked + div {
+    background-color: #FF8000 !important;
+    border-color: #FF8000 !important;
+}
 /* Stepper-knopjes van st.number_input (+/−) — standaard witte bg. */
 [data-testid="stNumberInputStepDown"],
 [data-testid="stNumberInputStepUp"] {
