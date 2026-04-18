@@ -99,12 +99,25 @@ _DARK_CSS = """<style>
     background-color: #1A1C24 !important;
     border-color: #4A4A5A !important;
 }
-/* Dialoog-/modaal-venster (st.dialog) — standaard witte kaart wordt donker. */
+/* Horizontale scheidingslijnen (st.divider en <hr>) — standaard te donker
+   tegen de app-achtergrond, opgehelderd voor betere zichtbaarheid. */
+hr,
+[data-testid="stDivider"],
+[data-testid="stHeadingDivider"] {
+    border-color: #6A6A7A !important;
+    background-color: #6A6A7A !important;
+    color: #6A6A7A !important;
+}
+/* Dialoog-/modaal-venster (st.dialog) — standaard witte kaart wordt donker.
+   Zichtbare lichte rand + schaduw zodat de buitenkant van het venster
+   afsteekt tegen de donkere app-achtergrond. */
 div[role="dialog"],
 [data-testid="stDialog"],
 [data-testid="stDialog"] > div {
     background-color: #1A1C24 !important;
     color: #FAFAFA !important;
+    border: 1px solid #6A6A7A !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6) !important;
 }
 [data-testid="stDialog"] h1,
 [data-testid="stDialog"] h2,
