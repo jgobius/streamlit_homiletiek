@@ -21,6 +21,11 @@ _DARK_CSS = """<style>
     background-color: #0E1117;
     color: #FAFAFA;
 }
+/* Html/body — voorkomt witte flash bij overscroll-bounce (macOS) en
+   witte ruimte rondom wanneer de app-root niet het hele scherm vult. */
+html, body {
+    background-color: #0E1117 !important;
+}
 /* Zijbalk */
 [data-testid="stSidebar"] > div:first-child {
     background-color: #262730;
