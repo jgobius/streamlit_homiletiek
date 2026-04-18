@@ -84,7 +84,16 @@ def get_data(endpoint:str) -> Any:
     data = st.session_state['api_handler'].get(endpoint)
     return data
 
-@st.cache_data
+# TTL (in seconden) voor referentie-data die via get_cached_data opgehaald wordt
+# (liedboeken, bijbelvertalingen, roosterlezingen, e.d.). Een korte TTL zorgt
+# ervoor dat wijzigingen op de backend binnen een minuut automatisch zichtbaar
+# worden zonder dat de gebruiker handmatig hoeft te verversen. De handmatige
+# Ververs-knop in de zijbalk roept daarnaast get_cached_data.clear() aan voor
+# een directe invalidatie.
+_CACHED_DATA_TTL_SECONDS = 60
+
+
+@st.cache_data(ttl=_CACHED_DATA_TTL_SECONDS)
 def get_cached_data(endpoint:str) -> Any:
     """
     Retrieve cached data from the specified endpoint.
@@ -93,7 +102,7 @@ def get_cached_data(endpoint:str) -> Any:
     Returns:
         Any: The data retrieved from the specified endpoint.
     """
-    
+
     return get_data(endpoint)
 
 def get_structured_scriptures(scriptures: list[str], bible_version: str, language: str) -> list[dict[str, Any]]:

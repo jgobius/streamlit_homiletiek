@@ -4,7 +4,7 @@ import time
 import requests
 import streamlit as st
 
-from src.utils.utils import redirect_to_login, get_data
+from src.utils.utils import redirect_to_login, get_data, get_cached_data
 from page_navigation.analysis_results.aanpassen_dialog import aanpassen_dialog
 from page_navigation.analysis_results.analyses.postille import postille
 from page_navigation.analysis_results.analyses.bijbelteksten import bijbelteksten
@@ -620,13 +620,18 @@ with st.sidebar:
                 ):
                     _trigger_analysis(int(analysis_id), at, _add_lock_key)
 
-# Ververs-knop onderaan de zijbalk: invalideert de per-analyse sessiecache
-# (`overview_data_{analysis_id}`) zodat extern gestarte analyses (bv.
-# liedsuggesties via de agent) zichtbaar worden zonder dat de gebruiker
-# hoeft uit te loggen of de server opnieuw moet starten.
+# Ververs-knop onderaan de zijbalk: invalideert zowel de per-analyse sessiecache
+# (`overview_data_{analysis_id}`) als de globale get_cached_data-cache. Zo worden
+# extern gestarte analyses (bv. liedsuggesties via de agent) én wijzigingen in
+# referentie-data (liedboeken, liturgie) zichtbaar zonder dat de gebruiker hoeft
+# uit te loggen of de server opnieuw moet starten.
 with st.sidebar:
     if st.button("🔄 Ververs", use_container_width=True, key="sidebar_refresh"):
         st.session_state["analysis_data_dirty"] = True
+        # Wis ook de get_cached_data-cache (liedboeken, bijbelvertalingen,
+        # liturgie, e.d.). De TTL van 60s vangt dit normaal automatisch op,
+        # maar een expliciete klik moet direct effect hebben.
+        get_cached_data.clear()
         # Behoud het actieve tabblad expliciet — zonder deze regel valt het
         # segmented_control bij een rerun terug op "Basis". Alle andere zijbalk-
         # knoppen hergebruiken dit patroon om dezelfde reden.
