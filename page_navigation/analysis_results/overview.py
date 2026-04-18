@@ -768,19 +768,20 @@ def preekschets_selectie_dialog(
     st.divider()
 
     # -- Kerntekst(en) --
+    # `bijbelteksten.result` is sinds de lijst-refactor een list van lezing-entries
+    # (elk met 'reference' en 'verses'). Zie analyses/bijbelteksten.py voor de reden:
+    # Postgres jsonb bewaart object-key-volgorde niet, list-volgorde wél.
     bijbel = latest.get("bijbelteksten", {})
-    bijbel_result = bijbel.get("result", {}) if bijbel else {}
+    bijbel_result = bijbel.get("result") if bijbel else None
     verzen = []
-    if isinstance(bijbel_result, dict):
-        for scripture_ref, scripture_data in bijbel_result.items():
-            book_chapter = scripture_ref.rstrip(".").strip()
-            for verse in (
-                scripture_data.get("verses", [])
-                if isinstance(scripture_data, dict)
-                else []
-            ):
+    if isinstance(bijbel_result, list):
+        for scripture in bijbel_result:
+            if not isinstance(scripture, dict):
+                continue
+            book_chapter = (scripture.get("reference") or "").rstrip(".").strip()
+            for verse in scripture.get("verses", []) or []:
                 number = verse.get("number", "")
-                text = verse.get("modern_text", "").strip()
+                text = (verse.get("modern_text") or "").strip()
                 verzen.append({"ref": f"{book_chapter}:{number}", "text": text})
 
     st.subheader("Kerntekst(en)")
