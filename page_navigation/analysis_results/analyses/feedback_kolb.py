@@ -263,10 +263,3 @@ def feedback_kolb(analysis: dict[str, Any]) -> None:
             if blok:
                 _render_analyse_block(label, blok)
 
-    # === 7. Metadata ===
-    meta = result.get("metadata", {})
-    if meta:
-        with st.expander("Metadata", expanded=False):
-            for k, v in meta.items():
-                if v:
-                    st.markdown(f"**{k.replace('_', ' ').capitalize()}:** {clean_md(str(v))}")

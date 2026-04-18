@@ -166,10 +166,3 @@ def feedback_metafoor(analysis: dict[str, Any]) -> None:
                         st.markdown("Onbedoelde consequenties: " + ", ".join(clean_md(str(c)) for c in conseq))
                 st.divider()
 
-    # --- Metadata (compact) ---
-    meta = result.get("metadata", {})
-    if meta:
-        with st.expander("Metadata", expanded=False):
-            for k, v in meta.items():
-                if v:
-                    st.markdown(f"**{k.replace('_', ' ').capitalize()}:** {clean_md(str(v))}")

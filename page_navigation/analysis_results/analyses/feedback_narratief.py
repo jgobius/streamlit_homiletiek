@@ -69,7 +69,6 @@ def feedback_narratief(analysis: dict[str, Any]) -> None:
     aanbev = result.get("aanbevelingen", {})
     actant = result.get("actantiele_analyse", {})
     gram = result.get("grammaticale_analyse", {})
-    meta = result.get("metadata", {})
 
     # === 1. Diagnostisch overzicht ===
     classificatie = diag.get("primaire_classificatie", "")
@@ -251,9 +250,3 @@ def feedback_narratief(analysis: dict[str, Any]) -> None:
                     k_label = k.replace("_", " ").capitalize()
                     st.markdown(f"**{k_label}:** {clean_md(str(v))}")
 
-    # === 6. Metadata ===
-    if meta:
-        with st.expander("Metadata", expanded=False):
-            for k, v in meta.items():
-                if v:
-                    st.markdown(f"**{k.replace('_', ' ').capitalize()}:** {clean_md(str(v))}")

@@ -88,7 +88,6 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
     domein_b = result.get("domein_b_dramaturgie_van_de_structuur", {})
     kitsch = result.get("kitsch_diagnose", {})
     ruimte = result.get("ruimte_voor_genade_analyse", {})
-    meta = result.get("metadata", {})
 
     # === 1. Totaaloverzicht ===
     overall = totaal.get("overall_esthetische_score")
@@ -231,9 +230,3 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
             with st.expander("Aanbeveling", expanded=False):
                 st.markdown(clean_md(ruimte_aanbev))
 
-    # === 6. Metadata ===
-    if meta:
-        with st.expander("Metadata", expanded=False):
-            for k, v in meta.items():
-                if v:
-                    st.markdown(f"**{k.replace('_', ' ').capitalize()}:** {clean_md(str(v))}")

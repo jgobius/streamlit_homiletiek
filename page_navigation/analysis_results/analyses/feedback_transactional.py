@@ -60,7 +60,6 @@ def feedback_transactional(analysis: dict[str, Any]) -> None:
     transactie = result.get("transactie_analyse", {})
     spelen = result.get("spel_analyse_games", {})
     drama = result.get("dramadriehoek_analyse", {})
-    meta = result.get("metadata", {})
 
     # === 1. Totaaloverzicht ===
     overall = conclusie.get("psychologische_gezondheid_score")
@@ -199,9 +198,3 @@ def feedback_transactional(analysis: dict[str, Any]) -> None:
         if ontsnapping:
             st.caption(f"Ontsnappingsmogelijkheden: {clean_md(ontsnapping)}")
 
-    # === 6. Metadata ===
-    if meta:
-        with st.expander("Metadata", expanded=False):
-            for k, v in meta.items():
-                if v:
-                    st.markdown(f"**{k.replace('_', ' ').capitalize()}:** {clean_md(str(v))}")

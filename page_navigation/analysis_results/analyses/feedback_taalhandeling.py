@@ -82,7 +82,6 @@ def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
     werkwoorden = result.get("werkwoord_analyse", {})
     constatief = result.get("constatief_performatief_diagnose", {})
     sacramenteel = result.get("sacramenteel_patroon_analyse", {})
-    meta = result.get("metadata", {})
 
     # === 1. Diagnostisch overzicht ===
     primaire_diagnose = diag.get("primaire_diagnose", "")
@@ -306,9 +305,3 @@ def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
                         else:
                             st.markdown(f"**{k_label}:** {clean_md(str(v))}")
 
-    # === 6. Metadata ===
-    if meta:
-        with st.expander("Metadata", expanded=False):
-            for k, v in meta.items():
-                if v:
-                    st.markdown(f"**{k.replace('_', ' ').capitalize()}:** {clean_md(str(v))}")

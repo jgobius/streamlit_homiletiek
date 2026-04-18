@@ -52,7 +52,6 @@ def feedback_aristoteles(analysis: dict[str, Any]) -> None:
     modi = result.get("aristotelische_modi_analyse", {})
     balans = result.get("retorische_balans_analyse", {})
     ortho = result.get("orthodoxie_orthopathie_orthopraxie", {})
-    meta = result.get("metadata", {})
 
     # === 1. Totaalbeeld bovenaan ===
     overall = totaal.get("overall_retorische_score")
@@ -207,9 +206,3 @@ def feedback_aristoteles(analysis: dict[str, Any]) -> None:
                 with st.expander(f"{label}  {_score_label(score)}", expanded=False):
                     st.markdown(clean_md(analyse))
 
-    # === 5. Metadata ===
-    if meta:
-        with st.expander("Metadata", expanded=False):
-            for k, v in meta.items():
-                if v:
-                    st.markdown(f"**{k.replace('_', ' ').capitalize()}:** {clean_md(str(v))}")
