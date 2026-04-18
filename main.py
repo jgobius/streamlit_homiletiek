@@ -1,5 +1,8 @@
+import json
+
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 from streamlit_cookies_controller import CookieController
 
 from src.api.jwthandler import JwtHandler
@@ -571,9 +574,66 @@ _LIGHT_CSS = """<style>
 
 
 def _inject_theme_css() -> None:
-    """Injecteer CSS voor het huidige thema op basis van de voorkeur in session_state."""
-    dark = st.session_state.get('dark_mode', False)
-    st.markdown(_DARK_CSS if dark else _LIGHT_CSS, unsafe_allow_html=True)
+    """Injecteer thema-CSS door de cookie client-side (synchroon) te lezen.
+
+    We gebruiken een onzichtbare component (iframe) waarin JavaScript op iedere
+    render `document.cookie` synchroon uitleest en vervolgens in het hoofd-
+    document een <style id="homiletiek-theme-css"> aanmaakt of weghaalt. Deze
+    aanpak omzeilt de async-timing van `streamlit-cookies-controller` en het
+    session_state-herstel in main.py: ook bij een verse page-load of na
+    uitloggen wordt de donkere CSS direct op basis van de browsercookie
+    toegepast, zonder witte flits of verloren voorkeur.
+
+    Bij afwezige of 'false' cookie wordt de eventueel aanwezige style verwijderd,
+    zodat het standaard lichte thema uit config.toml weer geldt.
+    """
+    # Haal de CSS-inhoud tussen <style>...</style> uit _DARK_CSS.
+    dark_inner = _DARK_CSS.replace('<style>', '').replace('</style>', '')
+    # json.dumps zorgt voor veilige escaping van quotes en newlines in JS.
+    dark_css_js = json.dumps(dark_inner)
+    # Lees ook session_state als synchrone fallback: vlak na een toggle is de
+    # cookie wellicht nog niet door de browser weggeschreven (async), terwijl
+    # session_state['dark_mode'] wel al de juiste waarde heeft.
+    dark_fallback = 'true' if st.session_state.get('dark_mode', False) else 'false'
+    components.html(
+        f"""
+        <script>
+        (function() {{
+            try {{
+                // parent.document is het hoofd-document van de Streamlit-app;
+                // de component zelf leeft in een iframe zonder eigen CSS-context.
+                var doc = window.parent ? window.parent.document : document;
+                var cookieStr = doc.cookie || '';
+                var cookies = cookieStr.split(';').map(function(c) {{ return c.trim(); }});
+                var entry = cookies.filter(function(c) {{ return c.indexOf('dark_mode=') === 0; }})[0];
+                var isDark;
+                if (entry) {{
+                    isDark = entry.split('=')[1] === 'true';
+                }} else {{
+                    // Geen cookie gevonden — val terug op de session_state-waarde
+                    // die Python bij deze render heeft meegegeven.
+                    isDark = {dark_fallback};
+                }}
+                var id = 'homiletiek-theme-css';
+                var el = doc.getElementById(id);
+                if (isDark) {{
+                    if (!el) {{
+                        el = doc.createElement('style');
+                        el.id = id;
+                        doc.head.appendChild(el);
+                    }}
+                    el.textContent = {dark_css_js};
+                }} else if (el) {{
+                    el.remove();
+                }}
+            }} catch (e) {{
+                console.error('Thema-injectie faalde:', e);
+            }}
+        }})();
+        </script>
+        """,
+        height=0,
+    )
 
 st.session_state['page_navigation_dir'] = 'page_navigation'
 
