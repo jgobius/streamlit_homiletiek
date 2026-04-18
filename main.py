@@ -123,6 +123,24 @@ li[role="option"][aria-selected="true"] * {
 [data-baseweb="popover"] div[style*="will-change: transform"] {
     background-color: #262730 !important;
 }
+/* Hoofd-menu (hamburger rechtsboven) — dropdownmenu met Rerun/Settings/...
+   Items zijn ul[role=option] met li/span inhoud; allen donker maken. */
+[data-testid="stMainMenuList"],
+[data-testid="stMainMenuList"] ul[role="option"],
+[data-testid="stMainMenuList"] li,
+[data-testid="stMainMenuList"] span {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+}
+[data-testid="stMainMenuList"] ul[role="option"]:hover,
+[data-testid="stMainMenuList"] ul[role="option"]:hover li,
+[data-testid="stMainMenuList"] ul[role="option"]:hover span {
+    background-color: #3D3D4F !important;
+}
+[data-testid="stMainMenuDivider"] {
+    background-color: #6A6A7A !important;
+    border-color: #6A6A7A !important;
+}
 /* Tekst-, getal- en datum-invoervelden */
 [data-testid="stTextInput"] input,
 [data-testid="stNumberInput"] input,
