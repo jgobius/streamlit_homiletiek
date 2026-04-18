@@ -109,6 +109,28 @@ div[role="dialog"] [aria-label="Close"] svg {
     background-color: #1A1C24 !important;
     color: #FF8000 !important;
 }
+/* Segmented control (st.segmented_control) — bv. Basis/Verdieping/Perspectieven/... */
+[data-testid="stBaseButton-segmented_control"],
+[data-testid="stBaseButton-segmented_controlActive"] {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+    border-color: #4A4A5A !important;
+}
+[data-testid="stBaseButton-segmented_control"] p,
+[data-testid="stBaseButton-segmented_control"] span,
+[data-testid="stBaseButton-segmented_controlActive"] p,
+[data-testid="stBaseButton-segmented_controlActive"] span {
+    color: #FAFAFA !important;
+}
+/* Actief segment krijgt oranje accent (matcht primaryColor). */
+[data-testid="stBaseButton-segmented_controlActive"] {
+    background-color: #1A1C24 !important;
+    border-color: #FF8000 !important;
+}
+[data-testid="stBaseButton-segmented_controlActive"] p,
+[data-testid="stBaseButton-segmented_controlActive"] span {
+    color: #FF8000 !important;
+}
 /* Popover / info-knop (st.popover) — trigger en paneel. */
 [data-testid="stPopover"] button,
 [data-testid="stPopoverButton"],
