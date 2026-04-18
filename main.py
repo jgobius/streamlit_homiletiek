@@ -684,6 +684,12 @@ def main():
         except TypeError:
             st.session_state['dark_mode'] = False
 
+    # Injecteer thema-CSS direct na het bepalen van de voorkeur, nog vóór eventuele
+    # st.stop() in de sessie-herstel-logica hieronder. Anders wordt bij uitloggen
+    # (wanneer het geblokkeerde refresh token de herstel-poging laat falen en st.stop()
+    # wordt aangeroepen) de donkere CSS niet geïnjecteerd en flitst de pagina wit.
+    _inject_theme_css()
+
     # Schrijf een pending refresh token naar de cookie zodra de controller gereed is.
     # Dit token wordt door login.py klaargezet na een succesvolle login.
     pending = st.session_state.get('_pending_refresh_token')
@@ -723,9 +729,6 @@ def main():
     analysis_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py", title='Analyse overzicht')
 
     pages = [dashboard_page, new_analysis_page, liturgisch_jaar_page, church_overview_page, new_church_page, analysis_overview_page, logout_page]
-
-    # Injecteer thema-CSS op elke render op basis van de huidige voorkeur.
-    _inject_theme_css()
 
     if 'api_handler' not in st.session_state:
         pg = st.navigation([welcome_page, login_page, register_page, dashboard_page], position='hidden')
