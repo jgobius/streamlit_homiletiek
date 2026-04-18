@@ -6,6 +6,11 @@ from typing import Any
 import streamlit as st
 
 from src.utils.utils import clean_md
+# Focus en Functie heeft een eigen dedicated renderer; we hergebruiken die
+# hier in de Verdieping-dispatcher in plaats van de logica te dupliceren.
+from page_navigation.analysis_results.analyses.focus_en_functie import (
+    focus_en_functie as render_focus_en_functie,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -660,6 +665,7 @@ _RENDERERS = {
     "bezinningsmoment":      render_kindermoment,
     "wetslezing":            render_wetslezing,
     "kalender":              render_kalender,
+    "focus_en_functie":      render_focus_en_functie,
 }
 
 

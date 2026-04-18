@@ -29,7 +29,6 @@ from page_navigation.analysis_results.analyses.interpretatieve_synthese import (
 )
 from page_navigation.analysis_results.analyses.wereldnieuws import wereldnieuws
 from page_navigation.analysis_results.analyses.lokaal_nieuws import lokaal_nieuws
-from page_navigation.analysis_results.analyses.focus_en_functie import focus_en_functie
 from page_navigation.analysis_results.analyses.representatieve_hoorders import (
     representatieve_hoorders,
 )
@@ -76,6 +75,8 @@ _VERDIEPING_NAMEN = {
     "wetslezing",
     "kalender",
     "bezinningsmoment",
+    # focus_en_functie hoort thuis onder Verdieping; ook nodig als input voor Preekschetsen.
+    "focus_en_functie",
 }
 
 _PREEKSCHETSEN_NAMEN = {
@@ -132,7 +133,6 @@ _BASIS_ORDER = [
     "illustraties",
     "wereldnieuws",
     "lokaal_nieuws",
-    "focus_en_functie",
 ]
 
 
@@ -1090,8 +1090,6 @@ if current_tab == "Basis":
         wereldnieuws(selected_analysis)
     elif analysis_type_name == "lokaal_nieuws":
         lokaal_nieuws(selected_analysis)
-    elif analysis_type_name == "focus_en_functie":
-        focus_en_functie(selected_analysis)
     elif analysis_type_name == "contextduiding":
         contextduiding(selected_analysis)
 
