@@ -63,6 +63,15 @@ _DARK_CSS = """<style>
     color: #FAFAFA !important;
     border-color: #4A4A5A !important;
 }
+/* Hyperlinks in markdown — standaard donkerblauw, onleesbaar op dark bg.
+   Uitgezonderd st.page_link dat al zijn eigen styling heeft. */
+a:not([data-testid="stPageLink-NavLink"]),
+a:not([data-testid="stPageLink-NavLink"]):visited {
+    color: #58A6FF !important;
+}
+a:not([data-testid="stPageLink-NavLink"]):hover {
+    color: #79BBFF !important;
+}
 /* Caption-tekst (st.caption) — standaard dof grijs, te donker tegen bg. */
 [data-testid="stCaptionContainer"],
 [data-testid="stCaptionContainer"] p,
