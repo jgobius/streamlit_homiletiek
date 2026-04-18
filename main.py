@@ -219,13 +219,14 @@ label[data-testid="stWidgetLabel"] {
     color: #FAFAFA !important;
 }
 /* Caption-tekst (st.caption) — standaard dof grijs, te donker tegen bg.
-   Lichter zodat ook meerregelige captions (sidebar tokenverbruik,
-   ⚠️-waarschuwingen) goed leesbaar zijn. */
+   Bijna wit zodat ook meerregelige captions in de sidebar (token-
+   verbruik) en ⚠️-waarschuwingen goed leesbaar zijn. */
 [data-testid="stCaptionContainer"],
 [data-testid="stCaptionContainer"] p,
 [data-testid="stCaptionContainer"] p *,
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p,
 small {
-    color: #E0E0E8 !important;
+    color: #F5F5FA !important;
 }
 /* Meldingen (st.info/success/warning/error) — standaard lichtgekleurde
    achtergrond met donkere tekst, onleesbaar in donker thema.
