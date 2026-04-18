@@ -146,34 +146,41 @@ small {
     color: #E0E0E8 !important;
 }
 /* Meldingen (st.info/success/warning/error) — standaard lichtgekleurde
-   achtergrond met donkere tekst, onleesbaar in donker thema. */
+   achtergrond met donkere tekst, onleesbaar in donker thema.
+   Zowel de buitencontainer (stAlertContainer) als de variantcontent
+   krijgen dezelfde kleur zodat er geen twee-tonig blok ontstaat. */
 [data-testid="stAlert"],
 [data-testid="stNotification"] {
     color: #FAFAFA !important;
+    background-color: transparent !important;
 }
 [data-testid="stAlert"] *,
 [data-testid="stNotification"] * {
     color: #FAFAFA !important;
 }
-[data-testid="stAlert"][kind="info"],
+/* Info — uniform blauw. */
+[data-testid="stAlert"]:has([data-testid="stAlertContentInfo"]) [data-testid="stAlertContainer"],
 [data-testid="stAlertContentInfo"],
 [data-testid="stNotificationContentInfo"] {
     background-color: #1A3A5A !important;
     border-color: #2D5A8A !important;
 }
-[data-testid="stAlert"][kind="success"],
+/* Success — uniform groen. */
+[data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"]) [data-testid="stAlertContainer"],
 [data-testid="stAlertContentSuccess"],
 [data-testid="stNotificationContentSuccess"] {
     background-color: #1A4A2A !important;
     border-color: #2D7A4A !important;
 }
-[data-testid="stAlert"][kind="warning"],
+/* Warning — uniform geel/oker. */
+[data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]) [data-testid="stAlertContainer"],
 [data-testid="stAlertContentWarning"],
 [data-testid="stNotificationContentWarning"] {
     background-color: #5A4A1A !important;
     border-color: #8A7A2D !important;
 }
-[data-testid="stAlert"][kind="error"],
+/* Error — uniform rood. */
+[data-testid="stAlert"]:has([data-testid="stAlertContentError"]) [data-testid="stAlertContainer"],
 [data-testid="stAlertContentError"],
 [data-testid="stNotificationContentError"] {
     background-color: #5A1A2A !important;
