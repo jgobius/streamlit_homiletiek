@@ -740,7 +740,17 @@ def preekschets_selectie_dialog(
 ) -> None:
     """Popup voor het instellen en opslaan van de preekschets-input selectie."""
 
-    # -- Focus-en-functie (geen voorselectie) --
+    # Haal eerder opgeslagen selectie op. Streamlit ruimt widget-state op zodra
+    # een @st.dialog sluit, dus zonder deze her-hydratatie staan alle velden leeg
+    # bij een volgend openen. We lezen één keer uit en geven per widget een default.
+    _saved = st.session_state.get(f"preek_selectie_{analysis_id}", {})
+    _saved_kernteksten: set[str] = set(_saved.get("kernteksten", []))
+    _saved_focus_optie = _saved.get("focus_optie")
+    _saved_perspectieven: dict[str, list] = _saved.get("perspectieven", {}) or {}
+    _saved_illustraties: set[int] = set(_saved.get("illustraties", []))
+    _saved_hoorders: set[str] = set(_saved.get("hoorders", []))
+
+    # -- Focus-en-functie --
     focus = latest.get("focus_en_functie", {})
     focus_result = focus.get("result", {}) if focus else {}
     opties = focus_result.get("opties", []) if isinstance(focus_result, dict) else []
@@ -752,10 +762,15 @@ def preekschets_selectie_dialog(
             f"Optie {o.get('nummer', i + 1)}: {o.get('korte_titel', '')}"
             for i, o in enumerate(opties)
         ]
+        # Voorselecteer het eerder opgeslagen nummer, indien nog aanwezig in de opties.
+        _saved_idx = next(
+            (i for i, o in enumerate(opties) if o.get("nummer") == _saved_focus_optie),
+            None,
+        )
         keuze = st.radio(
             "Focus-en-functie optie",
             options=optie_labels,
-            index=None,
+            index=_saved_idx,
             label_visibility="collapsed",
             key=f"dlg_focus_radio_{analysis_id}",
         )
@@ -791,7 +806,11 @@ def preekschets_selectie_dialog(
             ref = v["ref"]
             preview = v["text"][:110] + ("…" if len(v["text"]) > 110 else "")
             label = f"**{ref}** — {preview}"
-            if st.checkbox(label, key=f"dlg_kt_{analysis_id}_{ref}"):
+            if st.checkbox(
+                label,
+                value=ref in _saved_kernteksten,
+                key=f"dlg_kt_{analysis_id}_{ref}",
+            ):
                 selected_refs.append(ref)
     else:
         st.caption("*Bijbelteksten nog niet beschikbaar*")
@@ -818,14 +837,18 @@ def preekschets_selectie_dialog(
                     result = {}
             analyses = result.get("analyses", []) if isinstance(result, dict) else []
             if analyses:
-                with st.expander(front_end_name, expanded=False):
+                _saved_per_perspect = set(_saved_perspectieven.get(name, []) or [])
+                # Expander open tonen als dit perspectief eerder onderdelen geselecteerd had.
+                with st.expander(front_end_name, expanded=bool(_saved_per_perspect)):
                     selected_onderdelen = []
                     for item in analyses:
                         nummer = item.get("nummer", "")
                         titel = item.get("titel", "")
                         label = f"{nummer}. {titel}" if nummer else titel
                         if st.checkbox(
-                            label, key=f"dlg_perspect_{analysis_id}_{name}_{nummer}"
+                            label,
+                            value=nummer in _saved_per_perspect,
+                            key=f"dlg_perspect_{analysis_id}_{name}_{nummer}",
                         ):
                             selected_onderdelen.append(nummer)
                     selected_perspectieven[name] = selected_onderdelen
@@ -849,7 +872,11 @@ def preekschets_selectie_dialog(
             titel = ill.get("titel", "")
             ill_type = ill.get("metadata", {}).get("type", "")
             label = f"#{nummer} — {titel}" + (f"  ({ill_type})" if ill_type else "")
-            if st.checkbox(label, key=f"dlg_ill_{analysis_id}_{nummer}"):
+            if st.checkbox(
+                label,
+                value=nummer in _saved_illustraties,
+                key=f"dlg_ill_{analysis_id}_{nummer}",
+            ):
                 selected_illustraties.append(nummer)
         st.divider()
 
@@ -869,7 +896,11 @@ def preekschets_selectie_dialog(
             volledige_naam = f"{voornaam} {achternaam}".strip()
             leeftijd = persona.get("leeftijd", "")
             label = f"👤 {volledige_naam}" + (f" ({leeftijd})" if leeftijd else "")
-            if st.checkbox(label, key=f"dlg_hoorder_{analysis_id}_{volledige_naam}"):
+            if st.checkbox(
+                label,
+                value=volledige_naam in _saved_hoorders,
+                key=f"dlg_hoorder_{analysis_id}_{volledige_naam}",
+            ):
                 selected_hoorders.append(volledige_naam)
         st.divider()
 
