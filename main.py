@@ -575,6 +575,29 @@ def _inject_theme_css() -> None:
     dark = st.session_state.get('dark_mode', False)
     st.markdown(_DARK_CSS if dark else _LIGHT_CSS, unsafe_allow_html=True)
 
+
+def _hydrate_user_preferences() -> None:
+    """Laad de UI-voorkeuren van de ingelogde gebruiker in session_state.
+
+    Wordt één keer per sessie aangeroepen, direct na inloggen of na het
+    herstellen van een sessie uit de refresh-token-cookie. Faalt het verzoek
+    (bijv. backend niet bereikbaar of endpoint nog niet uitgerold), dan valt
+    dark_mode terug op False zodat de app gewoon licht blijft.
+    """
+    handler = st.session_state.get('api_handler')
+    if not handler:
+        return
+    try:
+        prefs = handler.get('api/user-preferences/')
+    except requests.exceptions.RequestException:
+        # Endpoint niet beschikbaar of netwerkfout — val terug op licht thema.
+        st.session_state['dark_mode'] = False
+        return
+    if isinstance(prefs, dict):
+        st.session_state['dark_mode'] = bool(prefs.get('dark_mode', False))
+    else:
+        st.session_state['dark_mode'] = False
+
 st.session_state['page_navigation_dir'] = 'page_navigation'
 
 
@@ -675,23 +698,12 @@ def main():
     controller = CookieController()
     st.session_state['cookie_controller'] = controller
 
-    # Herstel thema-voorkeur uit cookie als die nog niet in session_state staat.
-    # Bij de eerste render zijn cookies nog niet beschikbaar (TypeError) — in dat
-    # geval NIETS in session_state schrijven, zodat de volgende render (zodra de
-    # cookie-controller zijn waarden heeft teruggestuurd) het opnieuw probeert.
-    # Eerder werd hier 'dark_mode=False' opgeslagen, waardoor de voorkeur-key
-    # permanent op False bleef hangen en de cookie nooit meer gelezen werd.
-    if 'dark_mode' not in st.session_state:
-        try:
-            cookie_val = controller.get('dark_mode')
-            st.session_state['dark_mode'] = cookie_val == 'true'
-        except TypeError:
-            pass
-
-    # Injecteer thema-CSS direct na het bepalen van de voorkeur, nog vóór eventuele
-    # st.stop() in de sessie-herstel-logica hieronder. Anders wordt bij uitloggen
-    # (wanneer het geblokkeerde refresh token de herstel-poging laat falen en st.stop()
-    # wordt aangeroepen) de donkere CSS niet geïnjecteerd en flitst de pagina wit.
+    # Injecteer thema-CSS direct na het initialiseren van de controller, nog vóór
+    # eventuele st.stop() in de sessie-herstel-logica hieronder. De voorkeur zit
+    # in session_state['dark_mode'] en wordt na login gevuld vanuit het backend-
+    # endpoint /api/user-preferences/ (zie _hydrate_user_preferences). Op de
+    # eerste render vóór login is dark_mode afwezig — dan toont Streamlit het
+    # standaard lichte thema, wat acceptabel is voor de kortstondige login-flash.
     _inject_theme_css()
 
     # Schrijf een pending refresh token naar de cookie zodra de controller gereed is.
@@ -718,6 +730,15 @@ def main():
     # Verwijder de teller zodra we ingelogd zijn.
     if 'api_handler' in st.session_state:
         st.session_state.pop('_restore_attempts', None)
+        # Haal de persoonlijke UI-voorkeur (dark_mode) op uit de backend zodra de
+        # gebruiker is ingelogd. Dit gebeurt maar één keer per sessie: daarna
+        # leeft de waarde in session_state en wordt hij bij wijziging via de
+        # toggle ook naar de backend teruggeschreven (zie _sla_thema_voorkeur_op
+        # in src/utils/utils.py). Na het ophalen renderen we het thema opnieuw
+        # zodat de donkere CSS direct op de eerste post-login render zichtbaar is.
+        if 'dark_mode' not in st.session_state:
+            _hydrate_user_preferences()
+            _inject_theme_css()
 
     welcome_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/welcome.py", title='Welcome')
     login_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/login.py", title='Inloggen')

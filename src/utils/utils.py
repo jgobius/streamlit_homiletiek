@@ -188,19 +188,24 @@ def load_scriptures() -> list[dict[str, Any]] | None:
     
     
 def _sla_thema_voorkeur_op() -> None:
-    """Sla de thema-voorkeur op in de cookie zodat die na verversing behouden blijft."""
+    """Sla de thema-voorkeur op via de backend zodat die over apparaten volgt."""
     # Lees de toggle-waarde en synchroniseer naar de voorkeur-key. De widget gebruikt
     # '_dark_mode_toggle' als key zodat 'dark_mode' zelf geen widget-key is; Streamlit
     # wist widget-keys bij paginanavigatie als het widget niet meer gerenderd wordt
     # (bijv. bij navigatie naar overview.py, waar render_sidebar() niet wordt aangeroepen).
     donker = bool(st.session_state.get('_dark_mode_toggle', False))
     st.session_state['dark_mode'] = donker
-    controller = st.session_state.get('cookie_controller')
-    if controller:
+    # Persisteer naar de backend via /api/user-preferences/. Bij netwerkfouten of
+    # wanneer de backend het endpoint nog niet heeft uitgerold laten we de wijziging
+    # stilletjes alleen in session_state staan; de UI reageert dan wel, maar de
+    # voorkeur gaat verloren bij volgende sessie. Dat is acceptabel omdat deze
+    # backend-rollout gekoppeld is aan deze frontend-feature.
+    handler = st.session_state.get('api_handler')
+    if handler:
         try:
-            controller.set('dark_mode', 'true' if donker else 'false')
-        except TypeError:
-            pass  # controller nog niet gereed — volgende render probeert het opnieuw
+            handler.patch('api/user-preferences/', {'dark_mode': donker})
+        except requests.exceptions.RequestException:
+            pass
 
 
 def render_sidebar():
