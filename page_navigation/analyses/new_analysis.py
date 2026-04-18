@@ -457,9 +457,21 @@ if submit:
 
         _clean_up_session_state()
         _release_analysis_lock()
-        # Markeer de dashboard-cache als vervuild zodat de nieuwe analyse zichtbaar is.
+        # Markeer de dashboard-cache als vervuild zodat de nieuwe analyse zichtbaar is
+        # als de gebruiker later terugkeert naar het dashboard.
         st.session_state["dashboard_data_dirty"] = True
-        st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
+
+        # Direct naar de overview-pagina van de zojuist aangemaakte analyse navigeren.
+        # Bij gebrek aan een id (edge case: POST gaf geen id terug) valt de navigatie
+        # terug op het dashboard zodat de gebruiker nooit op een lege pagina blijft.
+        if sermon_analysis_id:
+            st.session_state["current_analysis_id"] = sermon_analysis_id
+            st.switch_page(
+                f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py",
+                query_params={"analysis_id": sermon_analysis_id},
+            )
+        else:
+            st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
 
     except Exception as e:
         _release_analysis_lock()
