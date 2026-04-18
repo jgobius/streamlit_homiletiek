@@ -145,6 +145,68 @@ label[data-testid="stWidgetLabel"] {
 small {
     color: #E0E0E8 !important;
 }
+/* Meldingen (st.info/success/warning/error) — standaard lichtgekleurde
+   achtergrond met donkere tekst, onleesbaar in donker thema. */
+[data-testid="stAlert"],
+[data-testid="stNotification"] {
+    color: #FAFAFA !important;
+}
+[data-testid="stAlert"] *,
+[data-testid="stNotification"] * {
+    color: #FAFAFA !important;
+}
+[data-testid="stAlert"][kind="info"],
+[data-testid="stAlertContentInfo"],
+[data-testid="stNotificationContentInfo"] {
+    background-color: #1A3A5A !important;
+    border-color: #2D5A8A !important;
+}
+[data-testid="stAlert"][kind="success"],
+[data-testid="stAlertContentSuccess"],
+[data-testid="stNotificationContentSuccess"] {
+    background-color: #1A4A2A !important;
+    border-color: #2D7A4A !important;
+}
+[data-testid="stAlert"][kind="warning"],
+[data-testid="stAlertContentWarning"],
+[data-testid="stNotificationContentWarning"] {
+    background-color: #5A4A1A !important;
+    border-color: #8A7A2D !important;
+}
+[data-testid="stAlert"][kind="error"],
+[data-testid="stAlertContentError"],
+[data-testid="stNotificationContentError"] {
+    background-color: #5A1A2A !important;
+    border-color: #8A2D4A !important;
+}
+/* Markdown-tekst expliciet wit zetten zodat geen enkele nested context
+   (behalve alerts hierboven die zelf reeds wit gezet zijn) donkere
+   tekst doorlekt. */
+[data-testid="stMarkdownContainer"],
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] li,
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3,
+[data-testid="stMarkdownContainer"] h4,
+[data-testid="stMarkdownContainer"] h5,
+[data-testid="stMarkdownContainer"] h6 {
+    color: #FAFAFA !important;
+}
+/* Inline code (`...`) en code-blokken — standaard witte achtergrond. */
+code {
+    background-color: #2A2D3A !important;
+    color: #FF8000 !important;
+    border: 1px solid #4A4A5A !important;
+}
+pre,
+pre code {
+    background-color: #1A1C24 !important;
+    color: #FAFAFA !important;
+}
+[data-testid="stCodeBlock"] {
+    background-color: #1A1C24 !important;
+}
 /* Stepper-knopjes van st.number_input (+/−) — standaard witte bg. */
 [data-testid="stNumberInputStepDown"],
 [data-testid="stNumberInputStepUp"] {
