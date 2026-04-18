@@ -676,13 +676,17 @@ def main():
     st.session_state['cookie_controller'] = controller
 
     # Herstel thema-voorkeur uit cookie als die nog niet in session_state staat.
-    # Bij de eerste render zijn cookies nog niet beschikbaar (TypeError) — dan standaard licht.
+    # Bij de eerste render zijn cookies nog niet beschikbaar (TypeError) — in dat
+    # geval NIETS in session_state schrijven, zodat de volgende render (zodra de
+    # cookie-controller zijn waarden heeft teruggestuurd) het opnieuw probeert.
+    # Eerder werd hier 'dark_mode=False' opgeslagen, waardoor de voorkeur-key
+    # permanent op False bleef hangen en de cookie nooit meer gelezen werd.
     if 'dark_mode' not in st.session_state:
         try:
             cookie_val = controller.get('dark_mode')
             st.session_state['dark_mode'] = cookie_val == 'true'
         except TypeError:
-            st.session_state['dark_mode'] = False
+            pass
 
     # Injecteer thema-CSS direct na het bepalen van de voorkeur, nog vóór eventuele
     # st.stop() in de sessie-herstel-logica hieronder. Anders wordt bij uitloggen
