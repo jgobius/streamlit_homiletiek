@@ -331,6 +331,28 @@ label[data-baseweb="checkbox"][aria-checked="true"] > div:first-child {
     background-color: #FF8000 !important;
     border-color: #FF8000 !important;
 }
+/* Baseweb-kaart (section[data-baseweb=card]) — o.a. in het Streamlit
+   Deploy-venster. Witte bg met lichte iconen was onleesbaar. */
+section[data-baseweb="card"] {
+    background-color: #1A1C24 !important;
+    color: #FAFAFA !important;
+    border: 1px solid #6A6A7A !important;
+}
+section[data-baseweb="card"] *:not(svg):not(path):not(img) {
+    color: #FAFAFA !important;
+}
+/* Minimal button variant (bv. 'Learn more' in het Deploy-venster). */
+[data-testid="stBaseButton-minimal"] {
+    background-color: transparent !important;
+    color: #FAFAFA !important;
+    border-color: transparent !important;
+}
+[data-testid="stBaseButton-minimal"] * {
+    color: #FAFAFA !important;
+}
+[data-testid="stBaseButton-minimal"]:hover {
+    background-color: #3D3D4F !important;
+}
 /* Tooltip (hover) op knoppen / page_links — standaard wit. */
 [data-baseweb="tooltip"],
 [data-baseweb="tooltip"] > div,
