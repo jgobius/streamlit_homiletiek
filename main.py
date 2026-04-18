@@ -145,6 +145,21 @@ label[data-testid="stWidgetLabel"] {
 small {
     color: #E0E0E8 !important;
 }
+/* Stepper-knopjes van st.number_input (+/−) — standaard witte bg. */
+[data-testid="stNumberInputStepDown"],
+[data-testid="stNumberInputStepUp"] {
+    background-color: #262730 !important;
+    color: #FAFAFA !important;
+    border-color: #4A4A5A !important;
+}
+[data-testid="stNumberInputStepDown"] svg,
+[data-testid="stNumberInputStepUp"] svg {
+    fill: #FAFAFA !important;
+}
+[data-testid="stNumberInputStepDown"]:hover,
+[data-testid="stNumberInputStepUp"]:hover {
+    background-color: #3D3D4F !important;
+}
 /* Placeholder-tekst in invoervelden — standaard te donker in donker thema. */
 [data-testid="stTextInput"] input::placeholder,
 [data-testid="stNumberInput"] input::placeholder,
