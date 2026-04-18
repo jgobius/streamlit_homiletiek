@@ -63,14 +63,18 @@ def _user_suggestions_dialog(handler) -> None:
         UserSuggestions.seed_defaults(handler)
         suggestions = UserSuggestions.load(handler)
 
-    st.caption("Persoonlijke suggesties voor de analyse. Gebruik + en − om de lijst aan te passen.")
+    st.caption("Persoonlijke suggesties voor de analyse. Gebruik + en - om de lijst aan te passen.")
 
     for s in suggestions:
         col_text, col_del = st.columns([11, 1])
         with col_text:
             st.markdown(s["text"])
         with col_del:
-            if st.button("−", key=f"del_sugg_{s['id']}", help="Verwijder"):
+            # Gewone ASCII-min (met markdown-escape omdat Streamlit button-labels
+            # door markdown gerenderd worden) zodat het symbool dezelfde metrics
+            # heeft als de ASCII-plus van de toevoegen-knop en beide symmetrisch
+            # in hun knop gecentreerd worden.
+            if st.button("\\-", key=f"del_sugg_{s['id']}", help="Verwijder"):
                 UserSuggestions.remove(s["id"], handler)
                 st.rerun(scope="fragment")
 
@@ -89,7 +93,9 @@ def _user_suggestions_dialog(handler) -> None:
             label_visibility="collapsed",
         )
     with col_add:
-        if st.button("＋", type="primary", help="Toevoegen"):
+        # Markdown-escape nodig omdat Streamlit een losse "+" als lijst-marker
+        # interpreteert, waardoor het symbool uit de knop verdwijnt.
+        if st.button("\\+", type="primary", help="Toevoegen"):
             text = (st.session_state.get("new_suggestion_input") or "").strip()
             if text:
                 UserSuggestions.add(text, handler)
