@@ -137,12 +137,13 @@ label[data-testid="stWidgetLabel"] {
     color: #FAFAFA !important;
 }
 /* Caption-tekst (st.caption) — standaard dof grijs, te donker tegen bg.
-   Iets lichter dan placeholder zodat waarschuwingen (⚠️ Verplicht: ...)
-   duidelijk leesbaar zijn. */
+   Lichter zodat ook meerregelige captions (sidebar tokenverbruik,
+   ⚠️-waarschuwingen) goed leesbaar zijn. */
 [data-testid="stCaptionContainer"],
 [data-testid="stCaptionContainer"] p,
+[data-testid="stCaptionContainer"] p *,
 small {
-    color: #D0D0DC !important;
+    color: #E0E0E8 !important;
 }
 /* Placeholder-tekst in invoervelden — standaard te donker in donker thema. */
 [data-testid="stTextInput"] input::placeholder,
