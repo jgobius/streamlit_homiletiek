@@ -189,10 +189,16 @@ def load_scriptures() -> list[dict[str, Any]] | None:
     
 def _sla_thema_voorkeur_op() -> None:
     """Sla de thema-voorkeur op in de cookie zodat die na verversing behouden blijft."""
+    # Lees de toggle-waarde en synchroniseer naar de voorkeur-key. De widget gebruikt
+    # '_dark_mode_toggle' als key zodat 'dark_mode' zelf geen widget-key is; Streamlit
+    # wist widget-keys bij paginanavigatie als het widget niet meer gerenderd wordt
+    # (bijv. bij navigatie naar overview.py, waar render_sidebar() niet wordt aangeroepen).
+    donker = bool(st.session_state.get('_dark_mode_toggle', False))
+    st.session_state['dark_mode'] = donker
     controller = st.session_state.get('cookie_controller')
     if controller:
         try:
-            controller.set('dark_mode', 'true' if st.session_state['dark_mode'] else 'false')
+            controller.set('dark_mode', 'true' if donker else 'false')
         except TypeError:
             pass  # controller nog niet gereed — volgende render probeert het opnieuw
 
@@ -211,9 +217,18 @@ def render_sidebar():
             
         with st.expander("Account"):
             st.page_link(label="Uitloggen", page=f"{st.session_state['page_navigation_dir']}/logout.py")
-            # Thema-toggle in de Account-sectie; voorkeur wordt in een cookie opgeslagen
-            # zodat de keuze behouden blijft na verversing of het opnieuw openen van de app.
-            st.toggle("Donker thema", key="dark_mode", on_change=_sla_thema_voorkeur_op)
+            # Gebruik '_dark_mode_toggle' als widget-key zodat de voorkeur-key 'dark_mode'
+            # geen widget-key is. Streamlit wist widget-keys bij paginanavigatie wanneer
+            # het widget niet meer gerenderd wordt (overview.py heeft geen render_sidebar()),
+            # waardoor de donker-thema-instelling anders verloren ging bij het openen van
+            # een analyse. value= initialiseert de toggle vanuit 'dark_mode' zodat de
+            # zichtbare stand overeenkomt met de actieve voorkeur na een paginawissel.
+            st.toggle(
+                "Donker thema",
+                key="_dark_mode_toggle",
+                value=st.session_state.get('dark_mode', False),
+                on_change=_sla_thema_voorkeur_op,
+            )
 
         # Toon de suggesties-knop als de gebruiker ingelogd is (api_handler beschikbaar).
         if "api_handler" in st.session_state:
