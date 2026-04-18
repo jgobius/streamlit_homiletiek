@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import json
 from typing import Optional
 
@@ -95,6 +96,23 @@ def _normalize_newlines(value: str) -> str:
     return value.replace("\r\n", "\n").replace("\r", "\n")
 
 
+def _render_wrapped_pre(text: str) -> None:
+    """Render een preformatted-blok met line-wrap (white-space: pre-wrap).
+
+    `st.code` wraps niet; voor lange prompt-regels geeft dat een horizontale
+    scrollbar die onhandig is bij debuggen. We renderen daarom zelf een <pre>
+    met HTML-escape zodat broncode-achtige tekst veilig én volledig zichtbaar is.
+    """
+    escaped = html.escape(_normalize_newlines(text))
+    st.markdown(
+        f'<pre style="white-space: pre-wrap; word-wrap: break-word; '
+        f"overflow-wrap: anywhere; background-color: #f0f2f6; "
+        f"padding: 12px; border-radius: 4px; font-family: monospace; "
+        f'font-size: 0.85rem; margin: 0 0 1rem 0;">{escaped}</pre>',
+        unsafe_allow_html=True,
+    )
+
+
 @st.dialog("LLM-prompt (debug)", width="large")
 def _prompt_debug_dialog(analysis: dict) -> None:
     """Toon het LLM-prompt zoals opgeslagen in de database voor deze analyse.
@@ -118,18 +136,17 @@ def _prompt_debug_dialog(analysis: dict) -> None:
         for key, value in prompt.items():
             st.markdown(f"**`{key}`**")
             if isinstance(value, str):
-                st.code(_normalize_newlines(value), language=None)
+                _render_wrapped_pre(value)
             else:
-                st.code(
-                    json.dumps(value, indent=2, ensure_ascii=False),
-                    language="json",
+                _render_wrapped_pre(
+                    json.dumps(value, indent=2, ensure_ascii=False)
                 )
     elif isinstance(prompt, list):
-        st.code(json.dumps(prompt, indent=2, ensure_ascii=False), language="json")
+        _render_wrapped_pre(json.dumps(prompt, indent=2, ensure_ascii=False))
     elif isinstance(prompt, str):
-        st.code(_normalize_newlines(prompt), language=None)
+        _render_wrapped_pre(prompt)
     else:
-        st.code(str(prompt))
+        _render_wrapped_pre(str(prompt))
 
 
 def render_analysis_footer(
