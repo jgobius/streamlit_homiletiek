@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import html
 import json
 from typing import Optional
 
@@ -96,20 +95,25 @@ def _normalize_newlines(value: str) -> str:
     return value.replace("\r\n", "\n").replace("\r", "\n")
 
 
-def _render_wrapped_pre(text: str) -> None:
-    """Render een preformatted-blok met line-wrap (white-space: pre-wrap).
+def _render_wrapped_text(text: str, key: str) -> None:
+    """Render een leesbaar, read-only tekstvak met line-wrap en behoud van regels.
 
-    `st.code` wraps niet; voor lange prompt-regels geeft dat een horizontale
-    scrollbar die onhandig is bij debuggen. We renderen daarom zelf een <pre>
-    met HTML-escape zodat broncode-achtige tekst veilig én volledig zichtbaar is.
+    Een custom <pre>-blok met white-space: pre-wrap bleek onleesbaar: Streamlit's
+    markdown-parser collapst whitespace binnen HTML-blokken waardoor alle regels
+    samensmolten. Een disabled st.text_area wraps wel correct, behoudt regeleindes
+    en laat selecteren/kopiëren toe. Hoogte groeit mee met de tekst tot max 600px.
     """
-    escaped = html.escape(_normalize_newlines(text))
-    st.markdown(
-        f'<pre style="white-space: pre-wrap; word-wrap: break-word; '
-        f"overflow-wrap: anywhere; background-color: #f0f2f6; "
-        f"padding: 12px; border-radius: 4px; font-family: monospace; "
-        f'font-size: 0.85rem; margin: 0 0 1rem 0;">{escaped}</pre>',
-        unsafe_allow_html=True,
+    normalized = _normalize_newlines(text)
+    # Hoogte schat op basis van regelaantal; bovengrens voorkomt absurde popups.
+    regels = max(5, normalized.count("\n") + 2)
+    hoogte = min(600, regels * 22)
+    st.text_area(
+        label=key,
+        value=normalized,
+        height=hoogte,
+        key=key,
+        label_visibility="collapsed",
+        disabled=True,
     )
 
 
@@ -130,23 +134,29 @@ def _prompt_debug_dialog(analysis: dict) -> None:
         st.info("Geen prompt opgeslagen voor deze analyse.")
         return
 
+    analysis_id = analysis.get("id", "x")
     if isinstance(prompt, dict):
         # Per sleutel renderen zodat lange multiline-waardes (system_prompt e.d.)
         # niet door json.dumps als één regel met \r\n-escapes verschijnen.
         for key, value in prompt.items():
             st.markdown(f"**`{key}`**")
+            widget_key = f"prompt_debug_{analysis_id}_{key}"
             if isinstance(value, str):
-                _render_wrapped_pre(value)
+                _render_wrapped_text(value, key=widget_key)
             else:
-                _render_wrapped_pre(
-                    json.dumps(value, indent=2, ensure_ascii=False)
+                _render_wrapped_text(
+                    json.dumps(value, indent=2, ensure_ascii=False),
+                    key=widget_key,
                 )
     elif isinstance(prompt, list):
-        _render_wrapped_pre(json.dumps(prompt, indent=2, ensure_ascii=False))
+        _render_wrapped_text(
+            json.dumps(prompt, indent=2, ensure_ascii=False),
+            key=f"prompt_debug_{analysis_id}_list",
+        )
     elif isinstance(prompt, str):
-        _render_wrapped_pre(prompt)
+        _render_wrapped_text(prompt, key=f"prompt_debug_{analysis_id}_str")
     else:
-        _render_wrapped_pre(str(prompt))
+        _render_wrapped_text(str(prompt), key=f"prompt_debug_{analysis_id}_raw")
 
 
 def render_analysis_footer(
