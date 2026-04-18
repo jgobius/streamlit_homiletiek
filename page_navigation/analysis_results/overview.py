@@ -753,10 +753,14 @@ def confirm_rerun_analysis(result: dict) -> None:
 def _render_titel_en_actieknoppen(result: dict, key_prefix: str) -> None:
     """Render de titel (front_end_name) gevolgd door de vier actieknoppen.
 
-    Gebundeld zodat alle tabs dezelfde volgorde hanteren: titel → knoppen → inhoud.
+    Gebundeld zodat alle tabs dezelfde volgorde hanteren: titel → knoppen →
+    scheidingslijn → inhoud. De afsluitende st.divider() wordt hier centraal
+    gerenderd zodat elke analyse (over alle tabbladen heen) exact dezelfde kop
+    heeft; individuele renderers mogen geen eigen leading divider meer tekenen.
     """
     st.title(result["analysis_type"]["front_end_name"])
     _render_actieknoppen(result, key_prefix)
+    st.divider()
 
 
 def _render_actieknoppen(result: dict, key_prefix: str) -> None:

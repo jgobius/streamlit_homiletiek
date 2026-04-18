@@ -23,8 +23,8 @@ def commentaren(analysis: dict[str, Any]) -> None:
     """Render commentaries (commentaren) analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
 
-    # Titel wordt centraal in overview.py getoond, boven de actieknoppen.
-    st.divider()
+    # Titel, actieknoppen én de scheidingslijn eronder worden centraal in
+    # overview.py getoond; deze renderer begint direct met de inhoud.
 
     # ── Eerste lezing ─────────────────────────────────────────────────────────
     eerste = result.get("exegese_eerste_lezing")

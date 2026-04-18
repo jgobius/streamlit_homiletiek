@@ -230,8 +230,8 @@ def structuralistische_exegese(analysis: dict[str, Any]) -> None:
     """Render structuralistische exegese analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
 
-    # Titel wordt centraal in overview.py getoond, boven de actieknoppen.
-    st.divider()
+    # Titel, actieknoppen én de scheidingslijn eronder worden centraal in
+    # overview.py getoond; deze renderer begint direct met de inhoud.
 
     # ── Per lezing ────────────────────────────────────────────────────────────
     for lezing in result.get("per_lezing", []):
