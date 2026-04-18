@@ -41,7 +41,7 @@ from page_navigation.analysis_results.analyses.verdieping import verdieping
 from page_navigation.analysis_results.analyses.preekschets import preekschets
 from page_navigation.analysis_results.analyses.feedback_analyse import feedback_analyse
 from page_navigation.analysis_results.analyses.volledige_preek import volledige_preek
-from src.components.user_feedback import render_feedback_trigger
+from src.components.user_feedback import render_analysis_footer
 
 # --- Categorisatie van analyse-types per tabblad ---
 REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
@@ -1292,13 +1292,12 @@ if current_tab == "Basis":
     elif analysis_type_name == "contextduiding":
         contextduiding(selected_analysis)
 
-    # Toon de feedbackknop onderaan elke Basis-analyse zodat de gebruiker een beoordeling kan geven.
+    # Toon feedback- en prompt-debugknop onder elke Basis-analyse.
     if selected_analysis:
-        render_feedback_trigger(
-            analysis_result_id=selected_analysis["id"],
-            section_name=selected_analysis["analysis_type"]["front_end_name"],
+        render_analysis_footer(
+            analysis=selected_analysis,
             handler=st.session_state["api_handler"],
-            key=f"feedback_basis_{selected_analysis['id']}",
+            key_prefix="basis",
         )
 
 elif current_tab == "Verdieping":
@@ -1320,11 +1319,10 @@ elif current_tab == "Verdieping":
             selected_verdiep,
             analysis_type_name=selected_verdiep["analysis_type"]["name"],
         )
-        render_feedback_trigger(
-            analysis_result_id=selected_verdiep["id"],
-            section_name=selected_verdiep["analysis_type"]["front_end_name"],
+        render_analysis_footer(
+            analysis=selected_verdiep,
             handler=st.session_state["api_handler"],
-            key=f"feedback_verdieping_{selected_verdiep['id']}",
+            key_prefix="verdieping",
         )
 
 elif current_tab == "Perspectieven":
@@ -1341,6 +1339,12 @@ elif current_tab == "Perspectieven":
     elif selected_perspect:
         _render_titel_en_actieknoppen(selected_perspect, key_prefix="perspectieven")
         contextduiding(selected_perspect)
+        # Ook perspectieven krijgen de feedback- en prompt-debugknop onderaan.
+        render_analysis_footer(
+            analysis=selected_perspect,
+            handler=st.session_state["api_handler"],
+            key_prefix="perspectieven",
+        )
 
 elif current_tab == "Preekschetsen":
     selected_preek = next(
@@ -1359,6 +1363,12 @@ elif current_tab == "Preekschetsen":
         # Actieknoppen boven de preekschets; 'Selectie instellen' blijft als aparte knop erboven.
         _render_titel_en_actieknoppen(selected_preek, key_prefix="preekschets")
         preekschets(selected_preek)
+        # Ontbrak voorheen voor preekschetsen (bv. Noordmans): nu ook hier de feedback- en debug-knoppen.
+        render_analysis_footer(
+            analysis=selected_preek,
+            handler=st.session_state["api_handler"],
+            key_prefix="preekschets",
+        )
 
 elif current_tab == "Feedback":
     selected_feedback = next(
@@ -1393,3 +1403,9 @@ elif current_tab == "Feedback":
         # Actieknoppen boven de feedback-analyse; 'Eigen preek invoeren' blijft erboven staan.
         _render_titel_en_actieknoppen(selected_feedback, key_prefix="feedback")
         feedback_analyse(selected_feedback)
+        # Ook onder feedback-analyses de feedback- en prompt-debugknop tonen.
+        render_analysis_footer(
+            analysis=selected_feedback,
+            handler=st.session_state["api_handler"],
+            key_prefix="feedback",
+        )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Optional
 
 import streamlit as st
@@ -88,15 +89,66 @@ def _user_feedback_dialog(
             st.rerun()
 
 
-def render_feedback_trigger(
-    analysis_result_id: int,
-    section_name: str,
+@st.dialog("LLM-prompt (debug)", width="large")
+def _prompt_debug_dialog(analysis: dict) -> None:
+    """Toon het LLM-prompt zoals opgeslagen in de database voor deze analyse.
+
+    Tijdelijke debug-hulp: het prompt wordt bij elke analyse-run in AnalysisResult.prompt
+    (JSONField) bewaard. We lezen het rechtstreeks uit het reeds opgehaalde
+    analysis-dictonary en renderen het leesbaar (JSON met indent, anders als tekst).
+    """
+    analysis_type = analysis.get("analysis_type", {}) or {}
+    naam = analysis_type.get("front_end_name") or analysis_type.get("name", "")
+    st.markdown(f"**{naam}** — analysis_result id `{analysis.get('id')}`")
+    prompt = analysis.get("prompt")
+    if prompt is None or prompt == {} or prompt == "":
+        st.info("Geen prompt opgeslagen voor deze analyse.")
+        return
+    # JSON/dict-achtige prompts (de gebruikelijke vorm) mooi inspringen;
+    # strings (bv. voor handmatig ingevoerde resultaten) tonen we als platte code.
+    if isinstance(prompt, (dict, list)):
+        pretty = json.dumps(prompt, indent=2, ensure_ascii=False)
+        st.code(pretty, language="json")
+    else:
+        st.code(str(prompt))
+
+
+def render_analysis_footer(
+    analysis: dict,
     handler,
-    key: str,
+    key_prefix: str,
 ) -> None:
-    """Render een scheidingslijn en feedbackknop. Opent de feedbackdialoog bij klik."""
+    """Render scheidingslijn + feedbackknop en prompt-debugknop naast elkaar.
+
+    Wordt onder elke analyse getoond zodat de gebruiker feedback kan geven én
+    (tijdelijk, voor debugdoeleinden) het door het LLM gebruikte prompt kan
+    inspecteren. `analysis` is het volledige analyseresultaat-dict uit de API
+    (inclusief het JSON-veld `prompt`).
+    """
     st.divider()
+    analysis_result_id = int(analysis["id"])
+    analysis_type = analysis.get("analysis_type", {}) or {}
+    section_name = (
+        analysis_type.get("front_end_name") or analysis_type.get("name", "")
+    )
     existing = UserFeedback.load(analysis_result_id, handler)
-    label = "💬 Feedback aanpassen" if existing else "💬 Geef feedback"
-    if st.button(label, type="secondary", key=key):
-        _user_feedback_dialog(analysis_result_id, section_name, handler)
+    feedback_label = "💬 Feedback aanpassen" if existing else "💬 Geef feedback"
+
+    # Twee gelijkbrede kolommen: links feedback, rechts het tijdelijke debug-knopje.
+    col_feedback, col_debug = st.columns(2)
+    with col_feedback:
+        if st.button(
+            feedback_label,
+            type="secondary",
+            key=f"{key_prefix}_feedback_{analysis_result_id}",
+            use_container_width=True,
+        ):
+            _user_feedback_dialog(analysis_result_id, section_name, handler)
+    with col_debug:
+        if st.button(
+            "🐞 Prompt bekijken (debug)",
+            type="secondary",
+            key=f"{key_prefix}_prompt_{analysis_result_id}",
+            use_container_width=True,
+        ):
+            _prompt_debug_dialog(analysis)
