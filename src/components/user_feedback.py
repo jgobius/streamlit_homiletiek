@@ -96,12 +96,12 @@ def _normalize_newlines(value: str) -> str:
 
 
 def _render_wrapped_text(text: str, key: str) -> None:
-    """Render een leesbaar, read-only tekstvak met line-wrap en behoud van regels.
+    """Render een leesbaar tekstvak met line-wrap en behoud van regeleindes.
 
-    Een custom <pre>-blok met white-space: pre-wrap bleek onleesbaar: Streamlit's
-    markdown-parser collapst whitespace binnen HTML-blokken waardoor alle regels
-    samensmolten. Een disabled st.text_area wraps wel correct, behoudt regeleindes
-    en laat selecteren/kopiëren toe. Hoogte groeit mee met de tekst tot max 600px.
+    Een gewone st.text_area (niet disabled) wraps correct, behoudt regeleindes en
+    blijft goed leesbaar. Disabled=True gaf een grijze waas over de tekst. De
+    inhoud is puur debug-weergave — eventuele bewerkingen gaan nergens heen.
+    Hoogte schaalt mee met de tekst tot max 600px.
     """
     normalized = _normalize_newlines(text)
     # Hoogte schat op basis van regelaantal; bovengrens voorkomt absurde popups.
@@ -113,7 +113,6 @@ def _render_wrapped_text(text: str, key: str) -> None:
         height=hoogte,
         key=key,
         label_visibility="collapsed",
-        disabled=True,
     )
 
 
