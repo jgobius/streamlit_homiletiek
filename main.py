@@ -77,6 +77,13 @@ _DARK_CSS = """<style>
 [data-baseweb="select"] div[role="combobox"] div {
     color: #FAFAFA !important;
 }
+/* Selectiemenu — open/close-chevron (baseweb icon) was te donker grijs. */
+[data-baseweb="select"] [data-baseweb="icon"] svg,
+[data-baseweb="select"] [data-baseweb="icon"] path,
+[data-baseweb="select"] svg[title="open"] path,
+[data-baseweb="select"] svg[title="Clear value"] path {
+    fill: #FAFAFA !important;
+}
 /* Selectiemenu — dropdown lijst en opties. Streamlit rendert de opties
    via li[role="option"] binnen een virtueel gescrolde div; we dekken
    beide patronen (baseweb én role-based). */
