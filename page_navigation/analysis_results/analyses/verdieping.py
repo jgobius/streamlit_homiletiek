@@ -12,6 +12,12 @@ from src.utils.utils import clean_md
 from page_navigation.analysis_results.analyses.focus_en_functie import (
     focus_en_functie as render_focus_en_functie,
 )
+# Gemeente-spiritualiteit heeft een eigen renderer met bronnen-sectie
+# bovenop de klassieke geloofsorientatie-layout. Eigen module zodat de
+# extra velden niet in de basis-renderer lekken.
+from page_navigation.analysis_results.analyses.gemeente_spiritualiteit import (
+    gemeente_spiritualiteit as render_gemeente_spiritualiteit,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -594,16 +600,17 @@ def render_kalender(analysis: dict) -> None:
 # ---------------------------------------------------------------------------
 
 _RENDERERS = {
-    "gebeden":               render_gebeden,
-    "gebeden_profetisch":    render_gebeden,
-    "gebeden_dialogisch":    render_gebeden,
-    "gebeden_eenvoudig":     render_gebeden,
-    "kunst_cultuur":         render_kunst_cultuur,
-    "kindermoment":          render_kindermoment,
-    "bezinningsmoment":      render_kindermoment,
-    "wetslezing":            render_wetslezing,
-    "kalender":              render_kalender,
-    "focus_en_functie":      render_focus_en_functie,
+    "gebeden":                  render_gebeden,
+    "gebeden_profetisch":       render_gebeden,
+    "gebeden_dialogisch":       render_gebeden,
+    "gebeden_eenvoudig":        render_gebeden,
+    "kunst_cultuur":            render_kunst_cultuur,
+    "kindermoment":             render_kindermoment,
+    "bezinningsmoment":         render_kindermoment,
+    "wetslezing":               render_wetslezing,
+    "kalender":                 render_kalender,
+    "focus_en_functie":         render_focus_en_functie,
+    "gemeente_spiritualiteit":  render_gemeente_spiritualiteit,
 }
 
 

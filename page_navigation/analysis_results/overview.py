@@ -81,6 +81,10 @@ _VERDIEPING_NAMEN = {
     "bezinningsmoment",
     # focus_en_functie hoort thuis onder Verdieping; ook nodig als input voor Preekschetsen.
     "focus_en_functie",
+    # Tavily-gedreven gemeente-spiritualiteitsanalyse. Parallel aan de
+    # basis-geloofsorientatie, maar met bronverantwoording en expliciete
+    # differentiatie van zustergemeenten in dezelfde plaats.
+    "gemeente_spiritualiteit",
 }
 
 _PREEKSCHETSEN_NAMEN = {
