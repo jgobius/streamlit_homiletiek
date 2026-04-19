@@ -39,7 +39,6 @@ def wereldnieuws(analysis: dict[str, Any]) -> None:
     result: dict[str, Any] = analysis.get("result", {})
 
     datum: str = result.get("nieuwsoverzicht_datum", "")
-    zoek_verificatie: str = result.get("zoek_verificatie", "")
     wereld: list = result.get("wereldgebeurtenissen", [])
     nl_nieuws: list = result.get("nederlands_nieuws", [])
     kerkelijk: list = result.get("kerkelijk_nieuws", [])
@@ -48,8 +47,6 @@ def wereldnieuws(analysis: dict[str, Any]) -> None:
 
     if datum:
         st.subheader(f"Nieuws voor {datum}")
-    if zoek_verificatie:
-        st.caption(clean_md(zoek_verificatie))
 
     st.divider()
 

@@ -55,7 +55,6 @@ def lokaal_nieuws(analysis: dict[str, Any]) -> None:
 
     context: dict = result.get("context", {})
     rapport_datum: str = result.get("rapport_datum", "")
-    zoek_verantwoording: str = result.get("zoek_verantwoording", "")
     items: list = result.get("lokaal_actueel_nieuws", [])
     suggesties: dict = result.get("suggesties_predikant", {})
     valkuilen: list = result.get("valkuilen", [])
@@ -71,9 +70,6 @@ def lokaal_nieuws(analysis: dict[str, Any]) -> None:
 
     if rapport_datum:
         st.caption(f"Rapportdatum: {rapport_datum}")
-    if zoek_verantwoording:
-        with st.expander("Zoekverantwoording", expanded=False):
-            st.markdown(clean_md(zoek_verantwoording))
 
     st.divider()
 
