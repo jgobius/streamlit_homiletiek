@@ -218,9 +218,6 @@ def render_homiletische_buttrick(analysis: dict) -> None:
             st.markdown(_md(val))
         st.divider()
 
-    woorden = result.get("woorden_telling_totaal")
-    if woorden:
-        st.caption(f"Geschat woordenaantal: {woorden:,}")
 
 
 # ---------------------------------------------------------------------------
