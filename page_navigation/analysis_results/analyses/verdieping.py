@@ -1,4 +1,4 @@
-"""Renderers voor Verdieping-analyses (gebeden, homiletisch, kunst, liturgisch)."""
+"""Renderers voor Verdieping-analyses (gebeden, kunst, liturgisch)."""
 
 import json
 from typing import Any
@@ -192,137 +192,6 @@ def render_gebeden(analysis: dict) -> None:
     # Poëtische technieken worden niet aan de gebruiker getoond:
     # interne analyse-metadata die voor de predikant geen meerwaarde heeft
     # bij de liturgische weergave van de gebeden.
-
-
-# ---------------------------------------------------------------------------
-# Homiletische Lowry (15)
-# ---------------------------------------------------------------------------
-
-_LOWRY_LABELS = {
-    "he_kwestie_oops":         "① HÈ? (OOPS!) — De Kwestie",
-    "oei_verdieping_ugh":      "② OEI… (UGH!) — De Verdieping",
-    "aha_wending_aha":         "③ AHA! (AHA!) — De Wending",
-    "ja_verkondiging_whee":    "④ JA! (WHEE!) — De Verkondiging",
-    "zo_doorwerking_yeah":     "⑤ ZÓ! (YEAH!) — De Doorwerking",
-}
-
-
-def render_homiletische_lowry(analysis: dict) -> None:
-    result = _result(analysis)
-    if not result:
-        st.info("Geen resultaat beschikbaar.")
-        return
-
-    # Tekstkeuze
-    tk = result.get("tekstkeuze", {})
-    if tk:
-        with st.expander("Tekstkeuze", expanded=True):
-            _section("Gekozen lezing", tk.get("gekozen_lezing"))
-            _section("Onderbouwing", tk.get("onderbouwing"))
-            _section("Omkerings-potentie", tk.get("omkerings_potentie"))
-
-    # Homiletical Plot
-    plot = result.get("homiletical_plot", {})
-    if plot:
-        st.subheader("Homiletical Plot")
-        for key, label in _LOWRY_LABELS.items():
-            stap = plot.get(key, {})
-            if not stap:
-                continue
-            with st.expander(label, expanded=False):
-                titel = stap.get("titel", "")
-                if titel and titel != label:
-                    st.caption(titel)
-                _section("Inhoud", stap.get("inhoud"))
-                _section("Doel", stap.get("doel"))
-                _section("Type omkering", stap.get("type_omkering"))
-                _section("Toelichting", stap.get("toelichting_type") or stap.get("toelichting"))
-                # Overige velden dynamisch
-                skip = {"titel", "inhoud", "doel", "type_omkering", "toelichting_type", "toelichting", "ambiguiteit"}
-                for k, v in stap.items():
-                    if k not in skip and v:
-                        _section(k.replace("_", " ").capitalize(), v)
-                # Ambiguïteit apart
-                amb = stap.get("ambiguiteit", "")
-                if amb:
-                    _section("Ambiguïteit / spanning", amb)
-
-    # Logica check
-    lc = result.get("logica_check", {})
-    if lc:
-        klopt = lc.get("diagnose_remedie_klopt")
-        toelichting = lc.get("toelichting", "")
-        status = "✅ Diagnose–remedie klopt" if klopt else "⚠️ Controleer diagnose–remedie"
-        st.caption(f"{status} — {_md(toelichting)}")
-
-
-# ---------------------------------------------------------------------------
-# Homiletische Buttrick (16)
-# ---------------------------------------------------------------------------
-
-def render_homiletische_buttrick(analysis: dict) -> None:
-    result = _result(analysis)
-    if not result:
-        st.info("Geen resultaat beschikbaar.")
-        return
-
-    # Tekstkeuze
-    tk = result.get("tekstkeuze", {})
-    if tk:
-        with st.expander("Tekstkeuze", expanded=True):
-            _section("Gekozen lezing", tk.get("gekozen_lezing"))
-            _section("Onderbouwing", tk.get("onderbouwing"))
-            _section("Aansluiting context", tk.get("aansluiting_context"))
-            alt = tk.get("alternatieve_lezingen", [])
-            if alt:
-                st.markdown("**Alternatieve lezingen:** " + ", ".join(str(a) for a in alt))
-
-    # Introductie
-    intro = result.get("introductie", {})
-    if intro:
-        with st.expander("Introductie", expanded=True):
-            _section("Focus-beeld", intro.get("focus_beeld"))
-            _section("Hermeneutische oriëntatie", intro.get("hermeneutische_orientatie"))
-            _section("Uitgeschreven tekst", intro.get("uitgeschreven_tekst"))
-
-    # Moves
-    moves = result.get("moves", [])
-    if moves:
-        st.subheader("Moves")
-        for move in moves:
-            nr = move.get("move_nummer", "")
-            kernidee = move.get("kernidee", "")
-            label = f"Move {nr}: {kernidee}" if kernidee else f"Move {nr}"
-            with st.expander(label, expanded=False):
-                _section("Perspectief", move.get("perspectief"))
-                _section("Retorische strategie", move.get("retorische_strategie"))
-                _section("Verbinding vorige move", move.get("verbinding_vorige"))
-                _section("Uitgeschreven tekst", move.get("uitgeschreven_tekst"))
-                # Extra velden
-                skip = {"move_nummer", "kernidee", "perspectief", "retorische_strategie",
-                        "verbinding_vorige", "uitgeschreven_tekst"}
-                for k, v in move.items():
-                    if k not in skip and v:
-                        _section(k.replace("_", " ").capitalize(), v)
-
-    # Conclusie
-    conclusie = result.get("conclusie", {})
-    if conclusie:
-        with st.expander("Conclusie", expanded=False):
-            for k, v in conclusie.items():
-                _section(k.replace("_", " ").capitalize(), v)
-
-    # Samenvatting / overige velden
-    for key in ("beweging_samenvatting", "contextuele_integratie"):
-        val = result.get(key, "")
-        if val:
-            st.markdown(f"**{key.replace('_', ' ').capitalize()}**")
-            st.markdown(_md(val))
-            st.divider()
-
-    woorden = result.get("woorden_telling_totaal")
-    if woorden:
-        st.caption(f"Geschat woordenaantal: {woorden:,}")
 
 
 # ---------------------------------------------------------------------------
@@ -667,8 +536,6 @@ _RENDERERS = {
     "gebeden_profetisch":    render_gebeden,
     "gebeden_dialogisch":    render_gebeden,
     "gebeden_eenvoudig":     render_gebeden,
-    "homiletische_lowry":    render_homiletische_lowry,
-    "homiletische_buttrick": render_homiletische_buttrick,
     "kunst_cultuur":         render_kunst_cultuur,
     "kindermoment":          render_kindermoment,
     "bezinningsmoment":      render_kindermoment,
