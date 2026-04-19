@@ -2,6 +2,7 @@
 
 import json
 from typing import Any
+from urllib.parse import quote_plus
 
 import streamlit as st
 
@@ -37,10 +38,24 @@ def _section(label: str, text: Any, *, callout: bool = False) -> None:
     if not text:
         return
     st.markdown(f"**{label}**")
+    # Een lijst als bullets weergeven, anders zou str(list) de ruwe
+    # Python-repr (met blokhaken en quotes) laten zien.
+    if isinstance(text, list):
+        for item in text:
+            if item:
+                st.markdown(f"- {_md(item)}")
+        return
     if callout:
         st.info(_md(text))
     else:
         st.markdown(_md(text))
+
+
+def _google_link(query: str) -> str:
+    # Maak van een zoekterm een klikbare Markdown-link naar Google Search.
+    # quote_plus zet spaties om in '+', zodat de URL direct werkt in de browser.
+    url = f"https://www.google.com/search?q={quote_plus(query)}"
+    return f"[{query}]({url})"
 
 
 # ---------------------------------------------------------------------------
@@ -226,12 +241,32 @@ def _render_kunst_items(items: list) -> None:
         if jaar:
             header += f" ({jaar})"
         with st.expander(header, expanded=False):
+            # Genre + type op één regel: type wordt als kleurige badge
+            # achter het genre getoond (of los als er geen genre is),
+            # zodat het als tag-achtig label leest in plaats van een
+            # volwaardige sectie.
+            genre = item.get("genre", "")
+            type_val = item.get("type", "")
+            if genre or type_val:
+                badge = f" :violet-background[{type_val}]" if type_val else ""
+                if genre:
+                    st.markdown(f"**Genre:** {genre}{badge}")
+                else:
+                    st.markdown(f"**Type:**{badge}")
+
             for key in ("beschrijving", "relevante_scene", "relevantie", "verbinding",
-                        "locatie", "type", "genre", "specifiek_deel",
-                        "gebruik", "zoekterm", "zoekterm_hoge_resolutie"):
+                        "locatie", "specifiek_deel", "gebruik"):
                 val = item.get(key, "")
                 if val:
                     _section(key.replace("_", " ").capitalize(), val)
+
+            # Zoektermen als klikbare Google-links renderen i.p.v. platte
+            # tekst, zodat de predikant direct kan doorzoeken.
+            for zkey in ("zoekterm", "zoekterm_hoge_resolutie"):
+                val = item.get(zkey, "")
+                if val:
+                    label = zkey.replace("_", " ").capitalize()
+                    st.markdown(f"**{label}:** {_google_link(str(val))}")
 
 
 def render_kunst_cultuur(analysis: dict) -> None:
@@ -288,9 +323,10 @@ def render_kunst_cultuur(analysis: dict) -> None:
                     moment = item.get("liturgisch_moment", "")
                     duur = item.get("duur", "")
                     zoek = item.get("zoekterm_hoge_resolutie", "")
+                    # Zoekterm als klikbare Google-link voor directe doorzoeking.
                     st.markdown(f"- **{kunstwerk}** — {moment}" +
                                 (f" ({duur})" if duur else "") +
-                                (f"\n  *Zoekterm:* `{zoek}`" if zoek else ""))
+                                (f"\n  *Zoekterm:* {_google_link(str(zoek))}" if zoek else ""))
 
             med = ph.get("voor_meditatie", {})
             if med:
