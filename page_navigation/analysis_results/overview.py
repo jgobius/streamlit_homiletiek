@@ -68,8 +68,6 @@ _VERDIEPING_NAMEN = {
     "gebeden_profetisch",
     "gebeden_dialogisch",
     "gebeden_eenvoudig",
-    "homiletische_lowry",
-    "homiletische_buttrick",
     "kunst_cultuur",
     "kindermoment",
     "wetslezing",
@@ -80,6 +78,11 @@ _VERDIEPING_NAMEN = {
 }
 
 _PREEKSCHETSEN_NAMEN = {
+    # Homiletische-structuur preekschetsen (Lowry & Buttrick) staan bovenaan
+    # via hun order (50/51) — Noordmans staat op 60. Volgorde in deze set
+    # maakt niet uit; _order_key sorteert op het `order`-veld.
+    "homiletische_lowry",
+    "homiletische_buttrick",
     "preek_jungel",
     "preek_fleming_rutledge",
     "preek_brueggemann_poet",
@@ -269,7 +272,12 @@ def _render_preekschets_result(selected_preek: dict, latest: dict) -> None:
     """Dispatch op basis van aanwezigheid preek_onderdelen in result."""
     result = selected_preek.get("result", {})
     if isinstance(result, dict) and result.get("preek_onderdelen"):
-        preekschets(selected_preek)
+        # Type-naam meegeven zodat preekschets() de juiste renderer kiest
+        # (bv. Lowry/Buttrick hebben eigen schema, geen preek_onderdelen).
+        preekschets(
+            selected_preek,
+            analysis_type_name=selected_preek["analysis_type"]["name"],
+        )
     else:
         postille(selected_preek, latest_results=latest)
 
@@ -1409,7 +1417,13 @@ elif current_tab == "Preekschetsen":
     elif selected_preek:
         # Actieknoppen boven de preekschets; 'Selectie instellen' blijft als aparte knop erboven.
         _render_titel_en_actieknoppen(selected_preek, key_prefix="preekschets")
-        preekschets(selected_preek)
+        # Type-naam doorgeven zodat preekschets() de juiste renderer kiest —
+        # Lowry/Buttrick hebben een eigen schema, alle auteurs-preekschetsen
+        # vallen terug op het generieke preek_onderdelen-schema.
+        preekschets(
+            selected_preek,
+            analysis_type_name=selected_preek["analysis_type"]["name"],
+        )
         # Ontbrak voorheen voor preekschetsen (bv. Noordmans): nu ook hier de feedback- en debug-knoppen.
         render_analysis_footer(
             analysis=selected_preek,
