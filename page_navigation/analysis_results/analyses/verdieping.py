@@ -356,6 +356,18 @@ def render_kunst_cultuur(analysis: dict) -> None:
 # Kindermoment / Bezinningsmoment (40 / 43)
 # ---------------------------------------------------------------------------
 
+# De vijf kindermoment-varianten krijgen elk een eigen label + Streamlit-kleur
+# voor de :color-background[...]-badge. Zo ziet de predikant in één oogopslag
+# welk type optie hij voor zich heeft (klassiek/warm vs. bizar/surrealistisch).
+_KINDERMOMENT_TYPE_LABELS: dict[str, tuple[str, str]] = {
+    "klassiek":            ("Klassieke verrassing", "blue"),
+    "actief":              ("Doe-het-zelf",         "green"),
+    "gek_onconventioneel": ("Gekke twist",          "orange"),
+    "bizar":               ("Bizarre inval",        "violet"),
+    "ernstig":             ("Ernstige toon",        "gray"),
+}
+
+
 def render_kindermoment(analysis: dict) -> None:
     result = _result(analysis)
     if not result:
@@ -369,9 +381,23 @@ def render_kindermoment(analysis: dict) -> None:
 
     for i, optie in enumerate(opties, 1):
         titel = optie.get("titel", f"Optie {i}")
-        type_naam = optie.get("type", "")
-        label = f"Optie {i}: {titel}" + (f" ({type_naam})" if type_naam else "")
-        with st.expander(label, expanded=(i == 1)):
+        type_raw = str(optie.get("type", "")).strip()
+        # Genormaliseerde lookup: de enum in het schema is snake_case lowercase,
+        # maar oudere gegenereerde analyses kunnen nog 'Klassiek' of
+        # 'Gek/Onconventioneel' bevatten — val terug op de raw waarde zonder
+        # badge als we geen match vinden.
+        type_key = type_raw.lower().replace("/", "_").replace(" ", "_").replace("-", "_")
+        label_kleur = _KINDERMOMENT_TYPE_LABELS.get(type_key)
+        header = f"Optie {i}: {titel}"
+        if label_kleur is None and type_raw:
+            header += f" ({type_raw})"
+        with st.expander(header, expanded=(i == 1)):
+            # Gekleurde badge bovenaan zodat de aard van deze optie
+            # (warm / actief / absurd / ingetogen) direct leesbaar is.
+            if label_kleur is not None:
+                label_tekst, kleur = label_kleur
+                st.markdown(f":{kleur}-background[{label_tekst}]")
+
             focus = optie.get("focus_schriftlezing", "")
             if focus:
                 st.caption(f"Schriftlezing: {_md(focus)}")
