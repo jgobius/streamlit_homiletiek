@@ -1103,6 +1103,12 @@ def preekschets_selectie_dialog(
         st.divider()
 
     # -- Illustraties --
+    # Zelfde patroon als bij Perspectieven en Exegese & Commentaren: de gebruiker
+    # mag in totaal maximaal 5 illustraties aanvinken. We tellen de huidige
+    # aangevinkte checkboxes aan het begin van de render, en schakelen overige
+    # checkboxes uit zodra de limiet bereikt is — reeds aangevinkte items blijven
+    # afvinkbaar zodat de gebruiker kan wisselen.
+    _MAX_ILLUSTRATIES_SELECTIE = 5
     selected_illustraties: list[int] = []
     illustraties_data = latest.get("illustraties", {})
     illustraties_result = (
@@ -1115,15 +1121,41 @@ def preekschets_selectie_dialog(
     )
     if illustraties_lijst:
         st.subheader("Illustraties")
+
+        # Tel huidige aangevinkte checkboxes. Voor een checkbox die nog niet in
+        # session_state zit (eerste render), valt de telling terug op de eerder
+        # opgeslagen selectie zodat de limiet direct correct is.
+        _ill_aangevinkt = 0
+        for ill in illustraties_lijst:
+            nummer = ill.get("nummer", 0)
+            key = f"dlg_ill_{analysis_id}_{nummer}"
+            if key in st.session_state:
+                if st.session_state[key]:
+                    _ill_aangevinkt += 1
+            elif nummer in _saved_illustraties:
+                _ill_aangevinkt += 1
+
+        _ill_limiet_bereikt = _ill_aangevinkt >= _MAX_ILLUSTRATIES_SELECTIE
+        st.caption(
+            f"Maximaal {_MAX_ILLUSTRATIES_SELECTIE} illustraties — "
+            f"nu aangevinkt: **{_ill_aangevinkt}/{_MAX_ILLUSTRATIES_SELECTIE}**."
+        )
+
         for ill in illustraties_lijst:
             nummer = ill.get("nummer", 0)
             titel = ill.get("titel", "")
             ill_type = ill.get("metadata", {}).get("type", "")
             label = f"#{nummer} — {titel}" + (f"  ({ill_type})" if ill_type else "")
+            key = f"dlg_ill_{analysis_id}_{nummer}"
+            # Een checkbox is uitgeschakeld zodra de globale limiet bereikt is,
+            # tenzij hij al aangevinkt staat (dan mag de gebruiker hem uitzetten).
+            _is_aangevinkt = st.session_state.get(key, nummer in _saved_illustraties)
+            _disabled = _ill_limiet_bereikt and not _is_aangevinkt
             if st.checkbox(
                 label,
                 value=nummer in _saved_illustraties,
-                key=f"dlg_ill_{analysis_id}_{nummer}",
+                key=key,
+                disabled=_disabled,
             ):
                 selected_illustraties.append(nummer)
         st.divider()
