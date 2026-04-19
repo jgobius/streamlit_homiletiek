@@ -380,7 +380,7 @@ for scripture in st.session_state["structured_scriptures"]:
 
 if st.session_state.get("structured_scriptures"):
     st.session_state["scriptures_approved"] = st.checkbox(
-        "Ik bevestig dat de data zoals hierboven vermeld correct zijn en klaar voor analyse",
+        "Ik bevestig dat de lezingen zoals hierboven vermeld correct zijn en klaar voor analyse",
         value=False,
     )
 
