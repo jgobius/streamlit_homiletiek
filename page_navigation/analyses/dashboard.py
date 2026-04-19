@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from typing import Any
 
@@ -9,8 +10,32 @@ redirect_to_login()
 
 render_sidebar()
 
+# Auto-gegenereerde titels eindigen op ' HH:MM' (zie new_analysis.py, waar de
+# titel wordt opgebouwd als '<gemeente> <zondagdatum> <aanmaaktijd>'). Op deze
+# suffix haken we aan om de aanmaaktijd apart te kunnen tonen.
+_AUTO_TIME_SUFFIX = re.compile(r"\s(\d{2}:\d{2})$")
+
+
+def _split_aanmaaktijd(title: str | None) -> tuple[str | None, str | None]:
+    """Splitst de HH:MM-suffix (aanmaaktijd) van een auto-gegenereerde titel.
+
+    Geeft (titel_zonder_tijd, aanmaaktijd) terug. Voor custom titels zonder
+    tijd-suffix is de tweede waarde ``None`` en blijft de titel ongewijzigd.
+    """
+    if not title:
+        return None, None
+    match = _AUTO_TIME_SUFFIX.search(title)
+    if not match:
+        return title, None
+    return title[: match.start()], match.group(1)
+
+
 def format_title(title: str | None, congregation: str, sermon_date: str) -> str:
-    if title:
+    # Auto-gegenereerde titels bevatten al gemeente + zondagdatum; die info
+    # laten we in dat geval weg om dubbele weergave te voorkomen. Custom titels
+    # (zonder HH:MM-suffix) blijven volledig zichtbaar.
+    _, aanmaaktijd = _split_aanmaaktijd(title)
+    if title and aanmaaktijd is None:
         return f"{title} - {congregation} - {sermon_date}"
 
     return f"{congregation} - {sermon_date}"
@@ -130,8 +155,16 @@ else:
                 "%d-%m-%Y"
             )
             is_latest = item["id"] == latest_id
-            # Brede kolom voor de analyse-knop, smalle kolom voor de verwijder-knop.
-            col_btn, col_del = st.columns([9, 1])
+            # Haal de aanmaaktijd uit de auto-gegenereerde titel zodat we die
+            # als grijze bijschrift naast de knop kunnen tonen in plaats van
+            # mee te nemen in de knop-label.
+            _, aanmaaktijd = _split_aanmaaktijd(title)
+            # Drie kolommen: knop, aanmaaktijd (grijs), verwijder-knop.
+            # `vertical_alignment="center"` lijnt het grijze tijdslabel op
+            # de verticale as van de knop uit.
+            col_btn, col_time, col_del = st.columns(
+                [8, 1, 1], vertical_alignment="center"
+            )
             # Alleen de hoofdknop van de laatste analyse krijgt een geïdentificeerde
             # container (via key='dashboard_latest_analysis'); de CSS bovenaan de
             # pagina vindt deze container op basis van de `st-key-...`-klasse en
@@ -149,6 +182,14 @@ else:
                     use_container_width=True,
                     on_click=lambda id=id: set_analysis_id(id)
                 )
+            with col_time:
+                # Alleen tonen als we de aanmaaktijd kunnen afleiden uit de titel;
+                # voor custom titels (zonder HH:MM-suffix) blijft de kolom leeg.
+                if aanmaaktijd:
+                    st.markdown(
+                        f"<span style='color: #888; font-size: 0.9em;'>{aanmaaktijd}</span>",
+                        unsafe_allow_html=True,
+                    )
             with col_del:
                 # Verwijder-knop: sla het item op in session_state en open de bevestigingsdialoog.
                 if st.button("✕", key=f"delete_{item['id']}", help="Verwijder analyse"):
