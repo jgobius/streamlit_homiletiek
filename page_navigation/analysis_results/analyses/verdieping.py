@@ -18,6 +18,12 @@ from page_navigation.analysis_results.analyses.focus_en_functie import (
 from page_navigation.analysis_results.analyses.gemeente_spiritualiteit import (
     gemeente_spiritualiteit as render_gemeente_spiritualiteit,
 )
+# Sociaal-maatschappelijk (Tavily) heeft eveneens een eigen renderer:
+# combineert de inhoudelijke secties (demografisch, economisch, sociaal,
+# kerkelijk) met wijk-context bovenaan en bronnen-expander onderaan.
+from page_navigation.analysis_results.analyses.sociaal_maatschappelijk import (
+    sociaal_maatschappelijk as render_sociaal_maatschappelijk,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -611,6 +617,7 @@ _RENDERERS = {
     "kalender":                 render_kalender,
     "focus_en_functie":         render_focus_en_functie,
     "gemeente_spiritualiteit":  render_gemeente_spiritualiteit,
+    "sociaal_maatschappelijk":  render_sociaal_maatschappelijk,
 }
 
 

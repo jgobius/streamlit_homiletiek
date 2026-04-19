@@ -85,6 +85,11 @@ _VERDIEPING_NAMEN = {
     # basis-geloofsorientatie, maar met bronverantwoording en expliciete
     # differentiatie van zustergemeenten in dezelfde plaats.
     "gemeente_spiritualiteit",
+    # Tavily-gedreven sociaal-maatschappelijke contextanalyse. Levert een
+    # feitelijk leefomgevingsprofiel met expliciete bronverantwoording en
+    # — voor gemeentes in grote steden — wijk-specifieke demografie i.p.v.
+    # stad-brede gemiddelden. Vervangt de oude basis-context-analyse.
+    "sociaal_maatschappelijk",
 }
 
 _PREEKSCHETSEN_NAMEN = {
@@ -137,7 +142,7 @@ _BASIS_ORDER = [
     "theology",
     "commentaries",
     "liedsuggesties",
-    "sociaal_maatschappelijk",
+    # sociaal_maatschappelijk is verplaatst naar Verdieping (Tavily-versie).
     "waardenorientatie",
     "geloofsorientatie",
     "interpretatieve_synthese",
