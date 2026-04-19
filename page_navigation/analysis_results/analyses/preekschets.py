@@ -205,10 +205,13 @@ def render_homiletische_buttrick(analysis: dict) -> None:
     # sub-velden (bv. logische_lijn + perspectief_variatie). Beide vormen
     # leesbaar renderen — dict uitpakken naar sub-secties i.p.v. de ruwe
     # Python-repr tonen.
-    for key in ("beweging_samenvatting", "contextuele_integratie"):
-        val = result.get(key, "")
-        if not val:
-            continue
+    # Divider alleen *tussen* blokken plaatsen, niet na het laatste —
+    # anders blijft er een lege horizontale lijn onder de laatste sectie staan.
+    extra_blocks = [(k, result.get(k, "")) for k in ("beweging_samenvatting", "contextuele_integratie")]
+    extra_blocks = [(k, v) for k, v in extra_blocks if v]
+    for idx, (key, val) in enumerate(extra_blocks):
+        if idx > 0:
+            st.divider()
         st.markdown(f"**{key.replace('_', ' ').capitalize()}**")
         if isinstance(val, dict):
             for sub_key, sub_val in val.items():
@@ -216,7 +219,6 @@ def render_homiletische_buttrick(analysis: dict) -> None:
                     _section(sub_key.replace("_", " ").capitalize(), sub_val)
         else:
             st.markdown(_md(val))
-        st.divider()
 
 
 
