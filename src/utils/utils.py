@@ -29,6 +29,19 @@ BIBLE_BOOKS = [
 READING_TYPES = ["Eerste lezing", "Tweede lezing", "Derde lezing", "Vierde lezing"]
 
 
+def tel_woorden(tekst: str) -> int:
+    """Tel het aantal woorden in een tekst.
+
+    Een woord is elke aaneengesloten reeks niet-witruimte-tekens. Lege
+    of None-invoer levert 0 op. Gebruikt door de 'Eigen preek'-dialoog
+    voor min/max-validatie bij opslaan, zodat de telling consistent is
+    op één plek en niet inline in meerdere callers wordt herhaald.
+    """
+    if not tekst:
+        return 0
+    return len(tekst.split())
+
+
 def clean_md(text: str) -> str:
     """Normaleer LLM-gegenereerde markdown voor robuuste Streamlit-weergave.
 

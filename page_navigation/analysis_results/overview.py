@@ -4,7 +4,7 @@ import time
 import requests
 import streamlit as st
 
-from src.utils.utils import redirect_to_login, get_data, get_cached_data
+from src.utils.utils import redirect_to_login, get_data, get_cached_data, tel_woorden
 from page_navigation.analysis_results.aanpassen_dialog import aanpassen_dialog
 from page_navigation.analysis_results.analyses.postille import postille
 from page_navigation.analysis_results.analyses.bijbelteksten import bijbelteksten
@@ -45,6 +45,12 @@ from src.components.user_feedback import render_analysis_footer
 
 # --- Categorisatie van analyse-types per tabblad ---
 REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
+
+# Woordentelling-grenzen voor het 'Eigen preek'-dialoog. Ondergrens voorkomt
+# dat per ongeluk een bijna-leeg fragment wordt opgeslagen; bovengrens is een
+# ruime praktische limiet voor een volledig uitgeschreven preek.
+_EIGEN_PREEK_MIN_WOORDEN = 500
+_EIGEN_PREEK_MAX_WOORDEN = 6000
 
 _PERSPECTIEVEN_NAMEN = {
     "filosofie",
@@ -1215,10 +1221,35 @@ def volledige_preek_dialog(
         placeholder="Plak hier de volledige uitgeschreven preektekst...",
     )
 
+    # Live woordentelling zodat de gebruiker tijdens het plakken/typen ziet of
+    # de invoer binnen de min/max-grenzen valt. De feitelijke validatie vindt
+    # plaats bij Opslaan; hier wordt het veld dus niet leeggemaakt of beperkt.
+    _aantal_woorden = tel_woorden(new_preektekst)
+    st.caption(
+        f"Aantal woorden: {_aantal_woorden} "
+        f"(minimaal {_EIGEN_PREEK_MIN_WOORDEN}, maximaal {_EIGEN_PREEK_MAX_WOORDEN})"
+    )
+
     _kan_opslaan = bool(new_preektekst.strip())
     if st.button(
         "Opslaan", type="primary", use_container_width=True, disabled=not _kan_opslaan
     ):
+        # Valideer de woordentelling vóór opslaan. Bij overschrijding van de
+        # grenzen tonen we een foutmelding en keren we terug zonder het veld
+        # leeg te maken — Streamlit's dialog-rerun behoudt de widget-state.
+        if _aantal_woorden < _EIGEN_PREEK_MIN_WOORDEN:
+            st.error(
+                f"De preektekst bevat {_aantal_woorden} woorden; "
+                f"minimaal {_EIGEN_PREEK_MIN_WOORDEN} woorden vereist."
+            )
+            return
+        if _aantal_woorden > _EIGEN_PREEK_MAX_WOORDEN:
+            st.error(
+                f"De preektekst bevat {_aantal_woorden} woorden; "
+                f"maximaal {_EIGEN_PREEK_MAX_WOORDEN} woorden toegestaan."
+            )
+            return
+
         updated = {
             **existing_result,
             "titel": new_titel,
