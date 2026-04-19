@@ -60,6 +60,19 @@ html, body {
 [data-testid="stBaseButton-primary"][disabled] * {
     color: #B0B0C0 !important;
 }
+/* Primaire knoppen in de zijbalk (geselecteerde analyse-nav) krijgen dezelfde
+   subtiele styling als het actieve tabblad: semi-transparante oranje achtergrond,
+   oranje rand en oranje tekst. Voorheen was de solide oranje vulling te opvallend
+   en leidde die de aandacht weg van de content. De hogere specificiteit
+   (stSidebar + primary) wint van de generieke primary-regel hierboven. */
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"] {
+    background-color: rgba(255, 128, 0, 0.12) !important;
+    color: #FF8000 !important;
+    border-color: #FF8000 !important;
+}
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"] * {
+    color: #FF8000 !important;
+}
 /* Secundaire knoppen in uitgeschakelde staat — ook leesbaar houden. */
 [data-testid="stBaseButton-secondary"]:disabled,
 [data-testid="stBaseButton-secondary"][disabled] {
@@ -589,6 +602,18 @@ _LIGHT_CSS = """<style>
     --background-color: #FFFFFF;
     --secondary-background-color: #F0F2F6;
     --text-color: #31333F;
+}
+/* Primaire knoppen in de zijbalk (geselecteerde analyse-nav) krijgen dezelfde
+   subtiele styling als het actieve tabblad: semi-transparante oranje achtergrond,
+   oranje rand en oranje tekst. De solide oranje Streamlit-default leidde te veel
+   aandacht weg van de content. */
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"] {
+    background-color: rgba(255, 128, 0, 0.12) !important;
+    color: #FF8000 !important;
+    border-color: #FF8000 !important;
+}
+[data-testid="stSidebar"] [data-testid="stBaseButton-primary"] * {
+    color: #FF8000 !important;
 }
 </style>"""
 
