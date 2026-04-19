@@ -71,8 +71,6 @@ def lokaal_nieuws(analysis: dict[str, Any]) -> None:
     if rapport_datum:
         st.caption(f"Rapportdatum: {rapport_datum}")
 
-    st.divider()
-
     if items:
         st.subheader(f"Lokaal actueel nieuws ({len(items)})")
         for item in items:
