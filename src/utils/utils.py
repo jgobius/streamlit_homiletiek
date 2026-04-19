@@ -42,6 +42,20 @@ def tel_woorden(tekst: str) -> int:
     return len(tekst.split())
 
 
+def toon_analysenaam(name: str) -> str:
+    """Verwijder technische toolmarkeringen uit de weergavenaam van een analyse.
+
+    De backend gebruikt `front_end_name` soms met een suffix als " (Tavily)"
+    om interne varianten te onderscheiden. Voor de prediker is die
+    implementatie-detail ruis. We strippen het alleen aan het eind en
+    negeren hoofdletters, zodat toekomstige varianten (bv. "(Perplexity)")
+    later met hetzelfde patroon kunnen.
+    """
+    if not name:
+        return name
+    return re.sub(r"\s*\((?:Tavily)\)\s*$", "", name, flags=re.IGNORECASE)
+
+
 def clean_md(text: str) -> str:
     """Normaleer LLM-gegenereerde markdown voor robuuste Streamlit-weergave.
 

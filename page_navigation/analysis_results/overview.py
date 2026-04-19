@@ -4,7 +4,7 @@ import time
 import requests
 import streamlit as st
 
-from src.utils.utils import redirect_to_login, get_data, get_cached_data, tel_woorden
+from src.utils.utils import redirect_to_login, get_data, get_cached_data, tel_woorden, toon_analysenaam
 from page_navigation.analysis_results.aanpassen_dialog import aanpassen_dialog
 from page_navigation.analysis_results.analyses.postille import postille
 from page_navigation.analysis_results.analyses.bijbelteksten import bijbelteksten
@@ -331,16 +331,42 @@ _cached_entry = st.session_state.get(_data_cache_key)
 # automatisch zichtbaar zodra de volgende rerun plaatsvindt (een tab-klik,
 # een button, enz.), zonder dat de gebruiker hard hoeft te refreshen.
 # Zodra er resultaten zijn blijft de cache sticky.
+def _normaliseer_front_end_namen(items: list) -> None:
+    """Strip implementatiemarkeringen (bv. ' (Tavily)') uit weergavenamen.
+
+    We muteren de API-response in-place direct na het ophalen zodat álle
+    downstream renderers (sidebar-knoppen, paginatitel, bevestigingsdialogen,
+    toast-berichten) automatisch de opgeschoonde naam gebruiken. Zonder
+    deze centralisatie zou elk displaypunt apart een wrapper-call nodig
+    hebben — dat is foutgevoelig en divergeert snel. De `name`-sleutel
+    blijft onaangetast; alleen de user-facing `front_end_name` wordt
+    aangepast. `toon_analysenaam` is idempotent dus meermaals toepassen
+    is veilig (bv. bij herbenutting van de sessiecache).
+    """
+    for it in items or []:
+        at = it.get("analysis_type") if isinstance(it, dict) and "analysis_type" in it else it
+        if isinstance(at, dict) and at.get("front_end_name"):
+            at["front_end_name"] = toon_analysenaam(at["front_end_name"])
+        if isinstance(at, dict):
+            for dep in at.get("depends_on") or []:
+                if isinstance(dep, dict) and dep.get("front_end_name"):
+                    dep["front_end_name"] = toon_analysenaam(dep["front_end_name"])
+
+
 if (
     st.session_state.pop("analysis_data_dirty", False)
     or _cached_entry is None
     or not _cached_entry.get("analysis_results")
 ):
     try:
+        _fresh_results = get_data(
+            f"api/analysis-results?sermon_analysis_id={analysis_id}"
+        )
+        # Normaliseer weergavenamen meteen na het ophalen, vóór caching,
+        # zodat elke latere lezer de opgeschoonde versie ziet.
+        _normaliseer_front_end_namen(_fresh_results)
         st.session_state[_data_cache_key] = {
-            "analysis_results": get_data(
-                f"api/analysis-results?sermon_analysis_id={analysis_id}"
-            ),
+            "analysis_results": _fresh_results,
             "sermon_analysis": get_data(f"api/sermon-analyses/{analysis_id}/"),
         }
     except requests.exceptions.HTTPError as e:
@@ -404,7 +430,11 @@ feedback_summary = sorted(
 )
 
 if "all_analysis_types_cache" not in st.session_state:
-    st.session_state["all_analysis_types_cache"] = get_data("api/analysis-types/")
+    _fresh_types = get_data("api/analysis-types/")
+    # Normaliseer weergavenamen ook voor het "toevoegen"-menu en afhankelijkheidslabels,
+    # zodat zowel bestaande als nog te maken analyses dezelfde opgeschoonde naam tonen.
+    _normaliseer_front_end_namen(_fresh_types)
+    st.session_state["all_analysis_types_cache"] = _fresh_types
 all_analysis_types = st.session_state["all_analysis_types_cache"]
 missing_types = sorted(
     [

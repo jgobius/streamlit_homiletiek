@@ -30,6 +30,47 @@ _ERVARINGS_LABELS: dict[str, str] = {
 }
 
 
+# Top-level secties uit het Tavily-schema → leesbare kopjes. Gebruikt om
+# dotpaths in `bronnen_kwaliteit.onderbouwing_ontbreekt` (bv.
+# "ervaringsgebieden.menselijk_tekort.taboes") om te zetten naar iets dat
+# de prediker begrijpt. De rest van het pad wordt generiek geformatteerd
+# via `_leesbaar_pad` zodat we geen mapping hoeven te onderhouden voor
+# élk blad-veld in het schema.
+_SECTIE_LABELS: dict[str, str] = {
+    "ervaringsgebieden": "Ervaringsgebieden",
+    "geloofstaal_analyse": "Geloofstaal",
+    "spirituele_trends_regio": "Spirituele trends regio",
+    "gemeente_geloofsprofiel": "Gemeente-geloofsprofiel",
+    "homiletische_implicaties": "Homiletische implicaties",
+    "bronnen": "Bronnen",
+    "bronnen_kwaliteit": "Bronnen-kwaliteit",
+}
+
+
+def _leesbaar_pad(dotpad: str) -> str:
+    """Zet een schema-dotpad om naar een leesbaar label.
+
+    Voorbeeld: "ervaringsgebieden.menselijk_tekort.taboes"
+    → "Ervaringsgebieden → Menselijk tekort → Taboes".
+
+    We gebruiken " → " als scheider i.p.v. een punt, omdat dat visueel
+    duidelijker de hiërarchie weergeeft. Onderstrepen worden vervangen
+    door spaties zodat de uiteindelijke tekst natuurlijk leesbaar is.
+    De eerste segment krijgt (indien aanwezig) een rijkere label uit
+    `_SECTIE_LABELS`; diepere segmenten worden generiek geformatteerd.
+    """
+    if not dotpad:
+        return ""
+    segments = dotpad.split(".")
+    delen: list[str] = []
+    for idx, seg in enumerate(segments):
+        if idx == 0 and seg in _SECTIE_LABELS:
+            delen.append(_SECTIE_LABELS[seg])
+        else:
+            delen.append(seg.replace("_", " ").capitalize())
+    return " → ".join(delen)
+
+
 def _render_list(values: list) -> None:
     # Helper voor bullet-lijsten met clean_md-afhandeling. Leeg-checks
     # gebeuren door de caller zodat we hier niet per ongeluk een lege
@@ -215,18 +256,35 @@ def _render_bronnen_kwaliteit(bronnen_kwaliteit: dict, *, aantal_bronnen: int) -
     # Icoon voor website-beschikbaarheid — visueel direct duidelijk of
     # de gemeente-website gebruikt kon worden als primaire bron.
     website_label = "✓ website beschikbaar" if website_ok else "✗ geen website"
-    c1, c2, c3 = st.columns(3)
+    # Alleen "Bronnen" is een echte numerieke metric die `st.metric` verdient.
+    # "Differentiatie" bevat vrije tekst ("ja, zeer goed — …") en wordt in
+    # het grote metric-lettertype visueel onleesbaar; daarom als kop+tekst.
+    c1, c2, c3 = st.columns([1, 3, 2])
     with c1:
         st.metric("Bronnen", aantal_bronnen)
     with c2:
-        st.metric("Differentiatie", differentiatie or "onbekend")
+        st.markdown("**Differentiatie**")
+        st.markdown(clean_md(differentiatie) if differentiatie else "_onbekend_")
     with c3:
         st.caption(website_label)
 
     ontbreekt: list = bronnen_kwaliteit.get("onderbouwing_ontbreekt", []) or []
     if ontbreekt:
-        with st.expander(f"⚠ Onderbouwing ontbreekt voor {len(ontbreekt)} veld(en)", expanded=False):
-            _render_list(ontbreekt)
+        with st.expander(
+            f"⚠ Onderbouwing ontbreekt voor {len(ontbreekt)} veld(en)",
+            expanded=False,
+        ):
+            # Uitleg vóór de lijst: zonder deze context is het label "Onderbouwing
+            # ontbreekt" voor de prediker onduidelijk (moet ik actie ondernemen?
+            # is dit een fout?). Het antwoord is: geen actie vereist, maar wees
+            # voorzichtiger met deze specifieke claims in de preek.
+            st.caption(
+                "Voor deze onderdelen vond de analyse geen expliciete bron in het "
+                "web-onderzoek. De inhoud kan nog steeds bruikbaar zijn, maar is "
+                "speculatiever — gebruik deze claims niet als harde feiten."
+            )
+            for dotpad in ontbreekt:
+                st.markdown(f"- {clean_md(_leesbaar_pad(str(dotpad)))}")
 
 
 def _render_bronnen(bronnen: list) -> None:
