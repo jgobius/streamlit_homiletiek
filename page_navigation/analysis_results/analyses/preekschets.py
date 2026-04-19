@@ -201,12 +201,22 @@ def render_homiletische_buttrick(analysis: dict) -> None:
                 _section(k.replace("_", " ").capitalize(), v)
 
     # Samenvatting / overige context-velden (beweging_samenvatting e.d.)
+    # De agent levert deze velden soms als string, soms als dict met
+    # sub-velden (bv. logische_lijn + perspectief_variatie). Beide vormen
+    # leesbaar renderen — dict uitpakken naar sub-secties i.p.v. de ruwe
+    # Python-repr tonen.
     for key in ("beweging_samenvatting", "contextuele_integratie"):
         val = result.get(key, "")
-        if val:
-            st.markdown(f"**{key.replace('_', ' ').capitalize()}**")
+        if not val:
+            continue
+        st.markdown(f"**{key.replace('_', ' ').capitalize()}**")
+        if isinstance(val, dict):
+            for sub_key, sub_val in val.items():
+                if sub_val:
+                    _section(sub_key.replace("_", " ").capitalize(), sub_val)
+        else:
             st.markdown(_md(val))
-            st.divider()
+        st.divider()
 
     woorden = result.get("woorden_telling_totaal")
     if woorden:
