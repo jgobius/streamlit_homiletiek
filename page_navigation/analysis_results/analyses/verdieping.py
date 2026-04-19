@@ -67,6 +67,13 @@ def _render_voorbeden(g: dict) -> None:
             if themas:
                 st.caption("Thema's: " + " · ".join(themas))
 
+    # Het moment van stilte wordt na de voorbedencirkels getoond, maar
+    # vóór het Onze Vader: eerst ruimte voor wat ongezegd blijft, pas
+    # daarna wordt het gebedsmoment gezamenlijk afgesloten.
+    stilte = g.get("stilte_instructie", "")
+    if stilte:
+        st.caption(_md(stilte))
+
     onze_vader = g.get("onze_vader", "")
     if onze_vader:
         with st.expander("Onze Vader", expanded=False):
@@ -89,9 +96,13 @@ def _render_gebed(naam: str, g: dict) -> None:
         elif naam == "voorbeden":
             _render_voorbeden(g)
 
-        stilte = g.get("stilte_instructie", "")
-        if stilte:
-            st.caption(_md(stilte))
+        # Voor voorbeden wordt stilte binnen _render_voorbeden geplaatst,
+        # zodat hij vóór het Onze Vader verschijnt. Voor de overige gebeden
+        # hoort de stilte-instructie gewoon aan het einde.
+        if naam != "voorbeden":
+            stilte = g.get("stilte_instructie", "")
+            if stilte:
+                st.caption(_md(stilte))
 
         taalveld = g.get("bijbels_taalveld", "")
         if taalveld:
@@ -178,11 +189,9 @@ def render_gebeden(analysis: dict) -> None:
             else:
                 st.markdown(_md(echo))
 
-    technieken = result.get("poetische_technieken_gebruikt", {})
-    if technieken:
-        with st.expander("Poëtische technieken", expanded=False):
-            for tech, omschr in technieken.items():
-                st.markdown(f"**{tech.replace('_', ' ').capitalize()}:** {_md(omschr)}")
+    # Poëtische technieken worden niet aan de gebruiker getoond:
+    # interne analyse-metadata die voor de predikant geen meerwaarde heeft
+    # bij de liturgische weergave van de gebeden.
 
 
 # ---------------------------------------------------------------------------
