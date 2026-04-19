@@ -54,12 +54,74 @@ analysis = st.session_state["dashboard_analyses_cache"]
 st.title("Kerkdienstanalyses")
 st.write("Overzicht van alle kerkdienstanalyses.")
 
+# Paginascoped CSS: geef de knop van de laatste analyse (meest recente zondagdatum)
+# dezelfde zachte oranje styling als het actieve tabblad en de geselecteerde
+# sidebar-knop (achtergrond rgba(255,128,0,0.12), oranje rand en oranje tekst).
+# De styling haakt aan op de `st-key-<key>` CSS-klasse die st.container(key=...)
+# automatisch genereert, zodat alleen déze specifieke knop oranje wordt en de
+# naastgelegen verwijder-knop onaangetast blijft.
+st.markdown(
+    """
+    <style>
+    .st-key-dashboard_latest_analysis [data-testid="stBaseButton-secondary"] {
+        background-color: rgba(255, 128, 0, 0.12) !important;
+        color: #FF8000 !important;
+        border-color: #FF8000 !important;
+    }
+    .st-key-dashboard_latest_analysis [data-testid="stBaseButton-secondary"] * {
+        color: #FF8000 !important;
+    }
+    .st-key-dashboard_latest_analysis [data-testid="stBaseButton-secondary"]:hover {
+        background-color: rgba(255, 128, 0, 0.20) !important;
+        border-color: #FF8000 !important;
+        color: #FF8000 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # Toon eerst de bestaande analyses, daarna de knop om een nieuwe te starten.
 if len(analysis) == 0:
     st.info("Er zijn nog geen kerkdienstanalyses gestart.")
 else:
+    # Sorteren op zondagdatum. Tonen we meer dan één analyse, dan krijgt de
+    # gebruiker een segmented_control om de volgorde te wisselen. Default is
+    # 'Nieuwste eerst' zodat de oranje gemarkeerde 'laatste' analyse ook direct
+    # bovenaan staat.
+    if len(analysis) > 1:
+        sort_order = st.segmented_control(
+            "Sorteren op zondagdatum",
+            options=["Nieuwste eerst", "Oudste eerst"],
+            default="Nieuwste eerst",
+            key="dashboard_sort_order",
+        )
+        # segmented_control kan None teruggeven als de gebruiker de selectie
+        # deselecteert; val in dat geval terug op de default.
+        sort_order = sort_order or "Nieuwste eerst"
+    else:
+        sort_order = "Nieuwste eerst"
+
+    # Sorteer op (sermon_date, id). De id-tiebreak zorgt voor een stabiele
+    # volgorde bij meerdere analyses op dezelfde zondag (hoogste id = meest
+    # recent aangemaakt).
+    sorted_analysis = sorted(
+        analysis,
+        key=lambda it: (it["sermon_date"], it["id"]),
+        reverse=(sort_order == "Nieuwste eerst"),
+    )
+
+    # Bepaal welke analyse als 'laatste' gemarkeerd wordt: de analyse met de
+    # meest recente zondagdatum. Dit is onafhankelijk van de gekozen sortering,
+    # zodat dezelfde analyse oranje blijft ook als de gebruiker op 'Oudste
+    # eerst' sorteert.
+    latest_id = max(
+        analysis,
+        key=lambda it: (it["sermon_date"], it["id"]),
+    )["id"]
+
     with st.container():
-        for item in analysis:
+        for item in sorted_analysis:
             id = item["id"]
             status = item["status"]
             title = item["title"]
@@ -67,9 +129,19 @@ else:
             sermon_date = datetime.strptime(item["sermon_date"], "%Y-%m-%d").strftime(
                 "%d-%m-%Y"
             )
+            is_latest = item["id"] == latest_id
             # Brede kolom voor de analyse-knop, smalle kolom voor de verwijder-knop.
             col_btn, col_del = st.columns([9, 1])
-            with col_btn:
+            # Alleen de hoofdknop van de laatste analyse krijgt een geïdentificeerde
+            # container (via key='dashboard_latest_analysis'); de CSS bovenaan de
+            # pagina vindt deze container op basis van de `st-key-...`-klasse en
+            # kleurt alleen deze specifieke knop oranje.
+            btn_container = (
+                col_btn.container(key="dashboard_latest_analysis")
+                if is_latest
+                else col_btn
+            )
+            with btn_container:
                 st.button(
                     f"{format_title(title, congregation, sermon_date)}",
                     type="secondary",
