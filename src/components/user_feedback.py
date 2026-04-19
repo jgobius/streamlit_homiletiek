@@ -135,9 +135,13 @@ def _prompt_debug_dialog(analysis: dict) -> None:
 
     analysis_id = analysis.get("id", "x")
     if isinstance(prompt, dict):
-        # Per sleutel renderen zodat lange multiline-waardes (system_prompt e.d.)
+        # Per sleutel renderen zodat lange multiline-waardes (volledige_prompt e.d.)
         # niet door json.dumps als één regel met \r\n-escapes verschijnen.
+        # system_prompt wordt overgeslagen: de inhoud zit al in volledige_prompt,
+        # dus dubbel tonen is overbodig en maakt de dialog onnodig lang.
         for key, value in prompt.items():
+            if key == "system_prompt":
+                continue
             st.markdown(f"**`{key}`**")
             widget_key = f"prompt_debug_{analysis_id}_{key}"
             if isinstance(value, str):
