@@ -572,9 +572,17 @@ a[data-testid="stPageLink-NavLink"][data-current="true"] p {
 }
 /* Toast (st.toast) — standaard wit/dof grijs en daarmee onleesbaar tegen
    de donkere app-achtergrond. Zelfde donkere kaart als dialog/tooltip zodat
-   de melding (bv. "… wordt uitgevoerd") duidelijk leesbaar blijft. */
+   de melding (bv. "… wordt uitgevoerd") duidelijk leesbaar blijft.
+   Belangrijk: styling alléén op de toast zelf, niet op stToastContainer.
+   De container blijft in de DOM staan nadat de toast is gefaded; krijgt hij
+   een eigen achtergrond + rand, dan zie je een grijze horizontale reststreep
+   bovenaan de pagina. Daarom wordt de container expliciet transparant gezet. */
+[data-testid="stToastContainer"] {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
 [data-testid="stToast"],
-[data-testid="stToastContainer"],
 div[data-baseweb="toast"],
 div[role="alert"][data-baseweb="toast"] {
     background-color: #1A1C24 !important;
@@ -583,7 +591,6 @@ div[role="alert"][data-baseweb="toast"] {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6) !important;
 }
 [data-testid="stToast"] *,
-[data-testid="stToastContainer"] *,
 div[data-baseweb="toast"] * {
     color: #FAFAFA !important;
 }
