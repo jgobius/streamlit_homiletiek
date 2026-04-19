@@ -42,6 +42,16 @@ def tel_woorden(tekst: str) -> int:
     return len(tekst.split())
 
 
+# Handmatige overrides voor weergavenamen die in de gedeelde productie-DB
+# anders zijn opgeslagen dan we ze in de UI willen tonen. Door dit hier
+# centraal te mappen hoeven we de DB niet te muteren voor wat puur een
+# label-kwestie is; alle plekken die via `toon_analysenaam` renderen
+# (sidebar-menu, paginatitel, afhankelijkheidslabels) krijgen dezelfde naam.
+_WEERGAVENAAM_OVERRIDE: dict[str, str] = {
+    "Theologie": "Theologische inzichten",
+}
+
+
 def toon_analysenaam(name: str) -> str:
     """Verwijder technische toolmarkeringen uit de weergavenaam van een analyse.
 
@@ -49,11 +59,14 @@ def toon_analysenaam(name: str) -> str:
     om interne varianten te onderscheiden. Voor de prediker is die
     implementatie-detail ruis. We strippen het alleen aan het eind en
     negeren hoofdletters, zodat toekomstige varianten (bv. "(Perplexity)")
-    later met hetzelfde patroon kunnen.
+    later met hetzelfde patroon kunnen. Na het strippen passen we een
+    optionele override toe zodat specifieke DB-labels (bv. "Theologie")
+    in de UI als gerichter alternatief ("Theologische inzichten") verschijnen.
     """
     if not name:
         return name
-    return re.sub(r"\s*\((?:Tavily)\)\s*$", "", name, flags=re.IGNORECASE)
+    schoon = re.sub(r"\s*\((?:Tavily)\)\s*$", "", name, flags=re.IGNORECASE)
+    return _WEERGAVENAAM_OVERRIDE.get(schoon, schoon)
 
 
 def clean_md(text: str) -> str:
