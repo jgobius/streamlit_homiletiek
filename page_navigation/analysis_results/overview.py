@@ -42,6 +42,7 @@ from page_navigation.analysis_results.analyses.preekschets import preekschets
 from page_navigation.analysis_results.analyses.feedback_analyse import feedback_analyse
 from page_navigation.analysis_results.analyses.volledige_preek import volledige_preek
 from src.components.user_feedback import render_analysis_footer
+from src.api.agent_request import AgentRequest
 
 # --- Categorisatie van analyse-types per tabblad ---
 REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
@@ -194,13 +195,11 @@ def _trigger_analysis(analysis_id: int, at: dict, lock_key: str) -> None:
     st.session_state[lock_key] = time.time()
     try:
         agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
-        response = requests.post(
-            f"{agent_url}/single_analysis/",
-            json={
+        response = agent_request.post(
+            payload={
                 "sermon_analysis_id": analysis_id,
                 "analysis_type_id": at["id"],
-            },
-            timeout=30,
+            }
         )
         response.raise_for_status()
         # Invalideer de sessiecache zodat een volgende rerun (bv. tab-klik)
@@ -283,6 +282,8 @@ def _render_preekschets_result(selected_preek: dict, latest: dict) -> None:
 
 
 redirect_to_login()
+
+agent_request = AgentRequest()
 
 # Haal analysis_id op uit query-params of session_state.
 # Converteer naar int zodat de string "None" (bijv. bij een foute navigatie) niet

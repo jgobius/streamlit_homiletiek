@@ -230,6 +230,7 @@ class JwtHandler:
         """
 
         payload = jwt.decode(access_token, options={"verify_signature": False})
+        print(payload)
         return payload["exp"]
 
 
