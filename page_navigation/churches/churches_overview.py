@@ -111,3 +111,12 @@ for church in churches:
             if st.button("✕", key=f"delete_{name}"):
                 st.session_state["_gemeente_te_verwijderen"] = church
                 _bevestig_verwijder_gemeente()
+
+# Knop om een nieuwe gemeente toe te voegen, net als de 'Nieuwe analyse'-knop
+# op het kerkdienstanalyses-dashboard. Navigeert naar hetzelfde formulier dat
+# ook voor bewerken gebruikt wordt; zonder `church_id` query param start het
+# in aanmaak-modus.
+if st.button("Nieuwe gemeente", type="primary"):
+    st.switch_page(
+        f"{st.session_state['page_navigation_dir']}/churches/new_church.py"
+    )
