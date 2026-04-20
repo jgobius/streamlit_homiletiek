@@ -767,6 +767,23 @@ def confirm_delete_result(result: dict) -> None:
             st.rerun()
 
 
+@st.dialog("Informatie")
+def show_analysis_info(result: dict) -> None:
+    """Toon de beschrijving van een analyse-type in een modale dialoog.
+
+    Vervangt de voormalige st.popover-trigger: die bleef tijdens een Streamlit-
+    rerun helder gekleurd terwijl de rest van de pagina dimt, waardoor de
+    Informatie-knop visueel door het grijze waas heen stak. Een reguliere
+    knop + dialog dimt wél consistent met de andere actieknoppen.
+    """
+    _desc = result["analysis_type"].get("description") or ""
+    _titel = result["analysis_type"].get("front_end_name") or "Informatie"
+    st.subheader(_titel)
+    st.markdown(_desc)
+    if st.button("Sluiten", use_container_width=True):
+        st.rerun()
+
+
 @st.dialog("Analyse opnieuw uitvoeren")
 def confirm_rerun_analysis(result: dict) -> None:
     """Bevestigingsdialoog voor het opnieuw uitvoeren van een analyse via de agent.
@@ -827,10 +844,14 @@ def _render_actieknoppen(result: dict, key_prefix: str) -> None:
         if st.button("Aanpassen", icon="✏️", key=f"{key_prefix}_ctx"):
             aanpassen_dialog(result)
     with col_info:
+        # Informatie-knop als reguliere st.button + @st.dialog in plaats van
+        # st.popover. Reden: de popover-trigger wordt buiten Streamlits rerun-
+        # overlay gerenderd en blijft daardoor helder terwijl de rest van de
+        # pagina dimt. Een gewone knop dimt wél consistent met de andere drie.
         _desc = result["analysis_type"].get("description")
         if _desc:
-            with st.popover("ℹ️", use_container_width=False):
-                st.markdown(_desc)
+            if st.button("ℹ️", key=f"{key_prefix}_info"):
+                show_analysis_info(result)
 
 
 @st.dialog("Selectie van input voor preekschetsen", width="large")
