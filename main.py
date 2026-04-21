@@ -1,9 +1,16 @@
+import os
+
 import requests
 import streamlit as st
+from dotenv import load_dotenv
 from streamlit_cookies_controller import CookieController
 
 from src.api.jwthandler import JwtHandler
 from src.api.handler import APIHandler
+
+# Laad .env één keer bovenin zodat alle child-pages (die in dezelfde Python-
+# proces draaien via st.navigation) de environment-variabelen geërfd krijgen.
+load_dotenv()
 
 # Sleutel waaronder het refresh token in de browser-cookie wordt opgeslagen.
 _COOKIE_KEY = "auth_refresh_token"
@@ -679,12 +686,12 @@ def _try_restore_session(controller: CookieController) -> bool:
     try:
         jwt_handler = JwtHandler.from_refresh_token(
             refresh_token=refresh_token,
-            base_url=st.secrets["API_BASE_URL"],
+            base_url=os.environ.get("API_BASE_URL"),
             access_endpoint="/api/token/",
             refresh_endpoint="/api/token/refresh/",
         )
         st.session_state['api_handler'] = APIHandler(
-            base_url=st.secrets["API_BASE_URL"],
+            base_url=os.environ.get("API_BASE_URL"),
             jwt_handler=jwt_handler,
         )
         return True

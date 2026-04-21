@@ -1,4 +1,5 @@
 import json
+import os
 import time
 from datetime import date, datetime, timedelta
 from typing import Any
@@ -445,7 +446,7 @@ if submit:
         # Een fout hier mag de gebruiker niet blokkeren; de tab 'Bijbelteksten'
         # toont dan simpelweg geen resultaat tot de analyse opnieuw gestart wordt.
         if sermon_analysis_id:
-            agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
+            agent_url = os.environ.get("API_AGENT_URL").rstrip("/")
             try:
                 requests.post(
                     f"{agent_url}/original_scriptures/",

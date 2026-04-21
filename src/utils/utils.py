@@ -164,7 +164,7 @@ def get_structured_scriptures(scriptures: list[str], bible_version: str, languag
     Note:
         - Only successful API responses (status code 200) are included in the returned list.
         - Failed requests are silently skipped.
-        - Requires 'API_AGENT_URL' to be configured in Streamlit secrets.
+        - Requires the API_AGENT_URL environment variable (geladen via .env in main.py).
     """
     st.write(scriptures)
     structured_scripture_data: list[dict[str, Any]] = []
@@ -178,7 +178,7 @@ def get_structured_scriptures(scriptures: list[str], bible_version: str, languag
             }
         
         response = requests.post(
-            url=f"{st.secrets['API_AGENT_URL']}/structured_scripture/",
+            url=f"{os.environ.get('API_AGENT_URL')}/structured_scripture/",
             json=data
         )
         
