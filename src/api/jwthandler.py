@@ -230,7 +230,6 @@ class JwtHandler:
         """
 
         payload = jwt.decode(access_token, options={"verify_signature": False})
-        print(payload)
         return payload["exp"]
 
 
@@ -251,11 +250,5 @@ if __name__ == "__main__":
         username=args.username,
         password=args.password,
     )
-    print("Access Token:", handler._access_token)
-    print("Refresh Token:", handler._refresh_token)
-    print("Token Expiry Timestamp:", handler._token_expiry_timestamp)
-    
     sleep(300)
-    
-    print(handler.token)
     
