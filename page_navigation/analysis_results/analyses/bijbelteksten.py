@@ -11,10 +11,10 @@ def bijbelteksten(analysis: dict[str, Any]) -> None:
     """Render bijbelteksten analysis result."""
     result: Any = analysis.get("result")
 
-    # De titel wordt centraal in overview.py getoond, direct boven de actieknoppen,
-    # zodat alle tabs dezelfde volgorde hebben: titel → actieknoppen → inhoud.
-
-    st.divider()
+    # Titel, actieknoppen én de afsluitende scheidingslijn worden centraal in
+    # overview.py getoond, zodat alle tabs dezelfde kop hebben
+    # (titel → actieknoppen → lijn → inhoud). Deze renderer begint daarom
+    # direct met de eigen inhoud.
 
     # `result` is een lijst van lezing-entries in liturgische leesvolgorde
     # (eerste lezing → psalm → tweede lezing → evangelie). Elke entry heeft

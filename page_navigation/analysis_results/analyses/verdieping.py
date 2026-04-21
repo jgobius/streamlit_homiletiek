@@ -1,11 +1,45 @@
-"""Renderers voor Verdieping-analyses (gebeden, homiletisch, kunst, liturgisch)."""
+"""Renderers voor Verdieping-analyses (gebeden, kunst, liturgisch)."""
 
 import json
 from typing import Any
+from urllib.parse import quote_plus
 
 import streamlit as st
 
 from src.utils.utils import clean_md
+# Focus en Functie heeft een eigen dedicated renderer; we hergebruiken die
+# hier in de Verdieping-dispatcher in plaats van de logica te dupliceren.
+from page_navigation.analysis_results.analyses.focus_en_functie import (
+    focus_en_functie as render_focus_en_functie,
+)
+# Gemeente-spiritualiteit heeft een eigen renderer met bronnen-sectie
+# bovenop de klassieke geloofsorientatie-layout. Eigen module zodat de
+# extra velden niet in de basis-renderer lekken.
+from page_navigation.analysis_results.analyses.gemeente_spiritualiteit import (
+    gemeente_spiritualiteit as render_gemeente_spiritualiteit,
+)
+# Politieke oriëntatie heeft een dedicated renderer met verkiezingsblokken;
+# we hergebruiken die direct in de Verdieping-dispatcher.
+from page_navigation.analysis_results.analyses.politieke_orientatie import (
+    politieke_orientatie as render_politieke_orientatie,
+)
+# Waardenoriëntatie is de Tavily-Verdieping-versie (Vijf V's + Motivaction
+# op wijk/kern-niveau, met bronverantwoording). Vervangt de oude
+# basis-versie die in Den Haag-achtige steden te grof was.
+from page_navigation.analysis_results.analyses.waardenorientatie import (
+    waardenorientatie as render_waardenorientatie,
+)
+# Interpretatieve synthese: Tavily-gedreven samenbrenging van de voorgaande
+# Verdieping-analyses met de Schriftlezingen. Eigen renderer met
+# lokale_context-kop, bronnen en bronnen_kwaliteit onderaan.
+from page_navigation.analysis_results.analyses.interpretatieve_synthese import (
+    interpretatieve_synthese as render_interpretatieve_synthese,
+)
+# Sociaal-maatschappelijk is verplaatst van Basis naar Verdieping; de renderer
+# zelf is ongewijzigd en wordt nu via de Verdieping-dispatch aangesproken.
+from page_navigation.analysis_results.analyses.sociaal_maatschappelijk import (
+    sociaal_maatschappelijk as render_sociaal_maatschappelijk,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -32,10 +66,24 @@ def _section(label: str, text: Any, *, callout: bool = False) -> None:
     if not text:
         return
     st.markdown(f"**{label}**")
+    # Een lijst als bullets weergeven, anders zou str(list) de ruwe
+    # Python-repr (met blokhaken en quotes) laten zien.
+    if isinstance(text, list):
+        for item in text:
+            if item:
+                st.markdown(f"- {_md(item)}")
+        return
     if callout:
         st.info(_md(text))
     else:
         st.markdown(_md(text))
+
+
+def _google_link(query: str) -> str:
+    # Maak van een zoekterm een klikbare Markdown-link naar Google Search.
+    # quote_plus zet spaties om in '+', zodat de URL direct werkt in de browser.
+    url = f"https://www.google.com/search?q={quote_plus(query)}"
+    return f"[{query}]({url})"
 
 
 # ---------------------------------------------------------------------------
@@ -62,6 +110,13 @@ def _render_voorbeden(g: dict) -> None:
             if themas:
                 st.caption("Thema's: " + " · ".join(themas))
 
+    # Het moment van stilte wordt na de voorbedencirkels getoond, maar
+    # vóór het Onze Vader: eerst ruimte voor wat ongezegd blijft, pas
+    # daarna wordt het gebedsmoment gezamenlijk afgesloten.
+    stilte = g.get("stilte_instructie", "")
+    if stilte:
+        st.caption(_md(stilte))
+
     onze_vader = g.get("onze_vader", "")
     if onze_vader:
         with st.expander("Onze Vader", expanded=False):
@@ -84,17 +139,17 @@ def _render_gebed(naam: str, g: dict) -> None:
         elif naam == "voorbeden":
             _render_voorbeden(g)
 
-        stilte = g.get("stilte_instructie", "")
-        if stilte:
-            st.caption(_md(stilte))
+        # Voor voorbeden wordt stilte binnen _render_voorbeden geplaatst,
+        # zodat hij vóór het Onze Vader verschijnt. Voor de overige gebeden
+        # hoort de stilte-instructie gewoon aan het einde.
+        if naam != "voorbeden":
+            stilte = g.get("stilte_instructie", "")
+            if stilte:
+                st.caption(_md(stilte))
 
         taalveld = g.get("bijbels_taalveld", "")
         if taalveld:
             st.caption(f"Bijbels taalveld: {_md(taalveld)}")
-
-        amen = g.get("amen")
-        if amen is True:
-            st.caption("— Amen.")
 
 
 def render_gebeden(analysis: dict) -> None:
@@ -177,142 +232,9 @@ def render_gebeden(analysis: dict) -> None:
             else:
                 st.markdown(_md(echo))
 
-    technieken = result.get("poetische_technieken_gebruikt", {})
-    if technieken:
-        with st.expander("Poëtische technieken", expanded=False):
-            for tech, omschr in technieken.items():
-                st.markdown(f"**{tech.replace('_', ' ').capitalize()}:** {_md(omschr)}")
-
-
-# ---------------------------------------------------------------------------
-# Homiletische Lowry (15)
-# ---------------------------------------------------------------------------
-
-_LOWRY_LABELS = {
-    "he_kwestie_oops":         "① HÈ? (OOPS!) — De Kwestie",
-    "oei_verdieping_ugh":      "② OEI… (UGH!) — De Verdieping",
-    "aha_wending_aha":         "③ AHA! (AHA!) — De Wending",
-    "ja_verkondiging_whee":    "④ JA! (WHEE!) — De Verkondiging",
-    "zo_doorwerking_yeah":     "⑤ ZÓ! (YEAH!) — De Doorwerking",
-}
-
-
-def render_homiletische_lowry(analysis: dict) -> None:
-    result = _result(analysis)
-    if not result:
-        st.info("Geen resultaat beschikbaar.")
-        return
-
-    # Tekstkeuze
-    tk = result.get("tekstkeuze", {})
-    if tk:
-        with st.expander("Tekstkeuze", expanded=True):
-            _section("Gekozen lezing", tk.get("gekozen_lezing"))
-            _section("Onderbouwing", tk.get("onderbouwing"))
-            _section("Omkerings-potentie", tk.get("omkerings_potentie"))
-
-    # Homiletical Plot
-    plot = result.get("homiletical_plot", {})
-    if plot:
-        st.subheader("Homiletical Plot")
-        for key, label in _LOWRY_LABELS.items():
-            stap = plot.get(key, {})
-            if not stap:
-                continue
-            with st.expander(label, expanded=False):
-                titel = stap.get("titel", "")
-                if titel and titel != label:
-                    st.caption(titel)
-                _section("Inhoud", stap.get("inhoud"))
-                _section("Doel", stap.get("doel"))
-                _section("Type omkering", stap.get("type_omkering"))
-                _section("Toelichting", stap.get("toelichting_type") or stap.get("toelichting"))
-                # Overige velden dynamisch
-                skip = {"titel", "inhoud", "doel", "type_omkering", "toelichting_type", "toelichting", "ambiguiteit"}
-                for k, v in stap.items():
-                    if k not in skip and v:
-                        _section(k.replace("_", " ").capitalize(), v)
-                # Ambiguïteit apart
-                amb = stap.get("ambiguiteit", "")
-                if amb:
-                    _section("Ambiguïteit / spanning", amb)
-
-    # Logica check
-    lc = result.get("logica_check", {})
-    if lc:
-        klopt = lc.get("diagnose_remedie_klopt")
-        toelichting = lc.get("toelichting", "")
-        status = "✅ Diagnose–remedie klopt" if klopt else "⚠️ Controleer diagnose–remedie"
-        st.caption(f"{status} — {_md(toelichting)}")
-
-
-# ---------------------------------------------------------------------------
-# Homiletische Buttrick (16)
-# ---------------------------------------------------------------------------
-
-def render_homiletische_buttrick(analysis: dict) -> None:
-    result = _result(analysis)
-    if not result:
-        st.info("Geen resultaat beschikbaar.")
-        return
-
-    # Tekstkeuze
-    tk = result.get("tekstkeuze", {})
-    if tk:
-        with st.expander("Tekstkeuze", expanded=True):
-            _section("Gekozen lezing", tk.get("gekozen_lezing"))
-            _section("Onderbouwing", tk.get("onderbouwing"))
-            _section("Aansluiting context", tk.get("aansluiting_context"))
-            alt = tk.get("alternatieve_lezingen", [])
-            if alt:
-                st.markdown("**Alternatieve lezingen:** " + ", ".join(str(a) for a in alt))
-
-    # Introductie
-    intro = result.get("introductie", {})
-    if intro:
-        with st.expander("Introductie", expanded=True):
-            _section("Focus-beeld", intro.get("focus_beeld"))
-            _section("Hermeneutische oriëntatie", intro.get("hermeneutische_orientatie"))
-            _section("Uitgeschreven tekst", intro.get("uitgeschreven_tekst"))
-
-    # Moves
-    moves = result.get("moves", [])
-    if moves:
-        st.subheader("Moves")
-        for move in moves:
-            nr = move.get("move_nummer", "")
-            kernidee = move.get("kernidee", "")
-            label = f"Move {nr}: {kernidee}" if kernidee else f"Move {nr}"
-            with st.expander(label, expanded=False):
-                _section("Perspectief", move.get("perspectief"))
-                _section("Retorische strategie", move.get("retorische_strategie"))
-                _section("Verbinding vorige move", move.get("verbinding_vorige"))
-                _section("Uitgeschreven tekst", move.get("uitgeschreven_tekst"))
-                # Extra velden
-                skip = {"move_nummer", "kernidee", "perspectief", "retorische_strategie",
-                        "verbinding_vorige", "uitgeschreven_tekst"}
-                for k, v in move.items():
-                    if k not in skip and v:
-                        _section(k.replace("_", " ").capitalize(), v)
-
-    # Conclusie
-    conclusie = result.get("conclusie", {})
-    if conclusie:
-        with st.expander("Conclusie", expanded=False):
-            for k, v in conclusie.items():
-                _section(k.replace("_", " ").capitalize(), v)
-
-    # Samenvatting / overige velden
-    for key in ("beweging_samenvatting", "contextuele_integratie"):
-        val = result.get(key, "")
-        if val:
-            st.markdown(f"**{key.replace('_', ' ').capitalize()}**")
-            st.markdown(_md(val))
-            st.divider()
-
-    woorden = result.get("woorden_telling_totaal")
-    if woorden:
-        st.caption(f"Geschat woordenaantal: {woorden:,}")
+    # Poëtische technieken worden niet aan de gebruiker getoond:
+    # interne analyse-metadata die voor de predikant geen meerwaarde heeft
+    # bij de liturgische weergave van de gebeden.
 
 
 # ---------------------------------------------------------------------------
@@ -347,12 +269,32 @@ def _render_kunst_items(items: list) -> None:
         if jaar:
             header += f" ({jaar})"
         with st.expander(header, expanded=False):
+            # Genre + type op één regel: type wordt als kleurige badge
+            # achter het genre getoond (of los als er geen genre is),
+            # zodat het als tag-achtig label leest in plaats van een
+            # volwaardige sectie.
+            genre = item.get("genre", "")
+            type_val = item.get("type", "")
+            if genre or type_val:
+                badge = f" :violet-background[{type_val}]" if type_val else ""
+                if genre:
+                    st.markdown(f"**Genre:** {genre}{badge}")
+                else:
+                    st.markdown(f"**Type:**{badge}")
+
             for key in ("beschrijving", "relevante_scene", "relevantie", "verbinding",
-                        "locatie", "type", "genre", "specifiek_deel",
-                        "gebruik", "zoekterm", "zoekterm_hoge_resolutie"):
+                        "locatie", "specifiek_deel", "gebruik"):
                 val = item.get(key, "")
                 if val:
                     _section(key.replace("_", " ").capitalize(), val)
+
+            # Zoektermen als klikbare Google-links renderen i.p.v. platte
+            # tekst, zodat de predikant direct kan doorzoeken.
+            for zkey in ("zoekterm", "zoekterm_hoge_resolutie"):
+                val = item.get(zkey, "")
+                if val:
+                    label = zkey.replace("_", " ").capitalize()
+                    st.markdown(f"**{label}:** {_google_link(str(val))}")
 
 
 def render_kunst_cultuur(analysis: dict) -> None:
@@ -409,9 +351,10 @@ def render_kunst_cultuur(analysis: dict) -> None:
                     moment = item.get("liturgisch_moment", "")
                     duur = item.get("duur", "")
                     zoek = item.get("zoekterm_hoge_resolutie", "")
+                    # Zoekterm als klikbare Google-link voor directe doorzoeking.
                     st.markdown(f"- **{kunstwerk}** — {moment}" +
                                 (f" ({duur})" if duur else "") +
-                                (f"\n  *Zoekterm:* `{zoek}`" if zoek else ""))
+                                (f"\n  *Zoekterm:* {_google_link(str(zoek))}" if zoek else ""))
 
             med = ph.get("voor_meditatie", {})
             if med:
@@ -438,25 +381,75 @@ def render_kunst_cultuur(analysis: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Kindermoment / Bezinningsmoment (40 / 43)
+# Kindermoment (40) / Moment van Bezinning (43)
 # ---------------------------------------------------------------------------
 
-def render_kindermoment(analysis: dict) -> None:
+# Kindermoment- en Moment-van-Bezinning-opties delen dezelfde schemavorm
+# (vijf opties met type/titel/object/focus/script/afbeelding). Alleen de
+# enum-waarden + kleurcodering verschillen. We delen daarom één renderer
+# (_render_moment_opties) en geven per type zijn eigen rootkey en
+# type-label-mapping mee.
+
+# Kindermoment: vijf creatieve-speelse invalshoeken voor kinderen.
+_KINDERMOMENT_TYPE_LABELS: dict[str, tuple[str, str]] = {
+    "klassiek":            ("Klassieke verrassing", "blue"),
+    "actief":              ("Doe-het-zelf",         "green"),
+    "gek_onconventioneel": ("Gekke twist",          "orange"),
+    "bizar":               ("Bizarre inval",        "violet"),
+    "ernstig":             ("Ernstige toon",        "gray"),
+}
+
+# Moment van Bezinning: vijf volwassen-meditatieve invalshoeken. Kleuren
+# zijn bewust ingetogener gespreid (blauw/grijs/violet) dan bij
+# kindermoment — de badges moeten de meditatieve toon ondersteunen,
+# niet doorkruisen.
+_BEZINNINGSMOMENT_TYPE_LABELS: dict[str, tuple[str, str]] = {
+    "symbolisch":         ("Symbolische verdieping", "blue"),
+    "gezamenlijk_gebaar": ("Gezamenlijk gebaar",     "green"),
+    "zintuiglijk":        ("Zintuiglijke ervaring",  "orange"),
+    "muzikaal_poetisch":  ("Muzikale verstilling",   "violet"),
+    "narratief":          ("Kort verhaal",           "gray"),
+}
+
+
+def _render_moment_opties(
+    analysis: dict,
+    opties_key: str,
+    type_labels: dict[str, tuple[str, str]],
+) -> None:
+    # Generieke renderer voor de moment-schema's (kindermoment /
+    # bezinningsmoment). `opties_key` is de rootkey in de structured
+    # output; `type_labels` mapt de enum-waarde naar (label, streamlit-kleur).
     result = _result(analysis)
     if not result:
         st.info("Geen resultaat beschikbaar.")
         return
 
-    opties = result.get("kindermoment_opties", [])
+    opties = result.get(opties_key, [])
     if not opties:
         st.info("Geen opties beschikbaar.")
         return
 
     for i, optie in enumerate(opties, 1):
         titel = optie.get("titel", f"Optie {i}")
-        type_naam = optie.get("type", "")
-        label = f"Optie {i}: {titel}" + (f" ({type_naam})" if type_naam else "")
-        with st.expander(label, expanded=(i == 1)):
+        type_raw = str(optie.get("type", "")).strip()
+        # Genormaliseerde lookup: de enum in het schema is snake_case lowercase,
+        # maar oudere gegenereerde analyses kunnen nog 'Klassiek' of
+        # 'Gek/Onconventioneel' bevatten — val terug op de raw waarde zonder
+        # badge als we geen match vinden.
+        type_key = type_raw.lower().replace("/", "_").replace(" ", "_").replace("-", "_")
+        label_kleur = type_labels.get(type_key)
+        header = f"Optie {i}: {titel}"
+        if label_kleur is None and type_raw:
+            header += f" ({type_raw})"
+        with st.expander(header, expanded=(i == 1)):
+            # Gekleurde badge bovenaan zodat de aard van deze optie
+            # (warm / actief / absurd / ingetogen / symbolisch / zintuiglijk / …)
+            # direct leesbaar is.
+            if label_kleur is not None:
+                label_tekst, kleur = label_kleur
+                st.markdown(f":{kleur}-background[{label_tekst}]")
+
             focus = optie.get("focus_schriftlezing", "")
             if focus:
                 st.caption(f"Schriftlezing: {_md(focus)}")
@@ -478,6 +471,14 @@ def render_kindermoment(analysis: dict) -> None:
             afb = optie.get("afbeelding_idee", "")
             if afb:
                 st.caption(f"Afbeelding-idee: {_md(afb)}")
+
+
+def render_kindermoment(analysis: dict) -> None:
+    _render_moment_opties(analysis, "kindermoment_opties", _KINDERMOMENT_TYPE_LABELS)
+
+
+def render_bezinningsmoment(analysis: dict) -> None:
+    _render_moment_opties(analysis, "bezinningsmoment_opties", _BEZINNINGSMOMENT_TYPE_LABELS)
 
 
 # ---------------------------------------------------------------------------
@@ -653,17 +654,21 @@ def render_kalender(analysis: dict) -> None:
 # ---------------------------------------------------------------------------
 
 _RENDERERS = {
-    "gebeden":               render_gebeden,
-    "gebeden_profetisch":    render_gebeden,
-    "gebeden_dialogisch":    render_gebeden,
-    "gebeden_eenvoudig":     render_gebeden,
-    "homiletische_lowry":    render_homiletische_lowry,
-    "homiletische_buttrick": render_homiletische_buttrick,
-    "kunst_cultuur":         render_kunst_cultuur,
-    "kindermoment":          render_kindermoment,
-    "bezinningsmoment":      render_kindermoment,
-    "wetslezing":            render_wetslezing,
-    "kalender":              render_kalender,
+    "gebeden":                  render_gebeden,
+    "gebeden_profetisch":       render_gebeden,
+    "gebeden_dialogisch":       render_gebeden,
+    "gebeden_eenvoudig":        render_gebeden,
+    "kunst_cultuur":            render_kunst_cultuur,
+    "kindermoment":             render_kindermoment,
+    "bezinningsmoment":         render_bezinningsmoment,
+    "wetslezing":               render_wetslezing,
+    "kalender":                 render_kalender,
+    "focus_en_functie":         render_focus_en_functie,
+    "gemeente_spiritualiteit":  render_gemeente_spiritualiteit,
+    "politieke_orientatie":     render_politieke_orientatie,
+    "waardenorientatie":        render_waardenorientatie,
+    "interpretatieve_synthese": render_interpretatieve_synthese,
+    "sociaal_maatschappelijk":  render_sociaal_maatschappelijk,
 }
 
 

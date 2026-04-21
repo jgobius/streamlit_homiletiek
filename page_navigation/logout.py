@@ -10,6 +10,11 @@ result = requests.post(f'{st.secrets["API_BASE_URL"]}/api/token/blacklist/', dat
 if result.status_code == 200:
 
     st.session_state.pop('api_handler')
+    # Verwijder ook de gecachete UI-voorkeur zodat een volgende inlog (mogelijk
+    # een andere gebruiker in dezelfde browsersessie) zijn eigen dark_mode uit
+    # /api/user-preferences/ ophaalt in plaats van die van de vorige gebruiker
+    # te erven.
+    st.session_state.pop('dark_mode', None)
     st.success('Je bent succesvol uitgelogd.')
 
 else:

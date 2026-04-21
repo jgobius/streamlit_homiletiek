@@ -1,5 +1,7 @@
+import re
 from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 
@@ -9,8 +11,57 @@ redirect_to_login()
 
 render_sidebar()
 
+# Django levert `created_at` in UTC (settings.USE_TZ=True, TIME_ZONE="UTC").
+# Voor weergave converteren we naar Nederlandse tijd (DST-aware via zoneinfo).
+_DISPLAY_TZ = ZoneInfo("Europe/Amsterdam")
+
+# Auto-gegenereerde titels eindigen op ' HH:MM' (zie new_analysis.py, waar de
+# titel wordt opgebouwd als '<gemeente> <zondagdatum> <aanmaaktijd>'). Op deze
+# suffix haken we aan als fallback wanneer `created_at` ontbreekt (records van
+# vóór de migratie).
+_AUTO_TIME_SUFFIX = re.compile(r"\s(\d{2}:\d{2})$")
+
+
+def _split_aanmaaktijd(title: str | None) -> tuple[str | None, str | None]:
+    """Splitst de HH:MM-suffix (aanmaaktijd) van een auto-gegenereerde titel.
+
+    Geeft (titel_zonder_tijd, aanmaaktijd) terug. Voor custom titels zonder
+    tijd-suffix is de tweede waarde ``None`` en blijft de titel ongewijzigd.
+    """
+    if not title:
+        return None, None
+    match = _AUTO_TIME_SUFFIX.search(title)
+    if not match:
+        return title, None
+    return title[: match.start()], match.group(1)
+
+
+def _format_aanmaak_label(created_at: str | None, title_suffix: str | None) -> str | None:
+    """Formatteert het label voor het grijze aanmaaktijdstip naast de knop.
+
+    Voorkeur heeft het `created_at`-veld van de API (ISO-8601 UTC), dat we naar
+    Europa/Amsterdam converteren en als 'dd-mm-yyyy HH:MM' weergeven. Ontbreekt
+    dit veld — bij records van vóór de 0008-migratie of als de backend nog
+    geen `created_at` serializet — dan vallen we terug op de HH:MM-suffix die
+    uit de auto-gegenereerde titel is gesplitst.
+    """
+    if created_at:
+        try:
+            dt_utc = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            return dt_utc.astimezone(_DISPLAY_TZ).strftime("%d-%m-%Y %H:%M")
+        except ValueError:
+            # Onverwacht formaat: val terug op de titel-suffix zodat er toch
+            # iets leesbaars getoond wordt.
+            pass
+    return title_suffix
+
+
 def format_title(title: str | None, congregation: str, sermon_date: str) -> str:
-    if title:
+    # Auto-gegenereerde titels bevatten al gemeente + zondagdatum; die info
+    # laten we in dat geval weg om dubbele weergave te voorkomen. Custom titels
+    # (zonder HH:MM-suffix) blijven volledig zichtbaar.
+    _, aanmaaktijd = _split_aanmaaktijd(title)
+    if title and aanmaaktijd is None:
         return f"{title} - {congregation} - {sermon_date}"
 
     return f"{congregation} - {sermon_date}"
@@ -54,12 +105,74 @@ analysis = st.session_state["dashboard_analyses_cache"]
 st.title("Kerkdienstanalyses")
 st.write("Overzicht van alle kerkdienstanalyses.")
 
+# Paginascoped CSS: geef de knop van de laatste analyse (meest recente zondagdatum)
+# dezelfde zachte oranje styling als het actieve tabblad en de geselecteerde
+# sidebar-knop (achtergrond rgba(255,128,0,0.12), oranje rand en oranje tekst).
+# De styling haakt aan op de `st-key-<key>` CSS-klasse die st.container(key=...)
+# automatisch genereert, zodat alleen déze specifieke knop oranje wordt en de
+# naastgelegen verwijder-knop onaangetast blijft.
+st.markdown(
+    """
+    <style>
+    .st-key-dashboard_latest_analysis [data-testid="stBaseButton-secondary"] {
+        background-color: rgba(255, 128, 0, 0.12) !important;
+        color: #FF8000 !important;
+        border-color: #FF8000 !important;
+    }
+    .st-key-dashboard_latest_analysis [data-testid="stBaseButton-secondary"] * {
+        color: #FF8000 !important;
+    }
+    .st-key-dashboard_latest_analysis [data-testid="stBaseButton-secondary"]:hover {
+        background-color: rgba(255, 128, 0, 0.20) !important;
+        border-color: #FF8000 !important;
+        color: #FF8000 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # Toon eerst de bestaande analyses, daarna de knop om een nieuwe te starten.
 if len(analysis) == 0:
     st.info("Er zijn nog geen kerkdienstanalyses gestart.")
 else:
+    # Sorteren op zondagdatum. Tonen we meer dan één analyse, dan krijgt de
+    # gebruiker een segmented_control om de volgorde te wisselen. Default is
+    # 'Nieuwste eerst' zodat de oranje gemarkeerde 'laatste' analyse ook direct
+    # bovenaan staat.
+    if len(analysis) > 1:
+        sort_order = st.segmented_control(
+            "Sorteren op zondagdatum",
+            options=["Nieuwste eerst", "Oudste eerst"],
+            default="Nieuwste eerst",
+            key="dashboard_sort_order",
+        )
+        # segmented_control kan None teruggeven als de gebruiker de selectie
+        # deselecteert; val in dat geval terug op de default.
+        sort_order = sort_order or "Nieuwste eerst"
+    else:
+        sort_order = "Nieuwste eerst"
+
+    # Sorteer op (sermon_date, id). De id-tiebreak zorgt voor een stabiele
+    # volgorde bij meerdere analyses op dezelfde zondag (hoogste id = meest
+    # recent aangemaakt).
+    sorted_analysis = sorted(
+        analysis,
+        key=lambda it: (it["sermon_date"], it["id"]),
+        reverse=(sort_order == "Nieuwste eerst"),
+    )
+
+    # Bepaal welke analyse als 'laatste' gemarkeerd wordt: de analyse met de
+    # meest recente zondagdatum. Dit is onafhankelijk van de gekozen sortering,
+    # zodat dezelfde analyse oranje blijft ook als de gebruiker op 'Oudste
+    # eerst' sorteert.
+    latest_id = max(
+        analysis,
+        key=lambda it: (it["sermon_date"], it["id"]),
+    )["id"]
+
     with st.container():
-        for item in analysis:
+        for item in sorted_analysis:
             id = item["id"]
             status = item["status"]
             title = item["title"]
@@ -67,9 +180,31 @@ else:
             sermon_date = datetime.strptime(item["sermon_date"], "%Y-%m-%d").strftime(
                 "%d-%m-%Y"
             )
-            # Brede kolom voor de analyse-knop, smalle kolom voor de verwijder-knop.
-            col_btn, col_del = st.columns([9, 1])
-            with col_btn:
+            is_latest = item["id"] == latest_id
+            # Bepaal het label voor het grijze aanmaaktijdstip. Voorkeur:
+            # `created_at` uit de API (volledige datum+tijd); fallback: alleen
+            # de HH:MM-suffix uit de auto-gegenereerde titel voor oude records.
+            _, aanmaaktijd_titel = _split_aanmaaktijd(title)
+            aanmaak_label = _format_aanmaak_label(
+                item.get("created_at"), aanmaaktijd_titel
+            )
+            # Drie kolommen: knop, aanmaaktijdstip (grijs), verwijder-knop. De
+            # tijd-kolom krijgt ~20% van de breedte zodat 'dd-mm-yyyy HH:MM'
+            # netjes past. `vertical_alignment="center"` lijnt het grijze label
+            # op de verticale as van de knop uit.
+            col_btn, col_time, col_del = st.columns(
+                [6, 2, 1], vertical_alignment="center"
+            )
+            # Alleen de hoofdknop van de laatste analyse krijgt een geïdentificeerde
+            # container (via key='dashboard_latest_analysis'); de CSS bovenaan de
+            # pagina vindt deze container op basis van de `st-key-...`-klasse en
+            # kleurt alleen deze specifieke knop oranje.
+            btn_container = (
+                col_btn.container(key="dashboard_latest_analysis")
+                if is_latest
+                else col_btn
+            )
+            with btn_container:
                 st.button(
                     f"{format_title(title, congregation, sermon_date)}",
                     type="secondary",
@@ -77,6 +212,15 @@ else:
                     use_container_width=True,
                     on_click=lambda id=id: set_analysis_id(id)
                 )
+            with col_time:
+                # Alleen tonen als we een aanmaaktijdstip hebben (uit API of
+                # als fallback uit de titel). Voor custom titels zonder
+                # HH:MM-suffix én zonder `created_at` blijft de kolom leeg.
+                if aanmaak_label:
+                    st.markdown(
+                        f"<span style='color: #888; font-size: 0.9em;'>{aanmaak_label}</span>",
+                        unsafe_allow_html=True,
+                    )
             with col_del:
                 # Verwijder-knop: sla het item op in session_state en open de bevestigingsdialoog.
                 if st.button("✕", key=f"delete_{item['id']}", help="Verwijder analyse"):

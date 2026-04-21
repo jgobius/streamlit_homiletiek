@@ -6,21 +6,10 @@ _META_LABELS = {"type":"Type","bron":"Bron","toon":"Toon","lowry_stadium":"Lowry
 
 def illustraties(analysis: dict[str, Any]) -> None:
     result: dict[str, Any] = analysis.get("result", {})
-    preek_context: dict = result.get("preek_context", {})
     illustraties_lijst: list = result.get("illustraties", [])
     totaal: float = result.get("totaal_aantal_illustraties", len(illustraties_lijst))
     diversiteit: dict = result.get("diversiteit_analyse", {})
 
-    with st.expander("Preekcontext", expanded=False):
-        c1, c2 = st.columns([1, 2])
-        with c1:
-            if preek_context.get("bijbeltekst"):
-                st.markdown(f"**Bijbeltekst:** {clean_md(preek_context['bijbeltekst'])}")
-        with c2:
-            if preek_context.get("gemeente_context"):
-                st.markdown(f"**Gemeentecontext:** {clean_md(preek_context['gemeente_context'])}")
-
-    st.divider()
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.metric("Totaal illustraties", int(totaal))

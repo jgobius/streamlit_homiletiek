@@ -29,6 +29,46 @@ BIBLE_BOOKS = [
 READING_TYPES = ["Eerste lezing", "Tweede lezing", "Derde lezing", "Vierde lezing"]
 
 
+def tel_woorden(tekst: str) -> int:
+    """Tel het aantal woorden in een tekst.
+
+    Een woord is elke aaneengesloten reeks niet-witruimte-tekens. Lege
+    of None-invoer levert 0 op. Gebruikt door de 'Eigen preek'-dialoog
+    voor min/max-validatie bij opslaan, zodat de telling consistent is
+    op één plek en niet inline in meerdere callers wordt herhaald.
+    """
+    if not tekst:
+        return 0
+    return len(tekst.split())
+
+
+# Handmatige overrides voor weergavenamen die in de gedeelde productie-DB
+# anders zijn opgeslagen dan we ze in de UI willen tonen. Door dit hier
+# centraal te mappen hoeven we de DB niet te muteren voor wat puur een
+# label-kwestie is; alle plekken die via `toon_analysenaam` renderen
+# (sidebar-menu, paginatitel, afhankelijkheidslabels) krijgen dezelfde naam.
+_WEERGAVENAAM_OVERRIDE: dict[str, str] = {
+    "Theologie": "Theologische inzichten",
+}
+
+
+def toon_analysenaam(name: str) -> str:
+    """Verwijder technische toolmarkeringen uit de weergavenaam van een analyse.
+
+    De backend gebruikt `front_end_name` soms met een suffix als " (Tavily)"
+    om interne varianten te onderscheiden. Voor de prediker is die
+    implementatie-detail ruis. We strippen het alleen aan het eind en
+    negeren hoofdletters, zodat toekomstige varianten (bv. "(Perplexity)")
+    later met hetzelfde patroon kunnen. Na het strippen passen we een
+    optionele override toe zodat specifieke DB-labels (bv. "Theologie")
+    in de UI als gerichter alternatief ("Theologische inzichten") verschijnen.
+    """
+    if not name:
+        return name
+    schoon = re.sub(r"\s*\((?:Tavily)\)\s*$", "", name, flags=re.IGNORECASE)
+    return _WEERGAVENAAM_OVERRIDE.get(schoon, schoon)
+
+
 def clean_md(text: str) -> str:
     """Normaleer LLM-gegenereerde markdown voor robuuste Streamlit-weergave.
 
@@ -84,7 +124,16 @@ def get_data(endpoint:str) -> Any:
     data = st.session_state['api_handler'].get(endpoint)
     return data
 
-@st.cache_data
+# TTL (in seconden) voor referentie-data die via get_cached_data opgehaald wordt
+# (liedboeken, bijbelvertalingen, roosterlezingen, e.d.). Een korte TTL zorgt
+# ervoor dat wijzigingen op de backend binnen een minuut automatisch zichtbaar
+# worden zonder dat de gebruiker handmatig hoeft te verversen. De handmatige
+# Ververs-knop in de zijbalk roept daarnaast get_cached_data.clear() aan voor
+# een directe invalidatie.
+_CACHED_DATA_TTL_SECONDS = 60
+
+
+@st.cache_data(ttl=_CACHED_DATA_TTL_SECONDS)
 def get_cached_data(endpoint:str) -> Any:
     """
     Retrieve cached data from the specified endpoint.
@@ -93,7 +142,7 @@ def get_cached_data(endpoint:str) -> Any:
     Returns:
         Any: The data retrieved from the specified endpoint.
     """
-    
+
     return get_data(endpoint)
 
 def get_structured_scriptures(scriptures: list[str], bible_version: str, language: str) -> list[dict[str, Any]]:
@@ -179,13 +228,24 @@ def load_scriptures() -> list[dict[str, Any]] | None:
     
     
 def _sla_thema_voorkeur_op() -> None:
-    """Sla de thema-voorkeur op in de cookie zodat die na verversing behouden blijft."""
-    controller = st.session_state.get('cookie_controller')
-    if controller:
+    """Sla de thema-voorkeur op via de backend zodat die over apparaten volgt."""
+    # Lees de toggle-waarde en synchroniseer naar de voorkeur-key. De widget gebruikt
+    # '_dark_mode_toggle' als key zodat 'dark_mode' zelf geen widget-key is; Streamlit
+    # wist widget-keys bij paginanavigatie als het widget niet meer gerenderd wordt
+    # (bijv. bij navigatie naar overview.py, waar render_sidebar() niet wordt aangeroepen).
+    donker = bool(st.session_state.get('_dark_mode_toggle', False))
+    st.session_state['dark_mode'] = donker
+    # Persisteer naar de backend via /api/user-preferences/. Bij netwerkfouten of
+    # wanneer de backend het endpoint nog niet heeft uitgerold laten we de wijziging
+    # stilletjes alleen in session_state staan; de UI reageert dan wel, maar de
+    # voorkeur gaat verloren bij volgende sessie. Dat is acceptabel omdat deze
+    # backend-rollout gekoppeld is aan deze frontend-feature.
+    handler = st.session_state.get('api_handler')
+    if handler:
         try:
-            controller.set('dark_mode', 'true' if st.session_state['dark_mode'] else 'false')
-        except TypeError:
-            pass  # controller nog niet gereed — volgende render probeert het opnieuw
+            handler.patch('api/user-preferences/', {'dark_mode': donker})
+        except requests.exceptions.RequestException:
+            pass
 
 
 def render_sidebar():
@@ -202,9 +262,18 @@ def render_sidebar():
             
         with st.expander("Account"):
             st.page_link(label="Uitloggen", page=f"{st.session_state['page_navigation_dir']}/logout.py")
-            # Thema-toggle in de Account-sectie; voorkeur wordt in een cookie opgeslagen
-            # zodat de keuze behouden blijft na verversing of het opnieuw openen van de app.
-            st.toggle("Donker thema", key="dark_mode", on_change=_sla_thema_voorkeur_op)
+            # Gebruik '_dark_mode_toggle' als widget-key zodat de voorkeur-key 'dark_mode'
+            # geen widget-key is. Streamlit wist widget-keys bij paginanavigatie wanneer
+            # het widget niet meer gerenderd wordt (overview.py heeft geen render_sidebar()),
+            # waardoor de donker-thema-instelling anders verloren ging bij het openen van
+            # een analyse. value= initialiseert de toggle vanuit 'dark_mode' zodat de
+            # zichtbare stand overeenkomt met de actieve voorkeur na een paginawissel.
+            st.toggle(
+                "Donker thema",
+                key="_dark_mode_toggle",
+                value=st.session_state.get('dark_mode', False),
+                on_change=_sla_thema_voorkeur_op,
+            )
 
         # Toon de suggesties-knop als de gebruiker ingelogd is (api_handler beschikbaar).
         if "api_handler" in st.session_state:
