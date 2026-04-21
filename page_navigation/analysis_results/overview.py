@@ -148,11 +148,18 @@ _FEEDBACK_NAMEN = {
 }
 
 # Hulpstukken die visueel onder Preekschetsen horen maar *geen* preekschets
-# zijn: ze leveren input (focus-en-functie, illustraties) die de predikant
-# kan gebruiken bij het opstellen van de preekschetsselectie. Losse set
-# zodat de preekschets-specifieke lock-logica (`_preek_ready`) én de
-# _trigger_preekschets-call ze kunnen uitsluiten.
-_PREEKSCHETS_HULPSTUKKEN = {"focus_en_functie", "illustraties"}
+# zijn: ze leveren input (focus-en-functie, illustraties, representatieve
+# aanwezigen) die de predikant kan gebruiken bij het opstellen van de
+# preekschetsselectie. Losse set zodat de preekschets-specifieke lock-logica
+# (`_preek_ready`) én de _trigger_preekschets-call ze kunnen uitsluiten.
+# representatieve_aanwezigen valt onder SermonOutlineAnalysis (voor tab-plaatsing)
+# maar is zelf geen preek; de renderer toont vijf persona's en het trigger-pad
+# gebruikt _trigger_analysis i.p.v. _trigger_preekschets (geen kerntekst-selectie).
+_PREEKSCHETS_HULPSTUKKEN = {
+    "focus_en_functie",
+    "illustraties",
+    "representatieve_aanwezigen",
+}
 
 # Alle analyses die op het Preekschetsen-tabblad zichtbaar moeten zijn:
 # de daadwerkelijke preekschetsen plus de twee hulpstukken.
@@ -1309,15 +1316,20 @@ def preekschets_selectie_dialog(
                 selected_illustraties.append(nummer)
         st.divider()
 
-    # -- Representatieve hoorders --
+    # -- Representatieve aanwezigen --
+    # Leest uit `representatieve_aanwezigen` (Preekschetsen-tab). Valt terug
+    # op de oude `representatieve_hoorders`-naam als die nog bestaat, zodat
+    # eerder aangemaakte analyses niet stilzwijgend verdwijnen uit de dialoog.
     selected_hoorders: list[str] = []
-    hoorders_data = latest.get("representatieve_hoorders", {})
+    hoorders_data = latest.get("representatieve_aanwezigen") or latest.get(
+        "representatieve_hoorders", {}
+    )
     hoorders_result = hoorders_data.get("result", {}) if hoorders_data else {}
     personas = (
         hoorders_result.get("personas", []) if isinstance(hoorders_result, dict) else []
     )
     if personas:
-        st.subheader("Representatieve hoorders")
+        st.subheader("Representatieve aanwezigen")
         for persona in personas:
             naam_obj = persona.get("naam", {})
             voornaam = naam_obj.get("voornaam", "")
@@ -1622,6 +1634,13 @@ elif current_tab == "Preekschetsen":
             render_focus_en_functie(selected_preek)
         elif _preek_type_name == "illustraties":
             illustraties(selected_preek)
+        elif _preek_type_name == "representatieve_aanwezigen":
+            # Representatieve aanwezigen is een hulpstuk onder Preekschetsen:
+            # levert vijf persona's die als input dienen voor de preekschets-
+            # selectie (checkboxes in preekschets_selectie_dialog). De schema-
+            # indeling is identiek aan de oude representatieve_hoorders-analyse,
+            # dus we hergebruiken die renderer.
+            representatieve_hoorders(selected_preek)
         else:
             # Type-naam doorgeven zodat preekschets() de juiste renderer kiest —
             # Lowry/Buttrick hebben een eigen schema, alle auteurs-preekschetsen
