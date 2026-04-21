@@ -47,6 +47,32 @@ from page_navigation.analysis_results.analyses.volledige_preek import volledige_
 from src.components.user_feedback import render_analysis_footer
 from src.api.agent_request import AgentRequest
 
+# Paginascoped CSS: geef de "... toevoegen"-expanders in de zijbalk een
+# subtiele oranje tint (rand + lichte achtergrond) zodat ze opvallen tussen
+# de grijze analyse-knoppen, maar veel minder prominent zijn dan de actieve
+# analyse (die gebruikt rgba(255,128,0,0.12) + solid oranje rand). De styling
+# haakt aan op de `st-key-sidebar_toevoegen_<tab>` CSS-klasse die
+# st.container(key=...) automatisch genereert, zodat alleen déze expanders
+# oranje worden en andere sidebar-expanders (Kerkdienstanalyses, Gemeenten,
+# Account) onaangetast blijven. De selectors voor `details`, `> div` en
+# `> div > div` dekken zowel het oude <details>/<summary>-patroon als het
+# nieuwe div-gebaseerde patroon van Streamlit, en winnen qua specificiteit
+# van de themaregels in main.py (die geen extra class-prefix hebben).
+st.markdown(
+    """
+    <style>
+    [class*="st-key-sidebar_toevoegen_"] [data-testid="stExpander"],
+    [class*="st-key-sidebar_toevoegen_"] [data-testid="stExpander"] details,
+    [class*="st-key-sidebar_toevoegen_"] [data-testid="stExpander"] > div,
+    [class*="st-key-sidebar_toevoegen_"] [data-testid="stExpander"] > div > div {
+        border-color: rgba(255, 128, 0, 0.45) !important;
+        background-color: rgba(255, 128, 0, 0.05) !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # --- Categorisatie van analyse-types per tabblad ---
 REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
 
@@ -588,7 +614,11 @@ with st.sidebar:
                 st.rerun()
 
         if analyse_missing:
-            with st.expander("Analyse toevoegen"):
+            # Wikkel de expander in een st.container met een unieke key zodat
+            # de paginascoped CSS bovenaan dit bestand hem via de automatisch
+            # gegenereerde `st-key-sidebar_toevoegen_basis`-klasse subtiel
+            # oranje kan kleuren.
+            with st.container(key="sidebar_toevoegen_basis"), st.expander("Analyse toevoegen"):
                 for at in analyse_missing:
                     _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
                     _add_locked = _reanalysis_is_locked(_add_lock_key)
@@ -621,7 +651,8 @@ with st.sidebar:
                 st.rerun()
 
         # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
-        with st.expander("Verdieping toevoegen"):
+        # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
+        with st.container(key="sidebar_toevoegen_verdieping"), st.expander("Verdieping toevoegen"):
             if not verdiep_missing:
                 st.caption("Geen types beschikbaar.")
             for at in verdiep_missing:
@@ -654,7 +685,8 @@ with st.sidebar:
                 st.rerun()
 
         # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
-        with st.expander("Perspectief toevoegen"):
+        # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
+        with st.container(key="sidebar_toevoegen_perspectieven"), st.expander("Perspectief toevoegen"):
             if not perspect_missing:
                 st.caption("Geen types beschikbaar.")
             for at in perspect_missing:
@@ -686,7 +718,8 @@ with st.sidebar:
                 st.session_state["current_tab"] = current_tab
                 st.rerun()
 
-        with st.expander("Preekschets toevoegen"):
+        # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
+        with st.container(key="sidebar_toevoegen_preekschetsen"), st.expander("Preekschets toevoegen"):
             _preek_ready = st.session_state.get(
                 f"preek_selectie_{analysis_id}", {}
             ).get("opgeslagen", False)
@@ -745,7 +778,8 @@ with st.sidebar:
                 st.rerun()
 
         # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
-        with st.expander("Gebed toevoegen"):
+        # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
+        with st.container(key="sidebar_toevoegen_gebeden"), st.expander("Gebed toevoegen"):
             if not gebed_missing:
                 st.caption("Geen types beschikbaar.")
             for at in gebed_missing:
@@ -779,7 +813,8 @@ with st.sidebar:
                 st.rerun()
 
         # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
-        with st.expander("Feedback toevoegen"):
+        # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
+        with st.container(key="sidebar_toevoegen_feedback"), st.expander("Feedback toevoegen"):
             if not feedback_nav_missing:
                 st.caption("Geen types beschikbaar.")
             for at in feedback_nav_missing:
