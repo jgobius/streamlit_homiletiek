@@ -33,9 +33,6 @@ from page_navigation.analysis_results.analyses.representatieve_hoorders import (
     representatieve_hoorders,
 )
 from page_navigation.analysis_results.analyses.illustraties import illustraties
-from page_navigation.analysis_results.analyses.politieke_orientatie import (
-    politieke_orientatie,
-)
 from page_navigation.analysis_results.analyses.contextduiding import contextduiding
 from page_navigation.analysis_results.analyses.verdieping import verdieping
 from page_navigation.analysis_results.analyses.preekschets import preekschets
@@ -86,6 +83,9 @@ _VERDIEPING_NAMEN = {
     # basis-geloofsorientatie, maar met bronverantwoording en expliciete
     # differentiatie van zustergemeenten in dezelfde plaats.
     "gemeente_spiritualiteit",
+    # Tavily-gedreven politieke oriëntatie op wijk/kern-niveau (niet
+    # alleen gemeente als geheel). Zie politieke_orientatie.md.
+    "politieke_orientatie",
 }
 
 _PREEKSCHETSEN_NAMEN = {
@@ -142,7 +142,6 @@ _BASIS_ORDER = [
     "waardenorientatie",
     "geloofsorientatie",
     "interpretatieve_synthese",
-    "politieke_orientatie",
     "representatieve_hoorders",
     "illustraties",
     "wereldnieuws",
@@ -1421,8 +1420,6 @@ if current_tab == "Basis":
         geloofsorientatie(selected_analysis)
     elif analysis_type_name == "interpretatieve_synthese":
         interpretatieve_synthese(selected_analysis)
-    elif analysis_type_name == "politieke_orientatie":
-        politieke_orientatie(selected_analysis)
     elif analysis_type_name == "representatieve_hoorders":
         representatieve_hoorders(selected_analysis)
     elif analysis_type_name == "illustraties":

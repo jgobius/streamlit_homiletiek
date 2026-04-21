@@ -18,6 +18,11 @@ from page_navigation.analysis_results.analyses.focus_en_functie import (
 from page_navigation.analysis_results.analyses.gemeente_spiritualiteit import (
     gemeente_spiritualiteit as render_gemeente_spiritualiteit,
 )
+# Politieke oriëntatie heeft een dedicated renderer met verkiezingsblokken;
+# we hergebruiken die direct in de Verdieping-dispatcher.
+from page_navigation.analysis_results.analyses.politieke_orientatie import (
+    politieke_orientatie as render_politieke_orientatie,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -611,6 +616,7 @@ _RENDERERS = {
     "kalender":                 render_kalender,
     "focus_en_functie":         render_focus_en_functie,
     "gemeente_spiritualiteit":  render_gemeente_spiritualiteit,
+    "politieke_orientatie":     render_politieke_orientatie,
 }
 
 
