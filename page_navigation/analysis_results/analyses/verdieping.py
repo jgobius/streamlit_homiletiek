@@ -35,6 +35,11 @@ from page_navigation.analysis_results.analyses.waardenorientatie import (
 from page_navigation.analysis_results.analyses.interpretatieve_synthese import (
     interpretatieve_synthese as render_interpretatieve_synthese,
 )
+# Sociaal-maatschappelijk is verplaatst van Basis naar Verdieping; de renderer
+# zelf is ongewijzigd en wordt nu via de Verdieping-dispatch aangesproken.
+from page_navigation.analysis_results.analyses.sociaal_maatschappelijk import (
+    sociaal_maatschappelijk as render_sociaal_maatschappelijk,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -631,6 +636,7 @@ _RENDERERS = {
     "politieke_orientatie":     render_politieke_orientatie,
     "waardenorientatie":        render_waardenorientatie,
     "interpretatieve_synthese": render_interpretatieve_synthese,
+    "sociaal_maatschappelijk":  render_sociaal_maatschappelijk,
 }
 
 

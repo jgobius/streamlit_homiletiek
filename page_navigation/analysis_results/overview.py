@@ -15,9 +15,9 @@ from page_navigation.analysis_results.analyses.structuralistische_exegese import
 )
 from page_navigation.analysis_results.analyses.commentaren import commentaren
 from page_navigation.analysis_results.analyses.theologie import theologie
-from page_navigation.analysis_results.analyses.sociaal_maatschappelijk import (
-    sociaal_maatschappelijk,
-)
+# Sociaal-maatschappelijk is verplaatst van Basis naar Verdieping; de dispatch
+# loopt nu via verdieping._RENDERERS, dus in overview.py is geen directe import
+# meer nodig.
 # Waardenoriëntatie is verplaatst naar de Verdieping-tab als Tavily-analyse
 # (parallel aan politieke_orientatie en gemeente_spiritualiteit). De renderer
 # wordt vanuit verdieping.py:_RENDERERS aangeroepen, niet meer hier.
@@ -33,6 +33,11 @@ from page_navigation.analysis_results.analyses.representatieve_hoorders import (
     representatieve_hoorders,
 )
 from page_navigation.analysis_results.analyses.illustraties import illustraties
+# Focus-en-functie is verhuisd van Verdieping naar Preekschetsen-tab; de
+# renderer wordt nu direct vanuit de Preekschetsen-dispatch aangeroepen.
+from page_navigation.analysis_results.analyses.focus_en_functie import (
+    focus_en_functie as render_focus_en_functie,
+)
 from page_navigation.analysis_results.analyses.contextduiding import contextduiding
 from page_navigation.analysis_results.analyses.verdieping import verdieping
 from page_navigation.analysis_results.analyses.preekschets import preekschets
@@ -68,17 +73,15 @@ _PERSPECTIEVEN_NAMEN = {
 }
 
 _VERDIEPING_NAMEN = {
-    "gebeden",
-    "gebeden_profetisch",
-    "gebeden_dialogisch",
-    "gebeden_eenvoudig",
     "kunst_cultuur",
     "kindermoment",
     "wetslezing",
     "kalender",
     "bezinningsmoment",
-    # focus_en_functie hoort thuis onder Verdieping; ook nodig als input voor Preekschetsen.
-    "focus_en_functie",
+    # Sociaal-maatschappelijk is verhuisd uit Basis naar Verdieping: het past
+    # inhoudelijk bij de andere contextduidende analyses (waardenoriëntatie,
+    # politieke oriëntatie) en hoort niet in de primaire Basis-flow.
+    "sociaal_maatschappelijk",
     # Tavily-gedreven gemeente-spiritualiteitsanalyse. Parallel aan de
     # basis-geloofsorientatie, maar met bronverantwoording en expliciete
     # differentiatie van zustergemeenten in dezelfde plaats.
@@ -96,6 +99,17 @@ _VERDIEPING_NAMEN = {
     # uit Basis omdat de nieuwe versie op wijk/kern-niveau werkt en Tavily
     # gericht inzet voor actualiteit en hiaten.
     "interpretatieve_synthese",
+}
+
+# Gebeden krijgen een eigen tabblad tussen Preekschetsen en Feedback. De vier
+# varianten (klassiek, profetisch, dialogisch, eenvoudig) delen één renderer
+# maar hebben verschillende prompts; ze horen visueel bij elkaar en werden
+# voorheen binnen Verdieping gegroepeerd.
+_GEBEDEN_NAMEN = {
+    "gebeden",
+    "gebeden_profetisch",
+    "gebeden_dialogisch",
+    "gebeden_eenvoudig",
 }
 
 _PREEKSCHETSEN_NAMEN = {
@@ -133,14 +147,38 @@ _FEEDBACK_NAMEN = {
     "feedback_taalhandeling",
 }
 
+# Hulpstukken die visueel onder Preekschetsen horen maar *geen* preekschets
+# zijn: ze leveren input (focus-en-functie, illustraties) die de predikant
+# kan gebruiken bij het opstellen van de preekschetsselectie. Losse set
+# zodat de preekschets-specifieke lock-logica (`_preek_ready`) én de
+# _trigger_preekschets-call ze kunnen uitsluiten.
+_PREEKSCHETS_HULPSTUKKEN = {"focus_en_functie", "illustraties"}
+
+# Alle analyses die op het Preekschetsen-tabblad zichtbaar moeten zijn:
+# de daadwerkelijke preekschetsen plus de twee hulpstukken.
+_PREEKSCHETSEN_TAB = _PREEKSCHETSEN_NAMEN | _PREEKSCHETS_HULPSTUKKEN
+
 # Alle niet-basis namen, gebruikt om basis-analyses te filteren.
 _ALL_NON_BASIS = (
-    _PERSPECTIEVEN_NAMEN | _VERDIEPING_NAMEN | _PREEKSCHETSEN_NAMEN | _FEEDBACK_NAMEN
+    _PERSPECTIEVEN_NAMEN
+    | _VERDIEPING_NAMEN
+    | _PREEKSCHETSEN_TAB
+    | _GEBEDEN_NAMEN
+    | _FEEDBACK_NAMEN
 )
 
-_TABS = ["Basis", "Verdieping", "Perspectieven", "Preekschetsen", "Feedback"]
+_TABS = [
+    "Basis",
+    "Verdieping",
+    "Perspectieven",
+    "Preekschetsen",
+    "Gebeden",
+    "Feedback",
+]
 
 # Gewenste volgorde van basis-analyses in de zijbalk. Postille staat altijd onderaan.
+# sociaal_maatschappelijk en illustraties zijn verhuisd naar Verdieping resp.
+# Preekschetsen en staan daarom niet meer in deze lijst.
 _BASIS_ORDER = [
     "bijbelteksten",
     "liturgisch_jaar",
@@ -148,10 +186,8 @@ _BASIS_ORDER = [
     "theology",
     "commentaries",
     "liedsuggesties",
-    "sociaal_maatschappelijk",
     "geloofsorientatie",
     "representatieve_hoorders",
-    "illustraties",
     "wereldnieuws",
     "lokaal_nieuws",
 ]
@@ -409,8 +445,15 @@ for r in analysis_results:
 
 summary = list(latest.values())
 
+# Herbereken _ALL_NON_BASIS hier binnen de body zodat het overeenkomt met de
+# module-scope definitie hierboven (beide moeten synchroon blijven — dubbele
+# definitie is legacy, maar aanpassen hier bewaart de oorspronkelijke structuur).
 _ALL_NON_BASIS = (
-    _PERSPECTIEVEN_NAMEN | _VERDIEPING_NAMEN | _PREEKSCHETSEN_NAMEN | _FEEDBACK_NAMEN
+    _PERSPECTIEVEN_NAMEN
+    | _VERDIEPING_NAMEN
+    | _PREEKSCHETSEN_TAB
+    | _GEBEDEN_NAMEN
+    | _FEEDBACK_NAMEN
 )
 
 analyse_summary = sorted(
@@ -428,8 +471,15 @@ perspect_summary = sorted(
     [r for r in summary if r["analysis_type"]["name"] in _PERSPECTIEVEN_NAMEN],
     key=_order_key,
 )
+# Preekschets-tab gebruikt de uitgebreide set (incl. focus_en_functie en
+# illustraties); de selectie-lock onderscheid tussen echte schetsen en
+# hulpstukken gebeurt pas in de sidebar-render.
 preek_summary = sorted(
-    [r for r in summary if r["analysis_type"]["name"] in _PREEKSCHETSEN_NAMEN],
+    [r for r in summary if r["analysis_type"]["name"] in _PREEKSCHETSEN_TAB],
+    key=_order_key,
+)
+gebed_summary = sorted(
+    [r for r in summary if r["analysis_type"]["name"] in _GEBEDEN_NAMEN],
     key=_order_key,
 )
 feedback_summary = sorted(
@@ -458,7 +508,10 @@ analyse_missing = sorted(
 )
 verdiep_missing = [at for at in missing_types if at["name"] in _VERDIEPING_NAMEN]
 perspect_missing = [at for at in missing_types if at["name"] in _PERSPECTIEVEN_NAMEN]
-preek_missing = [at for at in missing_types if at["name"] in _PREEKSCHETSEN_NAMEN]
+# preek_missing gebruikt de uitgebreide tab-set zodat ook focus_en_functie en
+# illustraties via de 'Preekschets toevoegen'-expander aangeboden worden.
+preek_missing = [at for at in missing_types if at["name"] in _PREEKSCHETSEN_TAB]
+gebed_missing = [at for at in missing_types if at["name"] in _GEBEDEN_NAMEN]
 feedback_missing = [at for at in missing_types if at["name"] in _FEEDBACK_NAMEN]
 
 # feedback_nav_* excludeert volledige_preek — die wordt apart via een dialoog beheerd
@@ -496,6 +549,13 @@ if "selected_preek_id" not in st.session_state or st.session_state[
 ] not in {r["id"] for r in preek_summary}:
     st.session_state["selected_preek_id"] = (
         preek_summary[0]["id"] if preek_summary else None
+    )
+
+if "selected_gebed_id" not in st.session_state or st.session_state[
+    "selected_gebed_id"
+] not in {r["id"] for r in gebed_summary}:
+    st.session_state["selected_gebed_id"] = (
+        gebed_summary[0]["id"] if gebed_summary else None
     )
 
 if "selected_feedback_id" not in st.session_state or st.session_state[
@@ -628,23 +688,74 @@ with st.sidebar:
                 _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
                 _add_locked = _reanalysis_is_locked(_add_lock_key)
                 _ok, _ontbr = _deps_ok(at, latest)
-                if not _preek_ready:
-                    _label = f"🔒 {at['front_end_name']}"
-                    _help = "Stel eerst de selectie in via 'Selectie instellen'."
-                elif not _ok:
-                    _label = f"🔒 {at['front_end_name']}"
-                    _help = "Vereist eerst: " + ", ".join(_ontbr)
+                # Hulpstukken (focus_en_functie, illustraties) zijn geen
+                # preekschets en vereisen géén opgeslagen kernteksten/perspectieven-
+                # selectie. Ze worden via de reguliere analyse-trigger uitgevoerd,
+                # zodat ze ook zonder voorbereide selectie kunnen starten.
+                _is_hulpstuk = at["name"] in _PREEKSCHETS_HULPSTUKKEN
+                if _is_hulpstuk:
+                    if not _ok:
+                        _label = f"🔒 {at['front_end_name']}"
+                        _help = "Vereist eerst: " + ", ".join(_ontbr)
+                    else:
+                        _label = at["front_end_name"]
+                        _help = None
+                    _disabled = _add_locked or not _ok
                 else:
-                    _label = at["front_end_name"]
-                    _help = None
+                    if not _preek_ready:
+                        _label = f"🔒 {at['front_end_name']}"
+                        _help = "Stel eerst de selectie in via 'Selectie instellen'."
+                    elif not _ok:
+                        _label = f"🔒 {at['front_end_name']}"
+                        _help = "Vereist eerst: " + ", ".join(_ontbr)
+                    else:
+                        _label = at["front_end_name"]
+                        _help = None
+                    _disabled = _add_locked or not _preek_ready or not _ok
                 if st.button(
                     _label,
                     key=f"pkadd_{at['name']}",
                     use_container_width=True,
-                    disabled=_add_locked or not _preek_ready or not _ok,
+                    disabled=_disabled,
                     help=_help,
                 ):
-                    _trigger_preekschets(int(analysis_id), at, _add_lock_key)
+                    if _is_hulpstuk:
+                        _trigger_analysis(int(analysis_id), at, _add_lock_key)
+                    else:
+                        _trigger_preekschets(int(analysis_id), at, _add_lock_key)
+
+    elif current_tab == "Gebeden":
+        for r in gebed_summary:
+            label = r["analysis_type"]["front_end_name"]
+            is_selected = r["id"] == st.session_state["selected_gebed_id"]
+            btn_type = "primary" if is_selected else "secondary"
+            if st.button(
+                label, key=f"gbnav_{r['id']}", use_container_width=True, type=btn_type
+            ):
+                st.session_state["selected_gebed_id"] = r["id"]
+                st.session_state["current_tab"] = current_tab
+                st.rerun()
+
+        # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
+        with st.expander("Gebed toevoegen"):
+            if not gebed_missing:
+                st.caption("Geen types beschikbaar.")
+            for at in gebed_missing:
+                _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+                _add_locked = _reanalysis_is_locked(_add_lock_key)
+                _ok, _ontbr = _deps_ok(at, latest)
+                _label = (
+                    f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
+                )
+                _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
+                if st.button(
+                    _label,
+                    key=f"gbadd_{at['name']}",
+                    use_container_width=True,
+                    disabled=_add_locked or not _ok,
+                    help=_help,
+                ):
+                    _trigger_analysis(int(analysis_id), at, _add_lock_key)
 
     elif current_tab == "Feedback":
         # Feedback-analysen navigatie
@@ -751,6 +862,7 @@ def confirm_delete_result(result: dict) -> None:
                     "selected_verdiep_id",
                     "selected_perspect_id",
                     "selected_preek_id",
+                    "selected_gebed_id",
                     "selected_feedback_id",
                 ):
                     if st.session_state.get(_key) == result["id"]:
@@ -1420,14 +1532,10 @@ if current_tab == "Basis":
         commentaren(selected_analysis)
     elif analysis_type_name == "theology":
         theologie(selected_analysis)
-    elif analysis_type_name == "sociaal_maatschappelijk":
-        sociaal_maatschappelijk(selected_analysis)
     elif analysis_type_name == "geloofsorientatie":
         geloofsorientatie(selected_analysis)
     elif analysis_type_name == "representatieve_hoorders":
         representatieve_hoorders(selected_analysis)
-    elif analysis_type_name == "illustraties":
-        illustraties(selected_analysis)
     elif analysis_type_name == "wereldnieuws":
         wereldnieuws(selected_analysis)
     elif analysis_type_name == "lokaal_nieuws":
@@ -1505,18 +1613,53 @@ elif current_tab == "Preekschetsen":
     elif selected_preek:
         # Actieknoppen boven de preekschets; 'Selectie instellen' blijft als aparte knop erboven.
         _render_titel_en_actieknoppen(selected_preek, key_prefix="preekschets")
-        # Type-naam doorgeven zodat preekschets() de juiste renderer kiest —
-        # Lowry/Buttrick hebben een eigen schema, alle auteurs-preekschetsen
-        # vallen terug op het generieke preek_onderdelen-schema.
-        preekschets(
-            selected_preek,
-            analysis_type_name=selected_preek["analysis_type"]["name"],
-        )
+        _preek_type_name = selected_preek["analysis_type"]["name"]
+        # De Preekschetsen-tab bevat naast de daadwerkelijke schetsen ook twee
+        # hulpstukken die de predikant als invoer kan gebruiken (focus-en-functie,
+        # illustraties). Zij hebben hun eigen renderer en horen niet via de
+        # preekschets()-dispatch te lopen.
+        if _preek_type_name == "focus_en_functie":
+            render_focus_en_functie(selected_preek)
+        elif _preek_type_name == "illustraties":
+            illustraties(selected_preek)
+        else:
+            # Type-naam doorgeven zodat preekschets() de juiste renderer kiest —
+            # Lowry/Buttrick hebben een eigen schema, alle auteurs-preekschetsen
+            # vallen terug op het generieke preek_onderdelen-schema.
+            preekschets(
+                selected_preek,
+                analysis_type_name=_preek_type_name,
+            )
         # Ontbrak voorheen voor preekschetsen (bv. Noordmans): nu ook hier de feedback- en debug-knoppen.
         render_analysis_footer(
             analysis=selected_preek,
             handler=st.session_state["api_handler"],
             key_prefix="preekschets",
+        )
+
+elif current_tab == "Gebeden":
+    selected_gebed = next(
+        (
+            r
+            for r in gebed_summary
+            if r["id"] == st.session_state["selected_gebed_id"]
+        ),
+        None,
+    )
+    if not gebed_summary:
+        st.info("Nog geen gebeden beschikbaar.")
+    elif selected_gebed:
+        # Dezelfde layout als Verdieping: titel + actieknoppen, daarna de
+        # generieke verdieping-dispatcher die render_gebeden uit _RENDERERS kiest.
+        _render_titel_en_actieknoppen(selected_gebed, key_prefix="gebeden")
+        verdieping(
+            selected_gebed,
+            analysis_type_name=selected_gebed["analysis_type"]["name"],
+        )
+        render_analysis_footer(
+            analysis=selected_gebed,
+            handler=st.session_state["api_handler"],
+            key_prefix="gebeden",
         )
 
 elif current_tab == "Feedback":
