@@ -49,7 +49,7 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
         if omvang is not None:
             col1, col2 = st.columns(2)
             with col1:
-                st.metric("Bevolkingsomvang", _format_bevolkingsomvang(omvang))
+                st.markdown(f"**Bevolkingsomvang:** {_format_bevolkingsomvang(omvang)}")
             with col2:
                 if dichtheid:
                     st.markdown(f"**Dichtheid:** {clean_md(dichtheid)}")
@@ -59,11 +59,11 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
             st.markdown("**Leeftijdsopbouw**")
             c1, c2, c3 = st.columns(3)
             with c1:
-                st.metric("Jongeren (0-18)", leeftijd.get("jongeren_0_18", "-"))
+                st.markdown(f"**Jongeren (0-18):** {leeftijd.get('jongeren_0_18', '-')}")
             with c2:
-                st.metric("Werkenden (18-65)", leeftijd.get("werkenden_18_65", "-"))
+                st.markdown(f"**Werkenden (18-65):** {leeftijd.get('werkenden_18_65', '-')}")
             with c3:
-                st.metric("Ouderen (65+)", leeftijd.get("ouderen_65_plus", "-"))
+                st.markdown(f"**Ouderen (65+):** {leeftijd.get('ouderen_65_plus', '-')}")
             if leeftijd.get("vergrijzingsgraad"):
                 st.caption(f"Vergrijzing: {leeftijd['vergrijzingsgraad']}")
             if leeftijd.get("toelichting"):
@@ -75,10 +75,10 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
             c1, c2 = st.columns(2)
             with c1:
                 if huishoudens.get("eenpersoonshuishoudens"):
-                    st.metric("Eenpersoonshuishoudens", huishoudens["eenpersoonshuishoudens"])
+                    st.markdown(f"**Eenpersoonshuishoudens:** {huishoudens['eenpersoonshuishoudens']}")
             with c2:
                 if huishoudens.get("gezinnen_met_kinderen"):
-                    st.metric("Gezinnen met kinderen", huishoudens["gezinnen_met_kinderen"])
+                    st.markdown(f"**Gezinnen met kinderen:** {huishoudens['gezinnen_met_kinderen']}")
             if huishoudens.get("samenstelling_toelichting"):
                 st.markdown(clean_md(huishoudens["samenstelling_toelichting"]))
 
@@ -88,13 +88,13 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
             c1, c2, c3 = st.columns(3)
             with c1:
                 if opleiding.get("laag"):
-                    st.metric("Laag", opleiding["laag"])
+                    st.markdown(f"**Laag:** {opleiding['laag']}")
             with c2:
                 if opleiding.get("midden"):
-                    st.metric("Midden", opleiding["midden"])
+                    st.markdown(f"**Midden:** {opleiding['midden']}")
             with c3:
                 if opleiding.get("hoog"):
-                    st.metric("Hoog", opleiding["hoog"])
+                    st.markdown(f"**Hoog:** {opleiding['hoog']}")
             if opleiding.get("vergelijking_landelijk"):
                 st.caption(clean_md(opleiding["vergelijking_landelijk"]))
 
@@ -104,14 +104,14 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
             c1, c2 = st.columns(2)
             with c1:
                 if herkomst.get("nederlandse_achtergrond"):
-                    st.metric("Nederlandse achtergrond", herkomst["nederlandse_achtergrond"])
+                    st.markdown(f"**Nederlandse achtergrond:** {herkomst['nederlandse_achtergrond']}")
             with c2:
                 migr = herkomst.get("migratieachtergrond")
                 if isinstance(migr, dict):
                     if migr.get("totaal"):
-                        st.metric("Migratieachtergrond", migr["totaal"])
+                        st.markdown(f"**Migratieachtergrond:** {migr['totaal']}")
                 elif migr:
-                    st.metric("Migratieachtergrond", migr)
+                    st.markdown(f"**Migratieachtergrond:** {migr}")
             if herkomst.get("grootste_groepen"):
                 st.markdown("Grootste groepen:")
                 _render_list(herkomst["grootste_groepen"])
@@ -125,10 +125,10 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
         c1, c2, c3 = st.columns(3)
         with c1:
             if economisch.get("werkloosheidspercentage"):
-                st.metric("Werkloosheid", economisch["werkloosheidspercentage"])
+                st.markdown(f"**Werkloosheid:** {economisch['werkloosheidspercentage']}")
         with c2:
             if economisch.get("gemiddeld_inkomen"):
-                st.metric("Gemiddeld inkomen", economisch["gemiddeld_inkomen"])
+                st.markdown(f"**Gemiddeld inkomen:** {economisch['gemiddeld_inkomen']}")
         with c3:
             if economisch.get("vergelijking_landelijk"):
                 st.caption(clean_md(economisch["vergelijking_landelijk"]))
@@ -221,7 +221,7 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
                 if positie.get("type"):
                     st.markdown(f"**Type:** {positie['type']}")
                 if positie.get("geschatte_leden"):
-                    st.metric("Leden (schatting)", positie["geschatte_leden"])
+                    st.markdown(f"**Leden (schatting):** {positie['geschatte_leden']}")
             with c2:
                 if positie.get("karakter"):
                     st.markdown(f"**Karakter:** {clean_md(positie['karakter'])}")
