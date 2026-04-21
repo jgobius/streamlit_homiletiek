@@ -834,12 +834,12 @@ def main():
     else:
         pg = st.navigation(pages, position='hidden')
         pg.run()
-        # Toon tokenverbruik van de huidige analyse op de analyse-overzichtspagina.
-        if pg == analysis_overview_page:
-            _render_token_usage_sidebar()
-        # Toon cumulatief tokenverbruik op de hoofdpagina (dashboard).
-        if pg == dashboard_page:
-            _render_cumulative_token_usage_sidebar()
+        # # Toon tokenverbruik van de huidige analyse op de analyse-overzichtspagina.
+        # if pg == analysis_overview_page:
+        #     _render_token_usage_sidebar()
+        # # Toon cumulatief tokenverbruik op de hoofdpagina (dashboard).
+        # if pg == dashboard_page:
+        #     _render_cumulative_token_usage_sidebar()
 
 if __name__ == "__main__":
     main()
