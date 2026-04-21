@@ -1,3 +1,4 @@
+import os
 from typing import Any
 
 import streamlit as st
@@ -13,7 +14,7 @@ class AgentRequest:
             "Content-Type": "application/json",
         }
         
-        agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
+        agent_url = os.environ.get("API_AGENT_URL").rstrip("/")
         response = requests.post(
             url=f"{agent_url}/single_analysis/",
             headers=headers,

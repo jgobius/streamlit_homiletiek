@@ -1,4 +1,5 @@
 import json
+import os
 import time
 
 import requests
@@ -254,7 +255,7 @@ def _trigger_analysis(analysis_id: int, at: dict, lock_key: str) -> None:
     """Stuur een verzoek naar de agent om een analyse uit te voeren."""
     st.session_state[lock_key] = time.time()
     try:
-        agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
+        agent_url = os.environ.get("API_AGENT_URL").rstrip("/")
         response = agent_request.post(
             payload={
                 "sermon_analysis_id": analysis_id,
@@ -293,7 +294,7 @@ def _trigger_preekschets(analysis_id: int, at: dict, lock_key: str) -> None:
         # Fallback naar lege dict als de dialoog nog niet is opgeslagen — de
         # backend verwacht een dict-vorm en defaultt intern naar alles-uit.
         selected_exegese_commentaar = selectie.get("exegese_commentaar", {}) or {}
-        agent_url = st.secrets["API_AGENT_URL"].rstrip("/")
+        agent_url = os.environ.get("API_AGENT_URL").rstrip("/")
         response = requests.post(
             f"{agent_url}/run_single_analysis/",
             json={

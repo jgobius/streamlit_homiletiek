@@ -1,4 +1,5 @@
 import json
+import os
 from time import sleep
 
 import streamlit as st
@@ -52,7 +53,7 @@ if register:
                 check_password=check_password,
             )
             result = requests.post(
-                url=f"{st.secrets['API_BASE_URL']}/api/auth/register/",
+                url=f"{os.environ.get('API_BASE_URL')}/api/auth/register/",
                 data=data,
                 headers={'Content-Type': 'application/json'}
             )
