@@ -1,21 +1,26 @@
+import os
+
 import streamlit as st
 import requests
+from dotenv import load_dotenv
 
 from src.api.handler import APIHandler
 from src.api.jwthandler import JwtHandler
+
+load_dotenv()
 
 def get_token(username: str, password: str) -> APIHandler:
 
     jwt_handler = JwtHandler(
         username=username,
         password=password,
-        base_url=st.secrets["API_BASE_URL"],
+        base_url=os.environ.get('API_BASE_URL'),
         access_endpoint="/api/token/",
         refresh_endpoint="/api/token/refresh/",
     )
     
     api_handler = APIHandler(
-        base_url=st.secrets["API_BASE_URL"],
+        base_url=os.enviro.get('API_AGENT_URL'),
         jwt_handler=jwt_handler,
     )
 
