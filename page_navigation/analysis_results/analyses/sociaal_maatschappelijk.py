@@ -10,6 +10,23 @@ def _render_list(values: list) -> None:
         st.markdown(f"- {clean_md(str(item))}")
 
 
+def _format_bevolkingsomvang(waarde: Any) -> str:
+    """Zet een bevolkingsomvang om naar een string met punten als duizendtalscheiding.
+
+    De agent levert `bevolkingsomvang` soms als int (bv. 43310) en soms als
+    reeds geformatteerde string (bv. "43.310" of "43,310"). Wij strippen alle
+    niet-cijfers en formatteren opnieuw, zodat de weergave consistent is en
+    `int()` niet crasht op een al geformatteerde waarde. Lukt parsen niet,
+    dan tonen we de originele waarde onveranderd.
+    """
+    if isinstance(waarde, (int, float)):
+        return f"{int(waarde):,}".replace(",", ".")
+    cijfers = "".join(ch for ch in str(waarde) if ch.isdigit())
+    if not cijfers:
+        return str(waarde)
+    return f"{int(cijfers):,}".replace(",", ".")
+
+
 def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
     """Render sociaal-maatschappelijk analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
@@ -32,7 +49,7 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
         if omvang is not None:
             col1, col2 = st.columns(2)
             with col1:
-                st.metric("Bevolkingsomvang", f"{int(omvang):,}".replace(",", "."))
+                st.metric("Bevolkingsomvang", _format_bevolkingsomvang(omvang))
             with col2:
                 if dichtheid:
                     st.markdown(f"**Dichtheid:** {clean_md(dichtheid)}")
