@@ -29,6 +29,12 @@ from page_navigation.analysis_results.analyses.politieke_orientatie import (
 from page_navigation.analysis_results.analyses.waardenorientatie import (
     waardenorientatie as render_waardenorientatie,
 )
+# Interpretatieve synthese: Tavily-gedreven samenbrenging van de voorgaande
+# Verdieping-analyses met de Schriftlezingen. Eigen renderer met
+# lokale_context-kop, bronnen en bronnen_kwaliteit onderaan.
+from page_navigation.analysis_results.analyses.interpretatieve_synthese import (
+    interpretatieve_synthese as render_interpretatieve_synthese,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -624,6 +630,7 @@ _RENDERERS = {
     "gemeente_spiritualiteit":  render_gemeente_spiritualiteit,
     "politieke_orientatie":     render_politieke_orientatie,
     "waardenorientatie":        render_waardenorientatie,
+    "interpretatieve_synthese": render_interpretatieve_synthese,
 }
 
 

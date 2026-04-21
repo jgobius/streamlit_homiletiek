@@ -24,9 +24,9 @@ from page_navigation.analysis_results.analyses.sociaal_maatschappelijk import (
 from page_navigation.analysis_results.analyses.geloofsorientatie import (
     geloofsorientatie,
 )
-from page_navigation.analysis_results.analyses.interpretatieve_synthese import (
-    interpretatieve_synthese,
-)
+# Interpretatieve synthese is verplaatst naar de Verdieping-tab als Tavily-analyse
+# (parallel aan politieke_orientatie, waardenorientatie en gemeente_spiritualiteit).
+# De renderer wordt vanuit verdieping.py:_RENDERERS aangeroepen, niet meer hier.
 from page_navigation.analysis_results.analyses.wereldnieuws import wereldnieuws
 from page_navigation.analysis_results.analyses.lokaal_nieuws import lokaal_nieuws
 from page_navigation.analysis_results.analyses.representatieve_hoorders import (
@@ -90,6 +90,12 @@ _VERDIEPING_NAMEN = {
     # wijk/kern-niveau, met expliciete differentiatie tussen de burgerlijke
     # wijk en de kerkelijke gemeente. Vervangt de oude basis-versie.
     "waardenorientatie",
+    # Tavily-gedreven synthese die de voorgaande Verdieping-analyses
+    # (gemeente_spiritualiteit, waardenorientatie, politieke_orientatie,
+    # sociaal_maatschappelijk) samenbrengt met de Schriftlezingen. Verplaatst
+    # uit Basis omdat de nieuwe versie op wijk/kern-niveau werkt en Tavily
+    # gericht inzet voor actualiteit en hiaten.
+    "interpretatieve_synthese",
 }
 
 _PREEKSCHETSEN_NAMEN = {
@@ -144,7 +150,6 @@ _BASIS_ORDER = [
     "liedsuggesties",
     "sociaal_maatschappelijk",
     "geloofsorientatie",
-    "interpretatieve_synthese",
     "representatieve_hoorders",
     "illustraties",
     "wereldnieuws",
@@ -1419,8 +1424,6 @@ if current_tab == "Basis":
         sociaal_maatschappelijk(selected_analysis)
     elif analysis_type_name == "geloofsorientatie":
         geloofsorientatie(selected_analysis)
-    elif analysis_type_name == "interpretatieve_synthese":
-        interpretatieve_synthese(selected_analysis)
     elif analysis_type_name == "representatieve_hoorders":
         representatieve_hoorders(selected_analysis)
     elif analysis_type_name == "illustraties":
