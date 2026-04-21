@@ -638,6 +638,11 @@ def _hydrate_user_preferences() -> None:
     herstellen van een sessie uit de refresh-token-cookie. Faalt het verzoek
     (bijv. backend niet bereikbaar of endpoint nog niet uitgerold), dan valt
     dark_mode terug op False zodat de app gewoon licht blijft.
+
+    Naast dark_mode wordt ook is_superuser opgeslagen. Dat veld stuurt het
+    tonen van debug-UI (zoals de knop "Prompt bekijken"): alleen beheerders
+    krijgen die te zien. Bij een falende of oudere backend valt de waarde
+    veilig terug op False, zodat de knop simpelweg niet verschijnt.
     """
     handler = st.session_state.get('api_handler')
     if not handler:
@@ -645,13 +650,19 @@ def _hydrate_user_preferences() -> None:
     try:
         prefs = handler.get('api/user-preferences/')
     except requests.exceptions.RequestException:
-        # Endpoint niet beschikbaar of netwerkfout — val terug op licht thema.
+        # Endpoint niet beschikbaar of netwerkfout — val terug op licht thema
+        # en verberg debug-UI door is_superuser op False te zetten.
         st.session_state['dark_mode'] = False
+        st.session_state['is_superuser'] = False
         return
     if isinstance(prefs, dict):
         st.session_state['dark_mode'] = bool(prefs.get('dark_mode', False))
+        # is_superuser komt uit het gekoppelde User-object op de backend.
+        # Ontbreekt het veld (oudere backend), dan standaard niet-superuser.
+        st.session_state['is_superuser'] = bool(prefs.get('is_superuser', False))
     else:
         st.session_state['dark_mode'] = False
+        st.session_state['is_superuser'] = False
 
 st.session_state['page_navigation_dir'] = 'page_navigation'
 

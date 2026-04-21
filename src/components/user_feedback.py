@@ -183,9 +183,32 @@ def render_analysis_footer(
     existing = UserFeedback.load(analysis_result_id, handler)
     feedback_label = "💬 Feedback aanpassen" if existing else "💬 Geef feedback"
 
-    # Twee gelijkbrede kolommen: links feedback, rechts het tijdelijke debug-knopje.
-    col_feedback, col_debug = st.columns(2)
-    with col_feedback:
+    # De debug-knop "Prompt bekijken" is bedoeld voor ontwikkel-/beheerinzicht
+    # en mag niet zichtbaar zijn voor gewone gebruikers. is_superuser wordt bij
+    # inloggen in session_state gezet vanuit /api/user-preferences/ (zie main.py).
+    # Voor superusers tonen we twee kolommen (feedback + debug); voor reguliere
+    # gebruikers renderen we de feedback-knop over de volle breedte, zonder
+    # lege kolom ernaast.
+    is_superuser = bool(st.session_state.get('is_superuser', False))
+    if is_superuser:
+        col_feedback, col_debug = st.columns(2)
+        with col_feedback:
+            if st.button(
+                feedback_label,
+                type="secondary",
+                key=f"{key_prefix}_feedback_{analysis_result_id}",
+                use_container_width=True,
+            ):
+                _user_feedback_dialog(analysis_result_id, section_name, handler)
+        with col_debug:
+            if st.button(
+                "🐞 Prompt bekijken (debug)",
+                type="secondary",
+                key=f"{key_prefix}_prompt_{analysis_result_id}",
+                use_container_width=True,
+            ):
+                _prompt_debug_dialog(analysis)
+    else:
         if st.button(
             feedback_label,
             type="secondary",
@@ -193,11 +216,3 @@ def render_analysis_footer(
             use_container_width=True,
         ):
             _user_feedback_dialog(analysis_result_id, section_name, handler)
-    with col_debug:
-        if st.button(
-            "🐞 Prompt bekijken (debug)",
-            type="secondary",
-            key=f"{key_prefix}_prompt_{analysis_result_id}",
-            use_container_width=True,
-        ):
-            _prompt_debug_dialog(analysis)
