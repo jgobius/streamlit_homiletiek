@@ -20,7 +20,7 @@ def get_token(username: str, password: str) -> APIHandler:
     )
     
     api_handler = APIHandler(
-        base_url=os.enviro.get('API_AGENT_URL'),
+        base_url=os.environ.get('API_AGENT_URL'),
         jwt_handler=jwt_handler,
     )
 
