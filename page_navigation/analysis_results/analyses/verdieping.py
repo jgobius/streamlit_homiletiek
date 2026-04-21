@@ -23,6 +23,12 @@ from page_navigation.analysis_results.analyses.gemeente_spiritualiteit import (
 from page_navigation.analysis_results.analyses.politieke_orientatie import (
     politieke_orientatie as render_politieke_orientatie,
 )
+# Waardenoriëntatie is de Tavily-Verdieping-versie (Vijf V's + Motivaction
+# op wijk/kern-niveau, met bronverantwoording). Vervangt de oude
+# basis-versie die in Den Haag-achtige steden te grof was.
+from page_navigation.analysis_results.analyses.waardenorientatie import (
+    waardenorientatie as render_waardenorientatie,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -617,6 +623,7 @@ _RENDERERS = {
     "focus_en_functie":         render_focus_en_functie,
     "gemeente_spiritualiteit":  render_gemeente_spiritualiteit,
     "politieke_orientatie":     render_politieke_orientatie,
+    "waardenorientatie":        render_waardenorientatie,
 }
 
 

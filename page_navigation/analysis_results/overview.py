@@ -18,9 +18,9 @@ from page_navigation.analysis_results.analyses.theologie import theologie
 from page_navigation.analysis_results.analyses.sociaal_maatschappelijk import (
     sociaal_maatschappelijk,
 )
-from page_navigation.analysis_results.analyses.waardenorientatie import (
-    waardenorientatie,
-)
+# Waardenoriëntatie is verplaatst naar de Verdieping-tab als Tavily-analyse
+# (parallel aan politieke_orientatie en gemeente_spiritualiteit). De renderer
+# wordt vanuit verdieping.py:_RENDERERS aangeroepen, niet meer hier.
 from page_navigation.analysis_results.analyses.geloofsorientatie import (
     geloofsorientatie,
 )
@@ -86,6 +86,10 @@ _VERDIEPING_NAMEN = {
     # Tavily-gedreven politieke oriëntatie op wijk/kern-niveau (niet
     # alleen gemeente als geheel). Zie politieke_orientatie.md.
     "politieke_orientatie",
+    # Tavily-gedreven waardenoriëntatie (Vijf V's + Motivaction-milieus) op
+    # wijk/kern-niveau, met expliciete differentiatie tussen de burgerlijke
+    # wijk en de kerkelijke gemeente. Vervangt de oude basis-versie.
+    "waardenorientatie",
 }
 
 _PREEKSCHETSEN_NAMEN = {
@@ -139,7 +143,6 @@ _BASIS_ORDER = [
     "commentaries",
     "liedsuggesties",
     "sociaal_maatschappelijk",
-    "waardenorientatie",
     "geloofsorientatie",
     "interpretatieve_synthese",
     "representatieve_hoorders",
@@ -1414,8 +1417,6 @@ if current_tab == "Basis":
         theologie(selected_analysis)
     elif analysis_type_name == "sociaal_maatschappelijk":
         sociaal_maatschappelijk(selected_analysis)
-    elif analysis_type_name == "waardenorientatie":
-        waardenorientatie(selected_analysis)
     elif analysis_type_name == "geloofsorientatie":
         geloofsorientatie(selected_analysis)
     elif analysis_type_name == "interpretatieve_synthese":
