@@ -381,12 +381,16 @@ def render_kunst_cultuur(analysis: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Kindermoment / Bezinningsmoment (40 / 43)
+# Kindermoment (40) / Moment van Bezinning (43)
 # ---------------------------------------------------------------------------
 
-# De vijf kindermoment-varianten krijgen elk een eigen label + Streamlit-kleur
-# voor de :color-background[...]-badge. Zo ziet de predikant in één oogopslag
-# welk type optie hij voor zich heeft (klassiek/warm vs. bizar/surrealistisch).
+# Kindermoment- en Moment-van-Bezinning-opties delen dezelfde schemavorm
+# (vijf opties met type/titel/object/focus/script/afbeelding). Alleen de
+# enum-waarden + kleurcodering verschillen. We delen daarom één renderer
+# (_render_moment_opties) en geven per type zijn eigen rootkey en
+# type-label-mapping mee.
+
+# Kindermoment: vijf creatieve-speelse invalshoeken voor kinderen.
 _KINDERMOMENT_TYPE_LABELS: dict[str, tuple[str, str]] = {
     "klassiek":            ("Klassieke verrassing", "blue"),
     "actief":              ("Doe-het-zelf",         "green"),
@@ -395,14 +399,33 @@ _KINDERMOMENT_TYPE_LABELS: dict[str, tuple[str, str]] = {
     "ernstig":             ("Ernstige toon",        "gray"),
 }
 
+# Moment van Bezinning: vijf volwassen-meditatieve invalshoeken. Kleuren
+# zijn bewust ingetogener gespreid (blauw/grijs/violet) dan bij
+# kindermoment — de badges moeten de meditatieve toon ondersteunen,
+# niet doorkruisen.
+_BEZINNINGSMOMENT_TYPE_LABELS: dict[str, tuple[str, str]] = {
+    "symbolisch":         ("Symbolische verdieping", "blue"),
+    "gezamenlijk_gebaar": ("Gezamenlijk gebaar",     "green"),
+    "zintuiglijk":        ("Zintuiglijke ervaring",  "orange"),
+    "muzikaal_poetisch":  ("Muzikale verstilling",   "violet"),
+    "narratief":          ("Kort verhaal",           "gray"),
+}
 
-def render_kindermoment(analysis: dict) -> None:
+
+def _render_moment_opties(
+    analysis: dict,
+    opties_key: str,
+    type_labels: dict[str, tuple[str, str]],
+) -> None:
+    # Generieke renderer voor de moment-schema's (kindermoment /
+    # bezinningsmoment). `opties_key` is de rootkey in de structured
+    # output; `type_labels` mapt de enum-waarde naar (label, streamlit-kleur).
     result = _result(analysis)
     if not result:
         st.info("Geen resultaat beschikbaar.")
         return
 
-    opties = result.get("kindermoment_opties", [])
+    opties = result.get(opties_key, [])
     if not opties:
         st.info("Geen opties beschikbaar.")
         return
@@ -415,13 +438,14 @@ def render_kindermoment(analysis: dict) -> None:
         # 'Gek/Onconventioneel' bevatten — val terug op de raw waarde zonder
         # badge als we geen match vinden.
         type_key = type_raw.lower().replace("/", "_").replace(" ", "_").replace("-", "_")
-        label_kleur = _KINDERMOMENT_TYPE_LABELS.get(type_key)
+        label_kleur = type_labels.get(type_key)
         header = f"Optie {i}: {titel}"
         if label_kleur is None and type_raw:
             header += f" ({type_raw})"
         with st.expander(header, expanded=(i == 1)):
             # Gekleurde badge bovenaan zodat de aard van deze optie
-            # (warm / actief / absurd / ingetogen) direct leesbaar is.
+            # (warm / actief / absurd / ingetogen / symbolisch / zintuiglijk / …)
+            # direct leesbaar is.
             if label_kleur is not None:
                 label_tekst, kleur = label_kleur
                 st.markdown(f":{kleur}-background[{label_tekst}]")
@@ -447,6 +471,14 @@ def render_kindermoment(analysis: dict) -> None:
             afb = optie.get("afbeelding_idee", "")
             if afb:
                 st.caption(f"Afbeelding-idee: {_md(afb)}")
+
+
+def render_kindermoment(analysis: dict) -> None:
+    _render_moment_opties(analysis, "kindermoment_opties", _KINDERMOMENT_TYPE_LABELS)
+
+
+def render_bezinningsmoment(analysis: dict) -> None:
+    _render_moment_opties(analysis, "bezinningsmoment_opties", _BEZINNINGSMOMENT_TYPE_LABELS)
 
 
 # ---------------------------------------------------------------------------
@@ -628,7 +660,7 @@ _RENDERERS = {
     "gebeden_eenvoudig":        render_gebeden,
     "kunst_cultuur":            render_kunst_cultuur,
     "kindermoment":             render_kindermoment,
-    "bezinningsmoment":         render_kindermoment,
+    "bezinningsmoment":         render_bezinningsmoment,
     "wetslezing":               render_wetslezing,
     "kalender":                 render_kalender,
     "focus_en_functie":         render_focus_en_functie,
