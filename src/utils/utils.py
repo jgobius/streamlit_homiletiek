@@ -1,4 +1,5 @@
 from typing import Any
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 import os
@@ -10,6 +11,18 @@ import streamlit as st
 import requests
 
 from src.components.user_suggestions import render_suggestions_trigger
+
+# Timeout (seconden) per POST naar /structured_scripture/. De backend-agent
+# voert 2+N LLM-calls per lezing uit (boek-extractie + tekst per hoofdstuk +
+# structurering); 180 s geeft voldoende ruimte voor langere hoofdstukken
+# terwijl een echt hangende verbinding niet onbeperkt de UI blokkeert.
+_STRUCTURED_SCRIPTURE_TIMEOUT_SECONDS = 180
+
+# Maximum aantal gelijktijdige POSTs naar /structured_scripture/. Gelijk aan
+# het aantal mogelijke lezingen (READING_TYPES, 4) zodat elke lezing parallel
+# loopt in plaats van serieel. Hoger dan 4 voegt niets toe omdat het dialoog
+# nooit meer dan vier lezingen toelaat.
+_STRUCTURED_SCRIPTURE_MAX_WORKERS = 4
 
 # Alle bijbelboeken in de Nederlandse volgorde — gebruikt in het eigen-lezingen-dialoogvenster.
 BIBLE_BOOKS = [
@@ -145,49 +158,85 @@ def get_cached_data(endpoint:str) -> Any:
 
     return get_data(endpoint)
 
-def get_structured_scriptures(scriptures: list[str], bible_version: str, language: str) -> list[dict[str, Any]]:
-    """
-    Fetch and structure scripture data from an API for given scripture references.
-    This function takes a list of scripture references and queries an external API
-    to retrieve structured data about each scripture in the specified Bible version
-    and language.
-    Args:
-        scriptures (list[str]): A list of scripture references (e.g., ["John 3:16", "Romans 12:1"]).
-        bible_version (str): The Bible version to retrieve scriptures from (e.g., "KJV", "NIV").
-        language (str): The language code for the scripture content (e.g., "en", "es").
-    Returns:
-        list[dict[str, Any]]: A list of dictionaries containing structured scripture data
-            retrieved from the API. Each dictionary corresponds to a successful API response
-            for the respective scripture reference.
-    Raises:
-        requests.exceptions.RequestException: If the API request fails (not caught in current implementation).
-    Note:
-        - Only successful API responses (status code 200) are included in the returned list.
-        - Failed requests are silently skipped.
-        - Requires the API_AGENT_URL environment variable (geladen via .env in main.py).
-    """
-    st.write(scriptures)
-    structured_scripture_data: list[dict[str, Any]] = []
-    st.write(bible_version)
-    for scripture in scriptures:
+def _fetch_single_structured_scripture(
+    scripture: str, bible_version: str, language: str
+) -> tuple[str, dict[str, Any] | None, str | None]:
+    """Haal één gestructureerde lezing op bij de agent-backend.
 
-        data: dict[str, str] = {
-            "scripture_data": scripture,
-            "bible_version": bible_version,
-            "language": language
-            }
-        
+    Aparte helper zodat ThreadPoolExecutor per lezing één POST kan afvuren.
+    Geeft een tuple terug (scripture, data, foutmelding) zodat de caller
+    volgorde én fouten per lezing kan rapporteren zonder dat een fout in
+    één lezing de andere parallelle calls afbreekt.
+    """
+    data: dict[str, str] = {
+        "scripture_data": scripture,
+        "bible_version": bible_version,
+        "language": language,
+    }
+    try:
         response = requests.post(
             url=f"{os.environ.get('API_AGENT_URL')}/structured_scripture/",
-            json=data
+            json=data,
+            timeout=_STRUCTURED_SCRIPTURE_TIMEOUT_SECONDS,
         )
-        
-        if response.status_code == 200:
-            structured_scripture_data.append(response.json())
-            
-        else:
-            st.write(response.text)
-            
+    except requests.exceptions.Timeout:
+        return scripture, None, f"Timeout na {_STRUCTURED_SCRIPTURE_TIMEOUT_SECONDS}s"
+    except requests.exceptions.RequestException as exc:
+        return scripture, None, str(exc)
+
+    if response.status_code == 200:
+        return scripture, response.json(), None
+    return scripture, None, response.text
+
+
+def get_structured_scriptures(scriptures: list[str], bible_version: str, language: str) -> list[dict[str, Any]]:
+    """Fetch and structure scripture data from an API for given scripture references.
+
+    Parallelle uitvoer: elke lezing wordt via een ThreadPoolExecutor
+    tegelijk opgevraagd zodat de totale duur gelijk is aan de traagste
+    lezing in plaats van de som. De volgorde van de resultaten komt
+    overeen met de inputvolgorde, omdat `executor.map` de iteratie in
+    volgorde oplevert — de UI toont lezingen dan in de juiste liturgische
+    volgorde. Elke POST heeft een harde timeout (_STRUCTURED_SCRIPTURE_TIMEOUT_SECONDS)
+    zodat een hangende backend-call de Streamlit-rerun niet onbeperkt blokkeert.
+
+    Args:
+        scriptures: Lezingsreferenties (bv. ["Mattheüs 5:1-10", "Psalm 23"]).
+        bible_version: Bijbelvertaling-aanduiding voor de backend.
+        language: Taalcode voor de teruggeleverde tekst.
+
+    Returns:
+        Lijst met gestructureerde lezingen (alleen succesvolle responses).
+        Mislukte lezingen worden zichtbaar als foutmelding in de UI en
+        overgeslagen in de output.
+    """
+    # Voortgangsregels in de omringende st.status-context — laten staan omdat
+    # de caller in new_analysis.py hier zijn status uit opbouwt.
+    st.write(scriptures)
+    st.write(bible_version)
+
+    structured_scripture_data: list[dict[str, Any]] = []
+
+    if not scriptures:
+        return structured_scripture_data
+
+    # max_workers wordt begrensd op het aantal lezingen zodat we geen
+    # lege threads aanmaken voor minder dan 4 lezingen.
+    max_workers = min(_STRUCTURED_SCRIPTURE_MAX_WORKERS, len(scriptures))
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results = executor.map(
+            lambda s: _fetch_single_structured_scripture(s, bible_version, language),
+            scriptures,
+        )
+
+        for scripture, data, error in results:
+            if error is not None:
+                st.write(f"Fout bij ophalen van '{scripture}': {error}")
+                continue
+            if data is not None:
+                structured_scripture_data.append(data)
+
     return structured_scripture_data
 
 
