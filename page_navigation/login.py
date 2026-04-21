@@ -19,8 +19,10 @@ def get_token(username: str, password: str) -> APIHandler:
         refresh_endpoint="/api/token/refresh/",
     )
     
+    # APIHandler praat met de Django-backend (API_BASE_URL, poort 8000),
+    # niet met de agent — anders levert bv. /api/sermon-analyses/ een 404 op.
     api_handler = APIHandler(
-        base_url=os.environ.get('API_AGENT_URL'),
+        base_url=os.environ.get('API_BASE_URL'),
         jwt_handler=jwt_handler,
     )
 
