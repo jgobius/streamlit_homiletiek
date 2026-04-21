@@ -48,16 +48,19 @@ from src.components.user_feedback import render_analysis_footer
 from src.api.agent_request import AgentRequest
 
 # Paginascoped CSS: geef de "... toevoegen"-expanders in de zijbalk een
-# subtiele oranje tint (rand + lichte achtergrond) zodat ze opvallen tussen
-# de grijze analyse-knoppen, maar veel minder prominent zijn dan de actieve
-# analyse (die gebruikt rgba(255,128,0,0.12) + solid oranje rand). De styling
-# haakt aan op de `st-key-sidebar_toevoegen_<tab>` CSS-klasse die
-# st.container(key=...) automatisch genereert, zodat alleen déze expanders
-# oranje worden en andere sidebar-expanders (Kerkdienstanalyses, Gemeenten,
-# Account) onaangetast blijven. De selectors voor `details`, `> div` en
-# `> div > div` dekken zowel het oude <details>/<summary>-patroon als het
-# nieuwe div-gebaseerde patroon van Streamlit, en winnen qua specificiteit
-# van de themaregels in main.py (die geen extra class-prefix hebben).
+# subtiele oranje rand zodat ze opvallen tussen de grijze analyse-knoppen,
+# maar veel minder prominent zijn dan de actieve analyse (die gebruikt
+# rgba(255,128,0,0.12) + solid oranje rand + oranje tekst). Alleen de rand
+# wordt oranje getint; de achtergrond blijft de standaardkleur van het
+# thema, zodat de expander niet begint te concurreren met de geselecteerde
+# analyse. De styling haakt aan op de `st-key-sidebar_toevoegen_<tab>`
+# CSS-klasse die st.container(key=...) automatisch genereert, zodat alleen
+# déze expanders de oranje rand krijgen en andere sidebar-expanders
+# (Kerkdienstanalyses, Gemeenten, Account) onaangetast blijven. De
+# selectors voor `details`, `> div` en `> div > div` dekken zowel het oude
+# <details>/<summary>-patroon als het nieuwe div-gebaseerde patroon van
+# Streamlit, en winnen qua specificiteit van de themaregels in main.py
+# (die geen extra class-prefix hebben).
 st.markdown(
     """
     <style>
@@ -66,7 +69,6 @@ st.markdown(
     [class*="st-key-sidebar_toevoegen_"] [data-testid="stExpander"] > div,
     [class*="st-key-sidebar_toevoegen_"] [data-testid="stExpander"] > div > div {
         border-color: rgba(255, 128, 0, 0.45) !important;
-        background-color: rgba(255, 128, 0, 0.05) !important;
     }
     </style>
     """,
