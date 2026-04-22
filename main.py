@@ -638,6 +638,25 @@ def _inject_theme_css() -> None:
     st.markdown(_DARK_CSS if dark else _LIGHT_CSS, unsafe_allow_html=True)
 
 
+def _inject_main_menu_visibility_css() -> None:
+    """Regel de zichtbaarheid van het Streamlit-hoofdmenu (de drie puntjes
+    rechtsboven met o.a. 'Record a screencast' en 'Clear cache').
+
+    Reguliere gebruikers en pre-login sessies (is_superuser onbekend) krijgen
+    `display: none`; superusers krijgen `display: flex` zodat een eerdere
+    hide-injectie in dezelfde render (vóór `_hydrate_user_preferences`) wordt
+    overschreven. De functie wordt daarom op twee plekken aangeroepen: direct
+    na het thema-CSS (veilige default) en opnieuw na hydration (definitieve
+    waarde). Zonder die tweede call zou een superuser op de eerste post-login
+    render ten onrechte het menu verborgen zien.
+    """
+    if st.session_state.get('is_superuser', False):
+        css = "<style>[data-testid='stMainMenu']{display:flex!important;}</style>"
+    else:
+        css = "<style>[data-testid='stMainMenu']{display:none!important;}</style>"
+    st.markdown(css, unsafe_allow_html=True)
+
+
 def _hydrate_user_preferences() -> None:
     """Laad de UI-voorkeuren van de ingelogde gebruiker in session_state.
 
@@ -778,6 +797,7 @@ def main():
     # eerste render vóór login is dark_mode afwezig — dan toont Streamlit het
     # standaard lichte thema, wat acceptabel is voor de kortstondige login-flash.
     _inject_theme_css()
+    _inject_main_menu_visibility_css()
 
     # Schrijf een pending refresh token naar de cookie zodra de controller gereed is.
     # Dit token wordt door login.py klaargezet na een succesvolle login.
@@ -812,6 +832,10 @@ def main():
         if 'dark_mode' not in st.session_state:
             _hydrate_user_preferences()
             _inject_theme_css()
+            # Nu is_superuser bekend is, opnieuw de menu-zichtbaarheid
+            # toepassen: voor superusers betekent dit dat het hoofdmenu
+            # alsnog zichtbaar wordt op deze eerste post-login render.
+            _inject_main_menu_visibility_css()
 
     welcome_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/welcome.py", title='Welcome')
     login_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/login.py", title='Inloggen')
