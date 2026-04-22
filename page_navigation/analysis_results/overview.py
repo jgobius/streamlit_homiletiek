@@ -299,12 +299,17 @@ def _trigger_analysis(analysis_id: int, at: dict, lock_key: str) -> None:
         # zelf uit; de daaropvolgende .raise_for_status() is voor backwards-
         # compatibiliteit met de oude inline-implementatie en een no-op zodra
         # de wrapper al heeft geslaagd.
+        # Timeout op 120s: het endpoint is fire-and-forget en hoort snel te
+        # antwoorden, maar de single-worker FastAPI-agent kan zijn event loop
+        # tijdelijk bezet hebben door een lopende analyse met synchrone I/O.
+        # 30s bleek daarbij in de praktijk te kort; 120s geeft genoeg marge.
         response = agent_request.post(
             endpoint="single_analysis/",
             payload={
                 "sermon_analysis_id": analysis_id,
                 "analysis_type_id": at["id"],
             },
+            timeout=120,
         )
         response.raise_for_status()
         # Invalideer de sessiecache zodat een volgende rerun (bv. tab-klik)
@@ -340,6 +345,8 @@ def _trigger_preekschets(analysis_id: int, at: dict, lock_key: str) -> None:
         selected_exegese_commentaar = selectie.get("exegese_commentaar", {}) or {}
         # AgentRequest zorgt voor de Bearer-header; raw requests.post() zou
         # de agent (na verify_jwt) een 401 opleveren.
+        # Timeout op 120s: zie toelichting in _trigger_analysis — preekschets-
+        # kickoffs liepen met de default 30s soms over bij een drukke agent.
         response = agent_request.post(
             endpoint="run_single_analysis/",
             payload={
@@ -352,6 +359,7 @@ def _trigger_preekschets(analysis_id: int, at: dict, lock_key: str) -> None:
                 "selected_hoorders": selected_hoorders,
                 "selected_exegese_commentaar": selected_exegese_commentaar,
             },
+            timeout=120,
         )
         response.raise_for_status()
         # Invalideer de sessiecache zodat een volgende rerun (bv. tab-klik)
