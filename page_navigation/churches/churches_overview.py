@@ -81,6 +81,12 @@ churches = get_data("api/churches/")
 st.title("Overzicht van gemeenten")
 st.write("Hieronder vind je een overzicht van alle toegevoegde gemeenten.")
 
+# Toon een informatieve boodschap als er nog geen gemeenten zijn, analoog aan
+# de lege-staatmelding op het kerkdienstanalyses-dashboard. De 'Nieuwe
+# gemeente'-knop onderaan blijft zichtbaar zodat de gebruiker direct kan starten.
+if len(churches) == 0:
+    st.info("Er zijn nog geen gemeenten toegevoegd.")
+
 for church in churches:
     name = church['name']
     place = church['place']
