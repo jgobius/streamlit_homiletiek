@@ -495,6 +495,17 @@ if sermon_analysis:
     st.session_state["church_name"] = (
         church.get("name", "") if isinstance(church, dict) else ""
     )
+    # Hydrateer de preekschets-selectie uit het SermonAnalysis-record zodat
+    # de voorganger na uitloggen/inloggen (of vanaf een andere browser) zijn
+    # eerdere keuze terugvindt. We overschrijven session_state alléén als er
+    # nog geen selectie in het geheugen staat; anders zou een net-opgeslagen
+    # selectie tijdens dezelfde sessie weer weggegooid kunnen worden door een
+    # oudere server-snapshot uit de cache.
+    _selectie_key = f"preek_selectie_{analysis_id}"
+    if _selectie_key not in st.session_state:
+        _opgeslagen = sermon_analysis.get("preekschets_selectie") or {}
+        if _opgeslagen:
+            st.session_state[_selectie_key] = _opgeslagen
 
 # Houd per analysis_type alleen de nieuwste (hoogste id).
 latest: dict[str, dict] = {}
@@ -1420,7 +1431,7 @@ def preekschets_selectie_dialog(
     if st.button(
         "Opslaan", type="primary", use_container_width=True, disabled=not _kan_opslaan
     ):
-        st.session_state[f"preek_selectie_{analysis_id}"] = {
+        _nieuwe_selectie = {
             "kernteksten": selected_refs,
             "focus_optie": focus_optie_value,
             "perspectieven": selected_perspectieven,
@@ -1434,6 +1445,24 @@ def preekschets_selectie_dialog(
             },
             "opgeslagen": True,
         }
+        # Persisteer de selectie op de backend zodat hij een login-cyclus
+        # overleeft. We schrijven eerst naar de server en pas daarna naar
+        # session_state: als de PATCH faalt, blijft de oude selectie zichtbaar
+        # en krijgt de voorganger een foutmelding i.p.v. stille dataverlies.
+        try:
+            st.session_state["api_handler"].patch(
+                f"api/sermon-analyses/{analysis_id}/",
+                data={"preekschets_selectie": _nieuwe_selectie},
+            )
+        except requests.exceptions.HTTPError as exc:
+            st.error(f"Opslaan mislukt: {exc}. Probeer het opnieuw.")
+            st.stop()
+        st.session_state[f"preek_selectie_{analysis_id}"] = _nieuwe_selectie
+        # Gooi de per-analyse datacache weg zodat de volgende rerun het
+        # bijgewerkte sermon_analysis (inclusief preekschets_selectie) uit
+        # de backend haalt; zo blijft de hydratie-logica in overview.py in
+        # sync bij een harde refresh.
+        st.session_state.pop(f"overview_data_{analysis_id}", None)
         st.rerun()
 
 
