@@ -853,7 +853,11 @@ def main():
     pages = [dashboard_page, new_analysis_page, liturgisch_jaar_page, church_overview_page, new_church_page, analysis_overview_page, logout_page]
 
     if 'api_handler' not in st.session_state:
-        pg = st.navigation([welcome_page, login_page, register_page, dashboard_page], position='hidden')
+        # logout_page wordt ook in de unauthenticated lijst opgenomen zodat de
+        # gebruiker op /logout kan blijven staan nadat api_handler is gewist.
+        # Zonder deze toevoeging valt Streamlit terug op de eerste pagina in de
+        # lijst (welcome) en draait de knop-callback op logout.py niet meer.
+        pg = st.navigation([welcome_page, login_page, register_page, dashboard_page, logout_page], position='hidden')
         pg.run()
     else:
         pg = st.navigation(pages, position='hidden')
