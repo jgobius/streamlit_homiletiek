@@ -1,10 +1,9 @@
 import json
-import os
 
-import requests
 import streamlit as st
 
 from src.models.church_model import ChurchModel
+from src.api.agent_request import AgentRequest
 from src.utils.utils import redirect_to_login, render_sidebar
 
 redirect_to_login()
@@ -105,13 +104,12 @@ with col_btn:
     if st.button("Adres ophalen", disabled=not name or not place, use_container_width=True):
         with st.spinner("Adres opzoeken via internet..."):
             try:
-                agent_url = os.environ.get("API_AGENT_URL").rstrip("/")
-                resp = requests.post(
-                    f"{agent_url}/address-lookup/",
-                    json={"name": name, "place": place, "website": website},
-                    timeout=30,
+                # AgentRequest injecteert de Bearer-header en doet zelf
+                # raise_for_status; payload daarna via .json() ophalen.
+                resp = AgentRequest().post(
+                    endpoint="address-lookup/",
+                    payload={"name": name, "place": place, "website": website},
                 )
-                resp.raise_for_status()
                 payload = resp.json()
                 st.session_state["address_input"] = payload.get("adres", "")
                 if payload.get("gevonden"):

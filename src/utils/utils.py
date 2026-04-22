@@ -10,6 +10,7 @@ from typing import Any
 import streamlit as st
 import requests
 
+from src.api.agent_request import AgentRequest
 from src.components.user_suggestions import render_suggestions_trigger
 
 # Timeout (seconden) per POST naar /structured_scripture/. De backend-agent
@@ -159,7 +160,10 @@ def get_cached_data(endpoint:str) -> Any:
     return get_data(endpoint)
 
 def _fetch_single_structured_scripture(
-    scripture: str, bible_version: str, language: str
+    scripture: str,
+    bible_version: str,
+    language: str,
+    auth_headers: dict[str, str],
 ) -> tuple[str, dict[str, Any] | None, str | None]:
     """Haal één gestructureerde lezing op bij de agent-backend.
 
@@ -167,6 +171,11 @@ def _fetch_single_structured_scripture(
     Geeft een tuple terug (scripture, data, foutmelding) zodat de caller
     volgorde én fouten per lezing kan rapporteren zonder dat een fout in
     één lezing de andere parallelle calls afbreekt.
+
+    auth_headers wordt door de hoofdthread vooraf gesnapshot via
+    AgentRequest.auth_header(); zo voorkomen we dat een JwtHandler-refresh
+    binnen een worker-thread parallel met andere workers race-condities
+    geeft op het gedeelde token.
     """
     data: dict[str, str] = {
         "scripture_data": scripture,
@@ -175,8 +184,9 @@ def _fetch_single_structured_scripture(
     }
     try:
         response = requests.post(
-            url=f"{os.environ.get('API_AGENT_URL')}/structured_scripture/",
+            url=f"{os.environ.get('API_AGENT_URL').rstrip('/')}/structured_scripture/",
             json=data,
+            headers=auth_headers,
             timeout=_STRUCTURED_SCRIPTURE_TIMEOUT_SECONDS,
         )
     except requests.exceptions.Timeout:
@@ -224,9 +234,16 @@ def get_structured_scriptures(scriptures: list[str], bible_version: str, languag
     # lege threads aanmaken voor minder dan 4 lezingen.
     max_workers = min(_STRUCTURED_SCRIPTURE_MAX_WORKERS, len(scriptures))
 
+    # Snapshot de Bearer-headers één keer in de hoofdthread. JwtHandler.token
+    # is een @property die bij verlopen token een refresh kan triggeren; dat
+    # mag niet vanuit meerdere worker-threads tegelijk gebeuren.
+    auth_headers = AgentRequest().auth_header()
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         results = executor.map(
-            lambda s: _fetch_single_structured_scripture(s, bible_version, language),
+            lambda s: _fetch_single_structured_scripture(
+                s, bible_version, language, auth_headers
+            ),
             scriptures,
         )
 

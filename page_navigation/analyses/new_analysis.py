@@ -1,13 +1,12 @@
 import json
-import os
 import time
 from datetime import date, datetime, timedelta
 from typing import Any
 
-import requests
 import streamlit as st
 
 from src.models.sermon_analysis_model import SermonAnalysisModel
+from src.api.agent_request import AgentRequest
 from src.utils.utils import (
     get_data,
     get_cached_data,
@@ -457,13 +456,13 @@ if submit:
         # Zo worden alle lezingen (rooster of eigen) consistent verwerkt.
         # Een fout hier mag de gebruiker niet blokkeren; de tab 'Bijbelteksten'
         # toont dan simpelweg geen resultaat tot de analyse opnieuw gestart wordt.
+        # AgentRequest zorgt voor de Bearer-header; /original_scriptures/ heeft
+        # verify_jwt op de agent, dus zonder token zou de call stilletjes 401'en.
         if sermon_analysis_id:
-            agent_url = os.environ.get("API_AGENT_URL").rstrip("/")
             try:
-                requests.post(
-                    f"{agent_url}/original_scriptures/",
-                    json={"sermon_analysis_id": sermon_analysis_id},
-                    timeout=30,
+                AgentRequest().post(
+                    endpoint="original_scriptures/",
+                    payload={"sermon_analysis_id": sermon_analysis_id},
                 )
             except Exception:
                 pass
