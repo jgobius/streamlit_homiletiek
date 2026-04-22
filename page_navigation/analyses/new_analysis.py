@@ -279,6 +279,18 @@ with col2:
             query_params={"from_page": "new_analysis.py"},
         )
 
+# Als er nog geen gemeenten zijn, is de selectbox hierboven leeg ("No options
+# to select") en kan een analyse sowieso niet gestart worden. De rest van het
+# formulier blijft zichtbaar zodat de lay-out niet verspringt, maar we
+# informeren de gebruiker expliciet dat er eerst een gemeente toegevoegd moet
+# worden. `st.info` gebruikt dezelfde blauwe stijl als andere lege-staatmeldingen.
+if not churches:
+    st.info(
+        "⛪ Er zijn nog geen gemeenten. Voeg eerst een gemeente toe via de "
+        "'+'-knop hierboven of via **Gemeenten** in het menu; pas daarna kan "
+        "een analyse gestart worden."
+    )
+
 extra_context = st.text_area("Extra context (optioneel):", height=150, max_chars=1024)
 
 # Datum standaard op de eerstvolgende zondag instellen
