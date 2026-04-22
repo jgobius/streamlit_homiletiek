@@ -43,6 +43,16 @@ BIBLE_BOOKS = [
 READING_TYPES = ["Eerste lezing", "Tweede lezing", "Derde lezing", "Vierde lezing"]
 
 
+# Woordentelling-grenzen voor het 'Eigen preek'-invoerveld. Centraal in utils
+# zodat zowel de dialog in overview.py als het bewerk-paneel in
+# analysis_results/analyses/volledige_preek.py exact dezelfde limieten
+# afdwingen; een prediker moet bij opslaan nooit een andere grens ervaren
+# afhankelijk van waar hij bewerkt. Ondergrens voorkomt per ongeluk een
+# bijna-leeg fragment; bovengrens is een ruime praktische limiet.
+EIGEN_PREEK_MIN_WOORDEN = 500
+EIGEN_PREEK_MAX_WOORDEN = 6000
+
+
 def tel_woorden(tekst: str) -> int:
     """Tel het aantal woorden in een tekst.
 
@@ -54,6 +64,95 @@ def tel_woorden(tekst: str) -> int:
     if not tekst:
         return 0
     return len(tekst.split())
+
+
+# Regex-patronen die typische SQL-injectie-pogingen herkennen. We escapen
+# niets aan de clientkant — de Django-backend gebruikt parameterized queries
+# via het ORM — maar we weigeren invoer met duidelijk kwaadaardige patronen
+# zodat sprekende foutmeldingen een poging direct aan de prediker laten zien
+# in plaats van pas bij een obscure 400 of 500 van de backend. Hoofdletters
+# worden in de check genormaliseerd (re.IGNORECASE).
+_SQL_INJECTIE_PATRONEN: tuple[str, ...] = (
+    # Commentaar-tekens die statement-afbrekers verbergen.
+    r"--\s",
+    r"--$",
+    r"/\*",
+    r"\*/",
+    # Quote gevolgd door OR/AND met vergelijking: klassiek "' OR '1'='1".
+    r"['\"]\s*(or|and)\s+['\"0-9]",
+    # Statement-terminator + nieuw SQL-keyword.
+    r";\s*(drop|delete|update|insert|select|alter|truncate|create|grant|exec)\b",
+    # UNION-based injectie.
+    r"\bunion\s+(all\s+)?select\b",
+    # Typische SQL-Server extended stored procedures.
+    r"\bxp_cmdshell\b",
+    r"\bsp_executesql\b",
+    # Hex-encoded payloads (bijv. 0x27 als quote).
+    r"\b0x[0-9a-f]{6,}\b",
+    # Systeemtabellen die in injectie-probes gebruikt worden.
+    r"\binformation_schema\b",
+    r"\bpg_sleep\b",
+    r"\bwaitfor\s+delay\b",
+)
+
+# Eenmalig compileren zodat elke valideer_tekstinvoer()-aanroep niet
+# opnieuw alle patronen hoeft te parsen.
+_SQL_INJECTIE_REGEX = re.compile(
+    "|".join(_SQL_INJECTIE_PATRONEN),
+    flags=re.IGNORECASE,
+)
+
+
+def bevat_sql_injectie(tekst: str) -> bool:
+    """Detecteer of een tekst een verdacht SQL-injectie-patroon bevat.
+
+    Dit is een extra waarschuwingslaag bovenop de ORM-bescherming van
+    de backend; Django's ORM escapet parameters al, maar een frontend-
+    check laat een poging direct zien aan de prediker en voorkomt dat
+    onzin-invoer tot bij de database-layer komt. False-positives
+    worden geaccepteerd — de getroffen tekens (;, --, UNION SELECT,
+    quote+OR) horen in gewone invoervelden simpelweg niet thuis.
+    """
+    if not tekst:
+        return False
+    return _SQL_INJECTIE_REGEX.search(tekst) is not None
+
+
+def valideer_tekstinvoer(
+    tekst: str,
+    max_woorden: int,
+    veldnaam: str,
+    min_woorden: int = 0,
+    verplicht: bool = False,
+) -> tuple[bool, str]:
+    """Valideer vrije tekstinvoer op lengte (woorden) en SQL-injectie-patronen.
+
+    Eén centrale validator zodat alle invoervelden dezelfde regels en
+    foutmeldingen gebruiken. Returned (ok, foutmelding): bij ok=True is
+    foutmelding leeg. De caller toont de foutmelding met st.error() en
+    breekt de submit af.
+
+    Args:
+        tekst: De ingevoerde waarde (kan None/leeg zijn).
+        max_woorden: Bovenlimiet voor het aantal woorden (inclusief).
+        veldnaam: Menselijke naam voor in de foutmelding, bv. "Voornaam".
+        min_woorden: Ondergrens; 0 betekent geen ondergrens voor woorden.
+        verplicht: Wanneer True mag het veld niet leeg zijn na strip().
+    """
+    tekst_strip = (tekst or "").strip()
+    if verplicht and not tekst_strip:
+        return False, f"{veldnaam} mag niet leeg zijn."
+    if not tekst_strip:
+        # Lege optionele invoer is geldig; skip verdere checks.
+        return True, ""
+    aantal = tel_woorden(tekst_strip)
+    if min_woorden and aantal < min_woorden:
+        return False, f"{veldnaam} bevat {aantal} woord(en); minimaal {min_woorden}."
+    if aantal > max_woorden:
+        return False, f"{veldnaam} bevat {aantal} woord(en); maximaal {max_woorden} toegestaan."
+    if bevat_sql_injectie(tekst_strip):
+        return False, f"{veldnaam} bevat tekens die niet zijn toegestaan (verdacht patroon)."
+    return True, ""
 
 
 # Handmatige overrides voor weergavenamen die in de gedeelde productie-DB

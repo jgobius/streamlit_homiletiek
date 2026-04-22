@@ -5,8 +5,14 @@ from typing import Optional
 
 import streamlit as st
 
+from src.utils.utils import valideer_tekstinvoer
+
 _RATING_LABELS = ["Slecht", "Matig", "Redelijk", "Goed", "Uitstekend"]
 _CACHE_PREFIX = "user_feedback_"
+
+# Max-woorden voor feedback-toelichting. Genoeg voor een paragraaf commentaar,
+# niet bedoeld als lange tekstplek (daar zijn aparte analyse-velden voor).
+_MAX_WOORDEN_FEEDBACK = 500
 
 
 class UserFeedback:
@@ -73,11 +79,22 @@ def _user_feedback_dialog(
         value=existing["text"] if existing else "",
         placeholder="Voeg een toelichting toe...",
         height=120,
+        max_chars=4096,
     )
 
     col_save, col_cancel = st.columns(2)
     with col_save:
         if st.button("Opslaan", type="primary", use_container_width=True):
+            # Valideer de toelichting op maximaal aantal woorden en op
+            # verdachte SQL-injectie-patronen voordat we POST'en.
+            ok, fout = valideer_tekstinvoer(
+                text or "",
+                max_woorden=_MAX_WOORDEN_FEEDBACK,
+                veldnaam="Toelichting",
+            )
+            if not ok:
+                st.error(fout)
+                return
             try:
                 UserFeedback.save(analysis_result_id, rating_value, text, handler)
                 st.toast("Feedback opgeslagen.")

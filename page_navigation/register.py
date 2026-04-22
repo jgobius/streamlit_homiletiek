@@ -7,6 +7,12 @@ import requests
 
 from email_validator.exceptions import EmailSyntaxError
 from src.models.user_model import UserModel
+from src.utils.utils import valideer_tekstinvoer
+
+# Woorden-limiet voor naamvelden. 30 woorden is ruim voor meervoudige voor- of
+# achternamen (bv. adellijke tussenvoegsels) zonder dat er vrije tekst wordt
+# misbruikt op wat een naamveld hoort te zijn.
+_MAX_WOORDEN_NAAM = 30
 
 
 def validate_data(
@@ -16,7 +22,17 @@ def validate_data(
     password: str,
     check_password: str,
 ) -> str:
-    
+
+    # Woordenlimiet + SQL-injectie-check op naamvelden; wachtwoord en e-mail
+    # worden bewust niet op woorden/patroon gecheckt (wachtwoorden mogen rare
+    # tekens bevatten, e-mail heeft een eigen format-validator).
+    for waarde, veld in ((first_name, 'Voornaam'), (last_name, 'Achternaam')):
+        ok, foutmelding = valideer_tekstinvoer(
+            waarde, max_woorden=_MAX_WOORDEN_NAAM, veldnaam=veld, verplicht=True
+        )
+        if not ok:
+            raise ValueError(foutmelding)
+
     if password != check_password:
         raise ValueError('Wachtwoorden komen niet overeen')
     

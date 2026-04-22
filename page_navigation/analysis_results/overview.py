@@ -4,7 +4,16 @@ import time
 import requests
 import streamlit as st
 
-from src.utils.utils import redirect_to_login, get_data, get_cached_data, tel_woorden, toon_analysenaam
+from src.utils.utils import (
+    redirect_to_login,
+    get_data,
+    get_cached_data,
+    tel_woorden,
+    toon_analysenaam,
+    valideer_tekstinvoer,
+    EIGEN_PREEK_MIN_WOORDEN as _EIGEN_PREEK_MIN_WOORDEN,
+    EIGEN_PREEK_MAX_WOORDEN as _EIGEN_PREEK_MAX_WOORDEN,
+)
 from page_navigation.analysis_results.aanpassen_dialog import aanpassen_dialog
 from page_navigation.analysis_results.analyses.postille import postille
 from page_navigation.analysis_results.analyses.bijbelteksten import bijbelteksten
@@ -77,11 +86,15 @@ st.markdown(
 # --- Categorisatie van analyse-types per tabblad ---
 REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
 
-# Woordentelling-grenzen voor het 'Eigen preek'-dialoog. Ondergrens voorkomt
-# dat per ongeluk een bijna-leeg fragment wordt opgeslagen; bovengrens is een
-# ruime praktische limiet voor een volledig uitgeschreven preek.
-_EIGEN_PREEK_MIN_WOORDEN = 500
-_EIGEN_PREEK_MAX_WOORDEN = 6000
+# Woordentelling-grenzen voor het 'Eigen preek'-dialoog worden geïmporteerd
+# uit src.utils.utils zodat deze dialog en de bewerk-view in
+# analyses/volledige_preek.py dezelfde waarden delen (DRY). Korte alias-import
+# hierboven houdt lokale referenties ongewijzigd.
+
+# Korte titelvelden in het 'Eigen preek'-dialoog: beperkte woordruimte zodat
+# een titel/ondertitel een titel blijft en niet ontaardt in vrije tekst of
+# geplakte analyses.
+_EIGEN_PREEK_MAX_WOORDEN_TITEL = 30
 
 _PERSPECTIEVEN_NAMEN = {
     "filosofie",
@@ -1435,12 +1448,13 @@ def volledige_preek_dialog(
     )
 
     new_titel = st.text_input(
-        "Titel", value=titel, placeholder="bijv. Het brood dat leven geeft"
+        "Titel", value=titel, placeholder="bijv. Het brood dat leven geeft", max_chars=200
     )
     new_ondertitel = st.text_input(
         "Ondertitel",
         value=ondertitel,
         placeholder="bijv. Johannes 6:35 — preek gehouden op 30 maart 2025",
+        max_chars=300,
     )
     new_preektekst = st.text_area(
         "Preektekst",
@@ -1462,6 +1476,19 @@ def volledige_preek_dialog(
     if st.button(
         "Opslaan", type="primary", use_container_width=True, disabled=not _kan_opslaan
     ):
+        # Valideer titel en ondertitel op woorden + SQL-injectie vóór we
+        # doorgaan met de preektekst-checks; zo krijgt de prediker een
+        # gerichte foutmelding per veld.
+        for waarde, veld in ((new_titel, "Titel"), (new_ondertitel, "Ondertitel")):
+            ok_titel, fout_titel = valideer_tekstinvoer(
+                waarde,
+                max_woorden=_EIGEN_PREEK_MAX_WOORDEN_TITEL,
+                veldnaam=veld,
+            )
+            if not ok_titel:
+                st.error(fout_titel)
+                return
+
         # Valideer de woordentelling vóór opslaan. Bij overschrijding van de
         # grenzen tonen we een foutmelding en keren we terug zonder het veld
         # leeg te maken — Streamlit's dialog-rerun behoudt de widget-state.
@@ -1476,6 +1503,17 @@ def volledige_preek_dialog(
                 f"De preektekst bevat {_aantal_woorden} woorden; "
                 f"maximaal {_EIGEN_PREEK_MAX_WOORDEN} woorden toegestaan."
             )
+            return
+        # Aanvullende SQL-injectie-check op de preektekst zelf. De woorden-
+        # telling hierboven bewaakt de lengte; deze check weigert expliciete
+        # injectie-patronen zonder de legitieme preekinhoud te raken.
+        ok_preek_sql, fout_preek_sql = valideer_tekstinvoer(
+            new_preektekst,
+            max_woorden=_EIGEN_PREEK_MAX_WOORDEN,
+            veldnaam="Preektekst",
+        )
+        if not ok_preek_sql:
+            st.error(fout_preek_sql)
             return
 
         updated = {

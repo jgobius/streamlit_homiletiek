@@ -19,7 +19,14 @@ from src.utils.utils import (
     render_sidebar,
     save_scriptures,
     load_scriptures,
+    valideer_tekstinvoer,
 )
+
+# Woorden-limiet voor het vrije 'Extra context'-veld. 500 woorden is ruim
+# genoeg voor een beschrijving van bijzondere omstandigheden van de dienst
+# (bv. rouwdienst, thema, doelgroep) maar voorkomt dat het een complete preek
+# wordt — wat de prompt onbedoeld zou doen aanzwellen.
+_MAX_WOORDEN_EXTRA_CONTEXT = 500
 
 redirect_to_login()
 
@@ -416,6 +423,20 @@ if submit:
 
     if not song_books:
         st.error("Selecteer minimaal één liedbundel.")
+        st.stop()
+
+    # Valideer het vrije 'Extra context'-veld: maximaal aantal woorden +
+    # detectie van SQL-injectie-patronen. Gebeurt alleen hier bij submit,
+    # niet live, zodat de gebruiker ongestoord kan typen. De cv_input- en
+    # boek-selectvelden krijgen geen aparte check omdat _sanitize_cv en de
+    # selectbox-whitelist al een veilige vorm afdwingen.
+    ok_ctx, fout_ctx = valideer_tekstinvoer(
+        extra_context or "",
+        max_woorden=_MAX_WOORDEN_EXTRA_CONTEXT,
+        veldnaam="Extra context",
+    )
+    if not ok_ctx:
+        st.error(fout_ctx)
         st.stop()
 
     if scriptures_choice == "Eigen lezingen":

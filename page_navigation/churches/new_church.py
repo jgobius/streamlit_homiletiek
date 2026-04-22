@@ -4,7 +4,15 @@ import streamlit as st
 
 from src.models.church_model import ChurchModel
 from src.api.agent_request import AgentRequest
-from src.utils.utils import redirect_to_login, render_sidebar
+from src.utils.utils import redirect_to_login, render_sidebar, valideer_tekstinvoer
+
+# Woorden-limieten per veld. Naam/plaats/website zijn korte identificerende
+# waardes; adres iets langer (straat + plaats + postcode); context is een
+# vrije beschrijving en krijgt de meeste ruimte (1024 max_chars ≈ 150 woorden
+# comfortabel plus marge).
+_MAX_WOORDEN_KORT = 30
+_MAX_WOORDEN_ADRES = 50
+_MAX_WOORDEN_CONTEXT = 500
 
 redirect_to_login()
 render_sidebar()
@@ -163,6 +171,26 @@ button_title = "Gemeente bijwerken" if is_edit else "Gemeente toevoegen"
 add_church = st.button(button_title, type="primary", disabled=submit_disabled)
 
 if add_church:
+    # Valideer invoervelden vóór we de ChurchModel bouwen; zo krijgt de
+    # gebruiker één sprekende foutmelding per veld in plaats van een
+    # Pydantic-stacktrace of backend-400.
+    validaties: list[tuple[str, str, int, bool]] = [
+        (name, 'Naam', _MAX_WOORDEN_KORT, True),
+        (place, 'Plaats', _MAX_WOORDEN_KORT, True),
+        (website, 'Website', _MAX_WOORDEN_KORT, True),
+        (address or '', 'Adres', _MAX_WOORDEN_ADRES, True),
+        (context or '', 'Extra context', _MAX_WOORDEN_CONTEXT, False),
+    ]
+    validatie_fout = False
+    for waarde, veld, limiet, verplicht in validaties:
+        ok, foutmelding = valideer_tekstinvoer(
+            waarde, max_woorden=limiet, veldnaam=veld, verplicht=verplicht
+        )
+        if not ok:
+            st.error(foutmelding)
+            validatie_fout = True
+    if validatie_fout:
+        st.stop()
     try:
         church = ChurchModel(
             name=name,

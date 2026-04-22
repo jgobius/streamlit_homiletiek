@@ -2,9 +2,16 @@ from __future__ import annotations
 
 import streamlit as st
 
+from src.utils.utils import valideer_tekstinvoer
+
 # Sleutel voor het cachen van suggesties in session_state,
 # zodat we niet bij elke render opnieuw de API aanroepen.
 _CACHE_KEY = "user_suggestions"
+
+# Max-woorden voor één suggestie. Een suggestie is bedoeld als korte wens
+# ("preekschets in de stijl van X", "meer liedbundels van Y"), niet als
+# uitgebreide toelichting.
+_MAX_WOORDEN_SUGGESTIE = 30
 
 # Standaardsuggesties die automatisch aangemaakt worden als de gebruiker
 # nog geen suggesties heeft opgeslagen.
@@ -91,6 +98,7 @@ def _user_suggestions_dialog(handler) -> None:
             key="new_suggestion_input",
             placeholder="Typ een suggestie...",
             label_visibility="collapsed",
+            max_chars=300,
         )
     with col_add:
         # Markdown-escape nodig omdat Streamlit een losse "+" als lijst-marker
@@ -98,10 +106,20 @@ def _user_suggestions_dialog(handler) -> None:
         if st.button("\\+", type="primary", help="Toevoegen"):
             text = (st.session_state.get("new_suggestion_input") or "").strip()
             if text:
-                UserSuggestions.add(text, handler)
-                # Zet vlag zodat het invoerveld bij de volgende render leeggemaakt wordt.
-                st.session_state["_clear_suggestion_input"] = True
-                st.rerun(scope="fragment")
+                # Valideer de suggestie op woordlimiet + SQL-injectie-patronen
+                # vóór we hem naar de backend sturen.
+                ok, fout = valideer_tekstinvoer(
+                    text,
+                    max_woorden=_MAX_WOORDEN_SUGGESTIE,
+                    veldnaam="Suggestie",
+                )
+                if not ok:
+                    st.error(fout)
+                else:
+                    UserSuggestions.add(text, handler)
+                    # Zet vlag zodat het invoerveld bij de volgende render leeggemaakt wordt.
+                    st.session_state["_clear_suggestion_input"] = True
+                    st.rerun(scope="fragment")
 
     if st.button("Sluiten", use_container_width=True):
         st.rerun()
