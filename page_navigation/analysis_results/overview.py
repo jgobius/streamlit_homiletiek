@@ -1,5 +1,4 @@
 import json
-import os
 import time
 
 import requests
@@ -283,12 +282,16 @@ def _trigger_analysis(analysis_id: int, at: dict, lock_key: str) -> None:
     """Stuur een verzoek naar de agent om een analyse uit te voeren."""
     st.session_state[lock_key] = time.time()
     try:
-        agent_url = os.environ.get("API_AGENT_URL").rstrip("/")
+        # AgentRequest.post injecteert de Bearer-header en voert raise_for_status
+        # zelf uit; de daaropvolgende .raise_for_status() is voor backwards-
+        # compatibiliteit met de oude inline-implementatie en een no-op zodra
+        # de wrapper al heeft geslaagd.
         response = agent_request.post(
+            endpoint="single_analysis/",
             payload={
                 "sermon_analysis_id": analysis_id,
                 "analysis_type_id": at["id"],
-            }
+            },
         )
         response.raise_for_status()
         # Invalideer de sessiecache zodat een volgende rerun (bv. tab-klik)
@@ -322,10 +325,11 @@ def _trigger_preekschets(analysis_id: int, at: dict, lock_key: str) -> None:
         # Fallback naar lege dict als de dialoog nog niet is opgeslagen — de
         # backend verwacht een dict-vorm en defaultt intern naar alles-uit.
         selected_exegese_commentaar = selectie.get("exegese_commentaar", {}) or {}
-        agent_url = os.environ.get("API_AGENT_URL").rstrip("/")
-        response = requests.post(
-            f"{agent_url}/run_single_analysis/",
-            json={
+        # AgentRequest zorgt voor de Bearer-header; raw requests.post() zou
+        # de agent (na verify_jwt) een 401 opleveren.
+        response = agent_request.post(
+            endpoint="run_single_analysis/",
+            payload={
                 "sermon_analysis_id": int(analysis_id),
                 "analysis_type_name": at["name"],
                 "core_text": kernteksten,
@@ -335,7 +339,6 @@ def _trigger_preekschets(analysis_id: int, at: dict, lock_key: str) -> None:
                 "selected_hoorders": selected_hoorders,
                 "selected_exegese_commentaar": selected_exegese_commentaar,
             },
-            timeout=30,
         )
         response.raise_for_status()
         # Invalideer de sessiecache zodat een volgende rerun (bv. tab-klik)
