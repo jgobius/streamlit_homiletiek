@@ -118,6 +118,79 @@ def bevat_sql_injectie(tekst: str) -> bool:
     return _SQL_INJECTIE_REGEX.search(tekst) is not None
 
 
+# Patronen voor prompt-injectie: pogingen om het LLM-gedrag te overschrijven
+# door expliciete "negeer voorgaande instructies"-zinnen, system-prompt-
+# manipulatie, role-switching en bekende jailbreak-namen (DAN, developer
+# mode). Velden die richting de agent-pipeline gaan (extra_context, preek-
+# tekst, suggesties, aanpassen_dialog) zijn het gevoeligst. De patronen
+# zijn bewust specifiek — generieke woorden als 'ignore' of 'negeer'
+# blokkeren zonder qualifier zou te veel legitieme tekst raken. Aanpakken
+# van false-negatives mag alleen door nieuwe patronen toe te voegen na
+# een echt voorbeeld, niet preventief breder maken.
+_PROMPT_INJECTIE_PATRONEN: tuple[str, ...] = (
+    # Expliciete instructie-negatie (EN). Qualifiers (all/the/above/previous/
+    # prior/earlier/your/my/these/any) mogen in willekeurige volgorde en
+    # aantal voorkomen; bindend is de combinatie van werkwoord + doelwoord.
+    r"\bignore\s+(?:(?:all|the|above|previous|prior|earlier|your|my|these|any)\s+)*(?:instructions?|prompt|rules|guidelines|directives)\b",
+    r"\bdisregard\s+(?:(?:all|the|above|previous|prior|earlier|your|my|these|any)\s+)*(?:instructions?|prompt|rules|guidelines|directives)\b",
+    # 'forget' vereist een doelwoord dat instructie-/prompt-gerelateerd is;
+    # alleen 'forget everything' zou legitieme preektekst kunnen zijn en
+    # vang ik daarom niet generiek. Andere injectie-patronen dekken de
+    # 'forget everything and act as DAN'-constructie via het jailbreak-deel.
+    r"\bforget\s+(?:(?:everything|all|the|your|my|these|any|previous|prior|above|earlier)\s+)+(?:instructions?|prompt|rules|guidelines|directives|system(?:\s+prompt)?)\b",
+    # Idem, Nederlandse varianten. Qualifiers (alle/de/bovenstaande/voorgaande/
+    # vorige/je/mijn/deze/eerdere) mogen flexibel meedoen, maar het patroon
+    # eist altijd dat er een instructie-doelwoord volgt om false-positives
+    # op normale preektekst ('vergeet de voorgaande kerkdienst') te vermijden.
+    r"\bnegeer\s+(?:(?:alle|de|bovenstaande|voorgaande|vorige|je|mijn|deze|eerdere)\s+)*(?:instructies|prompt|regels|richtlijnen|systeemprompt)\b",
+    r"\bvergeet\s+(?:(?:alle|alles|de|je|deze|mijn|eerdere|voorgaande|bovenstaande|vorige)\s+)+(?:instructies|prompt|regels|richtlijnen|systeem|systeemprompt)\b",
+    # 'Nieuwe instructies:' — vaak een voorloper op injectie.
+    r"\bnew\s+instructions?\s*:",
+    r"\bnieuwe\s+instructies?\s*:",
+    # System-prompt-manipulatie.
+    r"\bsystem\s+prompt\b",
+    r"\bsysteem[-\s]?prompt\b",
+    r"\boverride\s+(the\s+)?(system|instructions?)\b",
+    # Role-switching, alleen met een qualifier die niet in gewone tekst
+    # voorkomt (unrestricted, jailbreak, developer, admin, evil).
+    r"\byou\s+are\s+(now\s+)?(an?\s+)?(unrestricted|developer|admin|evil|jailbreak|dan)\b",
+    r"\bact\s+as\s+(if\s+|though\s+)?(you\s+are\s+)?(an?\s+)?(unrestricted|developer|admin|evil|jailbreak|dan)\b",
+    # Expliciete jailbreak-namen.
+    r"\bDAN\s+mode\b",
+    r"\bdeveloper\s+mode\b",
+    r"\bjailbreak(en|ing)?\b",
+    # ChatML / special tokens — horen nooit in gebruikersinvoer.
+    r"<\|im_start\|>",
+    r"<\|im_end\|>",
+    r"<\|system\|>",
+    r"<\|user\|>",
+    r"<\|assistant\|>",
+    # Bracketed prompt-injectie-markers.
+    r"\[\[?\s*(SYSTEM|INSTRUCTION|PROMPT)\s*\]\]?",
+)
+
+_PROMPT_INJECTIE_REGEX = re.compile(
+    "|".join(_PROMPT_INJECTIE_PATRONEN),
+    flags=re.IGNORECASE,
+)
+
+
+def bevat_prompt_injectie(tekst: str) -> bool:
+    """Detecteer of een tekst een verdacht prompt-injectie-patroon bevat.
+
+    Vrije-tekstvelden in de app (extra_context, preektekst, suggesties,
+    bewerk-JSON) belanden in de agent-prompts van homiletiek_agent. Een
+    kwaadaardige of slordige plak-actie kan het LLM proberen te sturen
+    ("negeer voorgaande instructies..."). Deze check weigert de bekende
+    frases vóór ze de prompt bereiken. Het is een lichte eerste laag;
+    voor meer zekerheid is llm-guard beschikbaar als zwaardere optie,
+    maar die brengt torch + transformers als dependency mee.
+    """
+    if not tekst:
+        return False
+    return _PROMPT_INJECTIE_REGEX.search(tekst) is not None
+
+
 def valideer_tekstinvoer(
     tekst: str,
     max_woorden: int,
@@ -152,6 +225,11 @@ def valideer_tekstinvoer(
         return False, f"{veldnaam} bevat {aantal} woord(en); maximaal {max_woorden} toegestaan."
     if bevat_sql_injectie(tekst_strip):
         return False, f"{veldnaam} bevat tekens die niet zijn toegestaan (verdacht patroon)."
+    if bevat_prompt_injectie(tekst_strip):
+        return False, (
+            f"{veldnaam} bevat een zin die lijkt op een poging om de AI-instructies "
+            "te overschrijven. Herschrijf de tekst in normale zinnen."
+        )
     return True, ""
 
 
