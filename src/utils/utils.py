@@ -11,7 +11,11 @@ import streamlit as st
 import requests
 
 from src.api.agent_request import AgentRequest
-from src.components.user_suggestions import render_suggestions_trigger
+# render_suggestions_trigger wordt lazy binnen render_sidebar() geïmporteerd;
+# src.components.user_suggestions importeert zelf valideer_tekstinvoer uit
+# deze module, dus een top-level import hier creëert een circular import
+# die faalt omdat valideer_tekstinvoer pas verderop in dit bestand
+# gedefinieerd wordt.
 
 # Timeout (seconden) per POST naar /structured_scripture/. De backend-agent
 # voert 2+N LLM-calls per lezing uit (boek-extractie + tekst per hoofdstuk +
@@ -520,6 +524,8 @@ def render_sidebar():
 
         # Toon de suggesties-knop als de gebruiker ingelogd is (api_handler beschikbaar).
         if "api_handler" in st.session_state:
+            # Lazy import om circular import met user_suggestions -> utils te vermijden.
+            from src.components.user_suggestions import render_suggestions_trigger
             render_suggestions_trigger(st.session_state["api_handler"])
 
 
