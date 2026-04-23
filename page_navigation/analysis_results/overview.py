@@ -11,6 +11,7 @@ from src.utils.utils import (
     tel_woorden,
     toon_analysenaam,
     valideer_tekstinvoer,
+    tokenlimiet_bereikt,
     EIGEN_PREEK_MIN_WOORDEN as _EIGEN_PREEK_MIN_WOORDEN,
     EIGEN_PREEK_MAX_WOORDEN as _EIGEN_PREEK_MAX_WOORDEN,
 )
@@ -637,6 +638,10 @@ if "selected_feedback_id" not in st.session_state or st.session_state[
     )
 
 # --- Sidebar block 2: tab-conditional analysis buttons ---
+# Zodra de early-test-tokenlimiet overschreden is, verbergen we alle
+# "… toevoegen"-expanders zodat er geen nieuwe LLM-calls meer getriggerd
+# kunnen worden. Navigatie naar bestaande resultaten blijft gewoon werken.
+_limiet_overschreden = tokenlimiet_bereikt()
 with st.sidebar:
     if current_tab == "Basis":
         for r in analyse_summary:
@@ -650,11 +655,12 @@ with st.sidebar:
                 st.session_state["current_tab"] = current_tab
                 st.rerun()
 
-        if analyse_missing:
+        if analyse_missing and not _limiet_overschreden:
             # Wikkel de expander in een st.container met een unieke key zodat
             # de paginascoped CSS bovenaan dit bestand hem via de automatisch
             # gegenereerde `st-key-sidebar_toevoegen_basis`-klasse subtiel
-            # oranje kan kleuren.
+            # oranje kan kleuren. Bij overschreden tokenlimiet verbergen we
+            # de hele expander (zie ook de andere vijf tabs verderop).
             with st.container(key="sidebar_toevoegen_basis"), st.expander("Analyse toevoegen"):
                 for at in analyse_missing:
                     _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
@@ -689,25 +695,27 @@ with st.sidebar:
 
         # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
         # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
-        with st.container(key="sidebar_toevoegen_verdieping"), st.expander("Verdieping toevoegen"):
-            if not verdiep_missing:
-                st.caption("Geen types beschikbaar.")
-            for at in verdiep_missing:
-                _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
-                _add_locked = _reanalysis_is_locked(_add_lock_key)
-                _ok, _ontbr = _deps_ok(at, latest)
-                _label = (
-                    f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
-                )
-                _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
-                if st.button(
-                    _label,
-                    key=f"vadd_{at['name']}",
-                    use_container_width=True,
-                    disabled=_add_locked or not _ok,
-                    help=_help,
-                ):
-                    _trigger_analysis(int(analysis_id), at, _add_lock_key)
+        # Bij overschreden tokenlimiet verbergen we de expander in zijn geheel.
+        if not _limiet_overschreden:
+            with st.container(key="sidebar_toevoegen_verdieping"), st.expander("Verdieping toevoegen"):
+                if not verdiep_missing:
+                    st.caption("Geen types beschikbaar.")
+                for at in verdiep_missing:
+                    _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+                    _add_locked = _reanalysis_is_locked(_add_lock_key)
+                    _ok, _ontbr = _deps_ok(at, latest)
+                    _label = (
+                        f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
+                    )
+                    _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
+                    if st.button(
+                        _label,
+                        key=f"vadd_{at['name']}",
+                        use_container_width=True,
+                        disabled=_add_locked or not _ok,
+                        help=_help,
+                    ):
+                        _trigger_analysis(int(analysis_id), at, _add_lock_key)
 
     elif current_tab == "Perspectieven":
         for r in perspect_summary:
@@ -723,25 +731,27 @@ with st.sidebar:
 
         # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
         # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
-        with st.container(key="sidebar_toevoegen_perspectieven"), st.expander("Perspectief toevoegen"):
-            if not perspect_missing:
-                st.caption("Geen types beschikbaar.")
-            for at in perspect_missing:
-                _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
-                _add_locked = _reanalysis_is_locked(_add_lock_key)
-                _ok, _ontbr = _deps_ok(at, latest)
-                _label = (
-                    f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
-                )
-                _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
-                if st.button(
-                    _label,
-                    key=f"padd_{at['name']}",
-                    use_container_width=True,
-                    disabled=_add_locked or not _ok,
-                    help=_help,
-                ):
-                    _trigger_analysis(int(analysis_id), at, _add_lock_key)
+        # Bij overschreden tokenlimiet verbergen we de expander in zijn geheel.
+        if not _limiet_overschreden:
+            with st.container(key="sidebar_toevoegen_perspectieven"), st.expander("Perspectief toevoegen"):
+                if not perspect_missing:
+                    st.caption("Geen types beschikbaar.")
+                for at in perspect_missing:
+                    _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+                    _add_locked = _reanalysis_is_locked(_add_lock_key)
+                    _ok, _ontbr = _deps_ok(at, latest)
+                    _label = (
+                        f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
+                    )
+                    _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
+                    if st.button(
+                        _label,
+                        key=f"padd_{at['name']}",
+                        use_container_width=True,
+                        disabled=_add_locked or not _ok,
+                        help=_help,
+                    ):
+                        _trigger_analysis(int(analysis_id), at, _add_lock_key)
 
     elif current_tab == "Preekschetsen":
         for r in preek_summary:
@@ -756,51 +766,53 @@ with st.sidebar:
                 st.rerun()
 
         # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
-        with st.container(key="sidebar_toevoegen_preekschetsen"), st.expander("Preekschets toevoegen"):
-            _preek_ready = st.session_state.get(
-                f"preek_selectie_{analysis_id}", {}
-            ).get("opgeslagen", False)
-            if not preek_missing:
-                st.caption("Geen preekschets-types beschikbaar.")
-            for at in preek_missing:
-                _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
-                _add_locked = _reanalysis_is_locked(_add_lock_key)
-                _ok, _ontbr = _deps_ok(at, latest)
-                # Hulpstukken (focus_en_functie, illustraties) zijn geen
-                # preekschets en vereisen géén opgeslagen kernteksten/perspectieven-
-                # selectie. Ze worden via de reguliere analyse-trigger uitgevoerd,
-                # zodat ze ook zonder voorbereide selectie kunnen starten.
-                _is_hulpstuk = at["name"] in _PREEKSCHETS_HULPSTUKKEN
-                if _is_hulpstuk:
-                    if not _ok:
-                        _label = f"🔒 {at['front_end_name']}"
-                        _help = "Vereist eerst: " + ", ".join(_ontbr)
-                    else:
-                        _label = at["front_end_name"]
-                        _help = None
-                    _disabled = _add_locked or not _ok
-                else:
-                    if not _preek_ready:
-                        _label = f"🔒 {at['front_end_name']}"
-                        _help = "Stel eerst de selectie in via 'Selectie instellen'."
-                    elif not _ok:
-                        _label = f"🔒 {at['front_end_name']}"
-                        _help = "Vereist eerst: " + ", ".join(_ontbr)
-                    else:
-                        _label = at["front_end_name"]
-                        _help = None
-                    _disabled = _add_locked or not _preek_ready or not _ok
-                if st.button(
-                    _label,
-                    key=f"pkadd_{at['name']}",
-                    use_container_width=True,
-                    disabled=_disabled,
-                    help=_help,
-                ):
+        # Bij overschreden tokenlimiet verbergen we de expander in zijn geheel.
+        if not _limiet_overschreden:
+            with st.container(key="sidebar_toevoegen_preekschetsen"), st.expander("Preekschets toevoegen"):
+                _preek_ready = st.session_state.get(
+                    f"preek_selectie_{analysis_id}", {}
+                ).get("opgeslagen", False)
+                if not preek_missing:
+                    st.caption("Geen preekschets-types beschikbaar.")
+                for at in preek_missing:
+                    _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+                    _add_locked = _reanalysis_is_locked(_add_lock_key)
+                    _ok, _ontbr = _deps_ok(at, latest)
+                    # Hulpstukken (focus_en_functie, illustraties) zijn geen
+                    # preekschets en vereisen géén opgeslagen kernteksten/perspectieven-
+                    # selectie. Ze worden via de reguliere analyse-trigger uitgevoerd,
+                    # zodat ze ook zonder voorbereide selectie kunnen starten.
+                    _is_hulpstuk = at["name"] in _PREEKSCHETS_HULPSTUKKEN
                     if _is_hulpstuk:
-                        _trigger_analysis(int(analysis_id), at, _add_lock_key)
+                        if not _ok:
+                            _label = f"🔒 {at['front_end_name']}"
+                            _help = "Vereist eerst: " + ", ".join(_ontbr)
+                        else:
+                            _label = at["front_end_name"]
+                            _help = None
+                        _disabled = _add_locked or not _ok
                     else:
-                        _trigger_preekschets(int(analysis_id), at, _add_lock_key)
+                        if not _preek_ready:
+                            _label = f"🔒 {at['front_end_name']}"
+                            _help = "Stel eerst de selectie in via 'Selectie instellen'."
+                        elif not _ok:
+                            _label = f"🔒 {at['front_end_name']}"
+                            _help = "Vereist eerst: " + ", ".join(_ontbr)
+                        else:
+                            _label = at["front_end_name"]
+                            _help = None
+                        _disabled = _add_locked or not _preek_ready or not _ok
+                    if st.button(
+                        _label,
+                        key=f"pkadd_{at['name']}",
+                        use_container_width=True,
+                        disabled=_disabled,
+                        help=_help,
+                    ):
+                        if _is_hulpstuk:
+                            _trigger_analysis(int(analysis_id), at, _add_lock_key)
+                        else:
+                            _trigger_preekschets(int(analysis_id), at, _add_lock_key)
 
     elif current_tab == "Gebeden":
         for r in gebed_summary:
@@ -816,25 +828,27 @@ with st.sidebar:
 
         # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
         # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
-        with st.container(key="sidebar_toevoegen_gebeden"), st.expander("Gebed toevoegen"):
-            if not gebed_missing:
-                st.caption("Geen types beschikbaar.")
-            for at in gebed_missing:
-                _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
-                _add_locked = _reanalysis_is_locked(_add_lock_key)
-                _ok, _ontbr = _deps_ok(at, latest)
-                _label = (
-                    f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
-                )
-                _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
-                if st.button(
-                    _label,
-                    key=f"gbadd_{at['name']}",
-                    use_container_width=True,
-                    disabled=_add_locked or not _ok,
-                    help=_help,
-                ):
-                    _trigger_analysis(int(analysis_id), at, _add_lock_key)
+        # Bij overschreden tokenlimiet verbergen we de expander in zijn geheel.
+        if not _limiet_overschreden:
+            with st.container(key="sidebar_toevoegen_gebeden"), st.expander("Gebed toevoegen"):
+                if not gebed_missing:
+                    st.caption("Geen types beschikbaar.")
+                for at in gebed_missing:
+                    _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+                    _add_locked = _reanalysis_is_locked(_add_lock_key)
+                    _ok, _ontbr = _deps_ok(at, latest)
+                    _label = (
+                        f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
+                    )
+                    _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
+                    if st.button(
+                        _label,
+                        key=f"gbadd_{at['name']}",
+                        use_container_width=True,
+                        disabled=_add_locked or not _ok,
+                        help=_help,
+                    ):
+                        _trigger_analysis(int(analysis_id), at, _add_lock_key)
 
     elif current_tab == "Feedback":
         # Feedback-analysen navigatie
@@ -851,25 +865,27 @@ with st.sidebar:
 
         # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
         # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
-        with st.container(key="sidebar_toevoegen_feedback"), st.expander("Feedback toevoegen"):
-            if not feedback_nav_missing:
-                st.caption("Geen types beschikbaar.")
-            for at in feedback_nav_missing:
-                _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
-                _add_locked = _reanalysis_is_locked(_add_lock_key)
-                _ok, _ontbr = _deps_ok(at, latest)
-                _label = (
-                    f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
-                )
-                _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
-                if st.button(
-                    _label,
-                    key=f"fbadd_{at['name']}",
-                    use_container_width=True,
-                    disabled=_add_locked or not _ok,
-                    help=_help,
-                ):
-                    _trigger_analysis(int(analysis_id), at, _add_lock_key)
+        # Bij overschreden tokenlimiet verbergen we de expander in zijn geheel.
+        if not _limiet_overschreden:
+            with st.container(key="sidebar_toevoegen_feedback"), st.expander("Feedback toevoegen"):
+                if not feedback_nav_missing:
+                    st.caption("Geen types beschikbaar.")
+                for at in feedback_nav_missing:
+                    _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+                    _add_locked = _reanalysis_is_locked(_add_lock_key)
+                    _ok, _ontbr = _deps_ok(at, latest)
+                    _label = (
+                        f"🔒 {at['front_end_name']}" if not _ok else at["front_end_name"]
+                    )
+                    _help = ("Vereist eerst: " + ", ".join(_ontbr)) if not _ok else None
+                    if st.button(
+                        _label,
+                        key=f"fbadd_{at['name']}",
+                        use_container_width=True,
+                        disabled=_add_locked or not _ok,
+                        help=_help,
+                    ):
+                        _trigger_analysis(int(analysis_id), at, _add_lock_key)
 
 # Ververs-knop onderaan de zijbalk: invalideert zowel de per-analyse sessiecache
 # (`overview_data_{analysis_id}`) als de globale get_cached_data-cache. Zo worden
@@ -1032,14 +1048,21 @@ def _render_actieknoppen(result: dict, key_prefix: str) -> None:
     """Render de vier actieknoppen (Verwijder / Opnieuw / Aanpassen / ℹ️) onder een analysetitel.
 
     key_prefix voorkomt sleutelbotsingen tussen tabbladen (bv. 'basis', 'verdieping').
+
+    Wanneer de early-test-tokenlimiet overschreden is, verdwijnt "Opnieuw"
+    (de enige actieknop hier die een LLM-call triggert via
+    confirm_rerun_analysis). "Verwijder" en "Aanpassen" blijven zichtbaar
+    omdat die alleen op de DB werken; "ℹ️" toont enkel een beschrijving.
     """
+    _toon_opnieuw = not tokenlimiet_bereikt()
     col_del, col_rerun, col_ctx, col_info = st.columns([3, 3, 3, 1])
     with col_del:
         if st.button("Verwijder", icon="🗑️", key=f"{key_prefix}_del"):
             confirm_delete_result(result)
-    with col_rerun:
-        if st.button("Opnieuw", icon="🔄", key=f"{key_prefix}_rerun"):
-            confirm_rerun_analysis(result)
+    if _toon_opnieuw:
+        with col_rerun:
+            if st.button("Opnieuw", icon="🔄", key=f"{key_prefix}_rerun"):
+                confirm_rerun_analysis(result)
     with col_ctx:
         if st.button("Aanpassen", icon="✏️", key=f"{key_prefix}_ctx"):
             aanpassen_dialog(result)
