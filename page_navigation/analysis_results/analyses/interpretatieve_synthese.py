@@ -90,9 +90,9 @@ def _render_bronnen(bronnen: list, kwaliteit: dict[str, Any]) -> None:
                 if deps:
                     st.markdown("**Dependencies gebruikt:**")
                     _render_list(deps)
-                tavily_n = kwaliteit.get("tavily_aanvullingen")
-                if tavily_n is not None:
-                    st.caption(f"Tavily-aanvullingen: {tavily_n}")
+                web_aanvullingen = kwaliteit.get("tavily_aanvullingen")
+                if web_aanvullingen is not None:
+                    st.caption(f"Web-aanvullingen: {web_aanvullingen}")
                 aantal = kwaliteit.get("aantal_bronnen")
                 if aantal is not None:
                     st.caption(f"Totaal bronnen: {aantal}")
