@@ -529,6 +529,75 @@ def render_sidebar():
             render_suggestions_trigger(st.session_state["api_handler"])
 
 
+# Standaardwaarden voor de early-test-tokenlimiet. Worden overschreven door
+# een [early_test_token_limits]-sectie in .streamlit/secrets.toml. De keuze
+# om defaults in code te zetten (en niet alleen in secrets.toml) zorgt dat
+# bestaande installaties zonder aangepaste secrets direct een werkend
+# vangnet hebben.
+_DEFAULT_EARLY_TEST_MAX_INPUT_TOKENS = 4_000_000
+_DEFAULT_EARLY_TEST_MAX_OUTPUT_TOKENS = 200_000
+_DEFAULT_EARLY_TEST_BUDGET_EUR = 20.0
+
+
+def haal_cumulatief_tokenverbruik_op() -> tuple[int, int, float] | None:
+    """Haalt cumulatief tokenverbruik op bij de backend en berekent totalen.
+
+    Roept ``GET /api/token-usage/cumulative/`` aan (zie backend
+    ``analysis_result.views.TokenUsageView``). Het endpoint geeft per model
+    de totalen terug, waarna we op basis van ``st.secrets['model_prices']``
+    de kosten in EUR berekenen.
+
+    Returnt ``(total_input, total_output, total_cost)`` of ``None`` als de
+    API-handler ontbreekt, het endpoint (nog) niet bereikbaar is, of het
+    antwoord geen dict is. ``None`` maakt het mogelijk om de aanroepende
+    pagina stilletjes verder te laten gaan zonder foutmelding.
+    """
+    handler = st.session_state.get('api_handler')
+    if not handler:
+        return None
+    try:
+        usage = handler.get("api/token-usage/cumulative/")
+    except requests.exceptions.HTTPError:
+        # Endpoint niet bereikbaar in deze omgeving — laat de pagina
+        # gewoon laden zonder waarschuwing.
+        return None
+    if not isinstance(usage, dict):
+        return None
+
+    model_prices = st.secrets.get("model_prices", {})
+    fallback_model = st.secrets.get("CURRENT_MODEL", "")
+    total_input = 0
+    total_output = 0
+    total_cost = 0.0
+    for model, counts in usage.items():
+        inp = counts.get("input_tokens", 0) or 0
+        out = counts.get("output_tokens", 0) or 0
+        # Val terug op de prijzen van het huidige model als het gebruikte
+        # model niet in de prijstabel voorkomt; ontbreken beide, dan is
+        # de kosten-bijdrage 0 en zien we alleen token-aantallen.
+        prices = model_prices.get(model) or model_prices.get(fallback_model, {})
+        total_input += inp
+        total_output += out
+        total_cost += (inp / 1_000_000) * prices.get("input_eur", 0.0)
+        total_cost += (out / 1_000_000) * prices.get("output_eur", 0.0)
+    return total_input, total_output, total_cost
+
+
+def early_test_tokenlimiet() -> tuple[int, int, float]:
+    """Leest de early-test-tokenlimiet uit ``st.secrets``.
+
+    Returnt ``(max_input_tokens, max_output_tokens, budget_eur)``. Ontbreekt
+    de ``[early_test_token_limits]``-sectie, dan vallen we terug op de
+    module-constanten (_DEFAULT_*). Zo hoeft een nieuwe omgeving niet
+    direct secrets aan te passen om de vangnet-logica werkend te hebben.
+    """
+    limits = st.secrets.get("early_test_token_limits", {})
+    max_input = int(limits.get("max_input_tokens", _DEFAULT_EARLY_TEST_MAX_INPUT_TOKENS))
+    max_output = int(limits.get("max_output_tokens", _DEFAULT_EARLY_TEST_MAX_OUTPUT_TOKENS))
+    budget_eur = float(limits.get("budget_eur", _DEFAULT_EARLY_TEST_BUDGET_EUR))
+    return max_input, max_output, budget_eur
+
+
 def render_analysis_results_sidebar(analysis_results: list[dict[str, Any]]) -> None:
     
     
