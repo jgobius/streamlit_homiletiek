@@ -61,7 +61,7 @@ class UserSuggestions:
         UserSuggestions._clear_cache()
 
 
-@st.dialog("Suggesties", width="small")
+@st.dialog("Algemene suggesties", width="small")
 def _user_suggestions_dialog(handler) -> None:
     suggestions = UserSuggestions.load(handler)
 
@@ -70,7 +70,17 @@ def _user_suggestions_dialog(handler) -> None:
         UserSuggestions.seed_defaults(handler)
         suggestions = UserSuggestions.load(handler)
 
-    st.caption("Persoonlijke suggesties voor de analyse. Gebruik + en - om de lijst aan te passen.")
+    # Uitleg over de scope van deze lijst: het zijn algemene suggesties die voor
+    # elke analyse meegaan. Per-analyse feedback hoort niet hier thuis, maar
+    # onderaan de betreffende analyse via de 'Geef feedback'-knop. We noemen
+    # ook expliciet de woordlimiet zodat de gebruiker niet verrast wordt door
+    # de validatie bij het toevoegen.
+    st.caption(
+        f"Algemene suggesties voor elke analyse. Gebruik + en - om de lijst aan te passen. "
+        f"Maximaal {_MAX_WOORDEN_SUGGESTIE} woorden per suggestie. "
+        f"Feedback op een specifieke analyse kun je beter onderaan die analyse geven "
+        f"met de knop 'Geef feedback'."
+    )
 
     for s in suggestions:
         col_text, col_del = st.columns([11, 1])
@@ -128,5 +138,5 @@ def _user_suggestions_dialog(handler) -> None:
 def render_suggestions_trigger(handler) -> None:
     """Render de suggesties-knop onderaan de sidebar."""
     st.divider()
-    if st.button("💡 Suggesties", use_container_width=True, help="Beheer uw persoonlijke suggesties"):
+    if st.button("💡 Algemene suggesties", use_container_width=True, help="Beheer uw algemene suggesties"):
         _user_suggestions_dialog(handler)
