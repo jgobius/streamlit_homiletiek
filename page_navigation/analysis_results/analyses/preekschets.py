@@ -42,6 +42,31 @@ def _section(label: str, text: Any, *, callout: bool = False) -> None:
         st.markdown(_md(text))
 
 
+def _render_waarom_keten(items: list[dict[str, Any]]) -> None:
+    """Render een 'waarom?'-keten (lijst van {vraag, antwoord}-paren) als
+    genummerde markdown, in plaats van de ruwe Python-repr van de lijst.
+
+    Wordt gebruikt in de Lowry-verdiepingsstap; het schema staat gedefinieerd
+    in configs/homiletische_lowry.json."""
+    if not items:
+        return
+    st.markdown("**Waarom-keten**")
+    for idx, paar in enumerate(items, start=1):
+        if not isinstance(paar, dict):
+            # Defensief: schema garandeert dict, maar val terug op string-repr
+            # zodat een afwijkend item niet de hele sectie breekt.
+            st.markdown(f"{idx}. {_md(paar)}")
+            continue
+        vraag = paar.get("vraag", "")
+        antwoord = paar.get("antwoord", "")
+        if vraag:
+            st.markdown(f"{idx}. **{_md(vraag)}**")
+        if antwoord:
+            # Indent het antwoord onder de vraag; non-breaking spaces zorgen
+            # dat Streamlit's markdown-renderer de inspringing bewaart.
+            st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;↳ {_md(antwoord)}", unsafe_allow_html=True)
+
+
 # ---------------------------------------------------------------------------
 # Generiek preek_onderdelen-schema (Noordmans en andere auteur-preekschetsen)
 # ---------------------------------------------------------------------------
@@ -125,8 +150,15 @@ def render_homiletische_lowry(analysis: dict) -> None:
                 _section("Doel", stap.get("doel"))
                 _section("Type omkering", stap.get("type_omkering"))
                 _section("Toelichting", stap.get("toelichting_type") or stap.get("toelichting"))
+                # Waarom-keten is een lijst van {vraag, antwoord}-paren en
+                # moet als genummerde keten worden getoond, niet als Python-repr.
+                waarom = stap.get("waarom_keten")
+                if waarom:
+                    _render_waarom_keten(waarom)
                 # Overige velden dynamisch; skip de al gerenderde
-                skip = {"titel", "inhoud", "doel", "type_omkering", "toelichting_type", "toelichting", "ambiguiteit"}
+                skip = {"titel", "inhoud", "doel", "type_omkering",
+                        "toelichting_type", "toelichting", "ambiguiteit",
+                        "waarom_keten"}
                 for k, v in stap.items():
                     if k not in skip and v:
                         _section(k.replace("_", " ").capitalize(), v)
