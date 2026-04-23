@@ -118,17 +118,19 @@ analysis = st.session_state["dashboard_analyses_cache"]
 _token_info = haal_cumulatief_tokenverbruik_op()
 _limiet_overschreden = False
 if _token_info is not None:
-    _tot_in, _tot_uit, _tot_kosten, _max_in, _max_uit, _budget_eur = _token_info
+    # De vierde tuple-waarde (geschatte kosten in EUR) wordt in de melding
+    # niet meer getoond: ze week zichtbaar af van het budget-bedrag (prijs
+    # per 1M tokens × verbruik vs. de €20 early-test-cap) en dat leverde
+    # verwarring op. De helper blijft de kosten nog wel berekenen voor
+    # eventuele toekomstige consumers.
+    _tot_in, _tot_uit, _, _max_in, _max_uit, _budget_eur = _token_info
     _limiet_overschreden = _tot_in > _max_in or _tot_uit > _max_uit
     if _limiet_overschreden:
         # st.warning geeft Streamlit's native oranje/gele waarschuwingsbalk.
-        # Het bedrag uit UserPreferences is het early-test-tegoed; de
-        # werkelijke kosten tonen we erachter zodat de gebruiker ziet hoe
-        # ver overheen het verbruik zit.
         st.warning(
             f"Je tegoed voor de early-test (€{_budget_eur:.0f},-) is op. "
             f"Cumulatief verbruik: {_tot_in:,} invoer-tokens / "
-            f"{_tot_uit:,} uitvoer-tokens (≈ €{_tot_kosten:.2f}). "
+            f"{_tot_uit:,} uitvoer-tokens. "
             f"Limiet: {_max_in:,} in / {_max_uit:,} uit."
         )
 
