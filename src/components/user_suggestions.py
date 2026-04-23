@@ -70,13 +70,14 @@ def _user_suggestions_dialog(handler) -> None:
         UserSuggestions.seed_defaults(handler)
         suggestions = UserSuggestions.load(handler)
 
-    # Uitleg over de scope van deze lijst: het zijn algemene suggesties die voor
-    # elke analyse meegaan. Per-analyse feedback hoort niet hier thuis, maar
-    # onderaan de betreffende analyse via de 'Geef feedback'-knop. We noemen
-    # ook expliciet de woordlimiet zodat de gebruiker niet verrast wordt door
-    # de validatie bij het toevoegen.
+    # Uitleg over de scope van deze lijst: het zijn algemene wensen voor het
+    # platform (nieuwe analyses, stijlen, bronnen), niet feedback op een
+    # specifieke analyse. Feedback op één analyse hoort onderaan die analyse
+    # via de 'Geef feedback'-knop. We noemen ook expliciet de woordlimiet
+    # zodat de gebruiker niet verrast wordt door de validatie bij toevoegen.
     st.caption(
-        f"Algemene suggesties voor elke analyse. Gebruik + en - om de lijst aan te passen. "
+        f"Algemene wensen en verzoeken, bijvoorbeeld voor nieuwe analyses, stijlen of extra bronnen. "
+        f"Gebruik + en - om de lijst aan te passen. "
         f"Maximaal {_MAX_WOORDEN_SUGGESTIE} woorden per suggestie. "
         f"Feedback op een specifieke analyse kun je beter onderaan die analyse geven "
         f"met de knop 'Geef feedback'."
