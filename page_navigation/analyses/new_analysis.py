@@ -485,6 +485,25 @@ if submit:
                     endpoint="original_scriptures/",
                     payload={"sermon_analysis_id": sermon_analysis_id},
                 )
+                # /original_scriptures/ retourneert direct; de agent schrijft het
+                # resultaat in een FastAPI background_task (zie homiletiek_agent
+                # api.py:139). Zonder hier te wachten haalt overview.py een lege
+                # resultatenlijst op en ziet de gebruiker 'nog geen bijbeltekst
+                # beschikbaar' tot hij handmatig op Ververs klikt. Een korte poll
+                # (max 10s, stap 0.5s) dekt het normale geval; bij timeout blijft
+                # de bestaande Ververs-knop in overview.py het vangnet.
+                _bijbelteksten_deadline = time.monotonic() + 10.0
+                with st.spinner("Bijbelteksten worden opgehaald..."):
+                    while time.monotonic() < _bijbelteksten_deadline:
+                        _resultaten = st.session_state["api_handler"].get(
+                            f"api/analysis-results?sermon_analysis_id={sermon_analysis_id}"
+                        ) or []
+                        if any(
+                            (r.get("analysis_type") or {}).get("name") == "bijbelteksten"
+                            for r in _resultaten
+                        ):
+                            break
+                        time.sleep(0.5)
             except Exception:
                 pass
 
