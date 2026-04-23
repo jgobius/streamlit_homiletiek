@@ -5,6 +5,7 @@ import requests
 import os
 import json
 import re
+import time
 from typing import Any
 
 import streamlit as st
@@ -501,7 +502,11 @@ def render_sidebar():
         
         with st.expander("Kerkdienstanalyses"):
             st.page_link(label="Overzicht kerkdienstanalyses", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
-            st.page_link(label="Nieuwe kerkdienstanalyse", page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py")
+            # Verberg de "Nieuwe kerkdienstanalyse"-link zodra de early-test-
+            # tokenlimiet overschreden is; de gebruiker kan dan geen nieuwe
+            # analyse meer starten totdat een beheerder de limiet aanpast.
+            if not tokenlimiet_bereikt():
+                st.page_link(label="Nieuwe kerkdienstanalyse", page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py")
             
         with st.expander("Gemeenten"):
             st.page_link(label="Overzicht gemeenten", page=f"{st.session_state['page_navigation_dir']}/churches/churches_overview.py")
@@ -529,6 +534,15 @@ def render_sidebar():
             render_suggestions_trigger(st.session_state["api_handler"])
 
 
+# Hoe lang één `haal_cumulatief_tokenverbruik_op()`-resultaat hergebruikt
+# wordt in dezelfde Streamlit-sessie. Korte TTL (30 s) zodat de oranje
+# melding en de verborgen "Nieuwe analyse"-knoppen snel reageren op een
+# aanpassing in Django admin of een zojuist voltooide analyse, terwijl de
+# sidebar niet bij elke pagina-render opnieuw een roundtrip maakt.
+_TOKENVERBRUIK_CACHE_TTL_SECONDS = 30
+_TOKENVERBRUIK_CACHE_KEY = "_tokenverbruik_cache"
+
+
 def haal_cumulatief_tokenverbruik_op() -> tuple[int, int, float, int, int, float] | None:
     """Haalt cumulatief tokenverbruik + per-user tokenlimiet op bij de backend.
 
@@ -544,12 +558,25 @@ def haal_cumulatief_tokenverbruik_op() -> tuple[int, int, float, int, int, float
     ``UserPreferences`` gehaald zodat ze per gebruiker via Django admin
     overruled kunnen worden.
 
+    Het resultaat wordt in ``st.session_state`` gecachet (TTL uit
+    ``_TOKENVERBRUIK_CACHE_TTL_SECONDS``) zodat zowel het dashboard als de
+    sidebar hem op dezelfde render kunnen aanroepen zonder dubbele
+    roundtrips. We gebruiken geen ``@st.cache_data`` omdat de data per
+    ingelogde gebruiker verschilt en Streamlit's cache globaal is.
+
     Returnt ``(total_input, total_output, total_cost, max_input_tokens,
     max_output_tokens, budget_eur)`` of ``None`` als de API-handler
     ontbreekt, het endpoint niet bereikbaar is, of het antwoord onverwacht
     gevormd is. ``None`` laat de aanroepende pagina stilletjes verdergaan
     zonder foutmelding.
     """
+    nu = time.time()
+    cached = st.session_state.get(_TOKENVERBRUIK_CACHE_KEY)
+    if cached is not None:
+        expires_at, value = cached
+        if nu < expires_at:
+            return value
+
     handler = st.session_state.get('api_handler')
     if not handler:
         return None
@@ -590,7 +617,28 @@ def haal_cumulatief_tokenverbruik_op() -> tuple[int, int, float, int, int, float
     max_input = int(limits.get("max_input_tokens", 0) or 0)
     max_output = int(limits.get("max_output_tokens", 0) or 0)
     budget_eur = float(limits.get("budget_eur", 0) or 0)
-    return total_input, total_output, total_cost, max_input, max_output, budget_eur
+    result = (total_input, total_output, total_cost, max_input, max_output, budget_eur)
+    st.session_state[_TOKENVERBRUIK_CACHE_KEY] = (
+        nu + _TOKENVERBRUIK_CACHE_TTL_SECONDS,
+        result,
+    )
+    return result
+
+
+def tokenlimiet_bereikt() -> bool:
+    """Geeft terug of het cumulatieve verbruik de per-user limiet heeft overschreden.
+
+    Hergebruikt de gecachete waarde van ``haal_cumulatief_tokenverbruik_op()``
+    zodat een sidebar- én dashboard-aanroep binnen dezelfde render samen
+    maximaal één roundtrip veroorzaken. Bij ontbrekende data (endpoint
+    onbereikbaar, niet ingelogd) retourneert ``False`` — de default is
+    "limiet niet bereikt" zodat de UI niet onterecht knoppen verbergt.
+    """
+    info = haal_cumulatief_tokenverbruik_op()
+    if info is None:
+        return False
+    total_input, total_output, _cost, max_input, max_output, _budget = info
+    return (total_input > max_input) or (total_output > max_output)
 
 
 def render_analysis_results_sidebar(analysis_results: list[dict[str, Any]]) -> None:

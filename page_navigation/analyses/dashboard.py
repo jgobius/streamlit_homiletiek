@@ -112,11 +112,15 @@ analysis = st.session_state["dashboard_analyses_cache"]
 # drempels (invoer- of uitvoer-tokens) is overschreden, toont een oranje
 # `st.warning` bovenaan dat het €-tegoed op is. We doen dit vóór st.title
 # zodat de melding het eerste is dat de gebruiker ziet op het
-# kerkdienstanalyse-overzicht.
+# kerkdienstanalyse-overzicht. De vlag `_limiet_overschreden` wordt verderop
+# hergebruikt om de "Nieuwe analyse"-knop te verbergen — zo hoeven we niet
+# dezelfde tuple twee keer te unpacken.
 _token_info = haal_cumulatief_tokenverbruik_op()
+_limiet_overschreden = False
 if _token_info is not None:
     _tot_in, _tot_uit, _tot_kosten, _max_in, _max_uit, _budget_eur = _token_info
-    if _tot_in > _max_in or _tot_uit > _max_uit:
+    _limiet_overschreden = _tot_in > _max_in or _tot_uit > _max_uit
+    if _limiet_overschreden:
         # st.warning geeft Streamlit's native oranje/gele waarschuwingsbalk.
         # Het bedrag uit UserPreferences is het early-test-tegoed; de
         # werkelijke kosten tonen we erachter zodat de gebruiker ziet hoe
@@ -253,12 +257,18 @@ else:
                     st.session_state["_pending_delete_analysis"] = item
                     confirm_delete_analysis()
 
-new_analysis = st.button("Nieuwe analyse", type="primary")
+# Verberg de "Nieuwe analyse"-knop zodra de early-test-tokenlimiet is
+# overschreden. Samen met het verdwijnen van de gelijknamige sidebar-link
+# (zie src/utils/utils.render_sidebar) is dit de UI-consequentie van de
+# oranje waarschuwing hierboven: de gebruiker kan geen nieuwe analyse
+# starten tot een beheerder de limiet op UserPreferences heeft verhoogd.
+if not _limiet_overschreden:
+    new_analysis = st.button("Nieuwe analyse", type="primary")
 
-if new_analysis:
-    st.switch_page(
-        f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py"
-    )
+    if new_analysis:
+        st.switch_page(
+            f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py"
+        )
 
 if "selected_analysis_id" in st.session_state:
     analysis_id = st.session_state.selected_analysis_id
