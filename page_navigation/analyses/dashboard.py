@@ -10,7 +10,6 @@ from src.utils.utils import (
     get_data,
     render_sidebar,
     haal_cumulatief_tokenverbruik_op,
-    early_test_tokenlimiet,
 )
 
 redirect_to_login()
@@ -109,18 +108,19 @@ if st.session_state.pop("dashboard_data_dirty", False) or "dashboard_analyses_ca
 analysis = st.session_state["dashboard_analyses_cache"]
 
 # Controleer cumulatief tokenverbruik van de ingelogde gebruiker tegen de
-# early-test-limiet. Zodra één van beide drempels (invoer- of uitvoer-tokens)
-# is overschreden, toont een oranje `st.warning` bovenaan dat het €-tegoed op
-# is. We doen dit vóór st.title zodat de melding het eerste is dat de
-# gebruiker ziet op het kerkdienstanalyse-overzicht.
-_token_totalen = haal_cumulatief_tokenverbruik_op()
-if _token_totalen is not None:
-    _tot_in, _tot_uit, _tot_kosten = _token_totalen
-    _max_in, _max_uit, _budget_eur = early_test_tokenlimiet()
+# per-user tokenlimiet uit UserPreferences (backend). Zodra één van beide
+# drempels (invoer- of uitvoer-tokens) is overschreden, toont een oranje
+# `st.warning` bovenaan dat het €-tegoed op is. We doen dit vóór st.title
+# zodat de melding het eerste is dat de gebruiker ziet op het
+# kerkdienstanalyse-overzicht.
+_token_info = haal_cumulatief_tokenverbruik_op()
+if _token_info is not None:
+    _tot_in, _tot_uit, _tot_kosten, _max_in, _max_uit, _budget_eur = _token_info
     if _tot_in > _max_in or _tot_uit > _max_uit:
         # st.warning geeft Streamlit's native oranje/gele waarschuwingsbalk.
-        # Het bedrag uit secrets is het early-test-tegoed; de werkelijke
-        # kosten tonen we erachter zodat de gebruiker ziet hoe ver overheen.
+        # Het bedrag uit UserPreferences is het early-test-tegoed; de
+        # werkelijke kosten tonen we erachter zodat de gebruiker ziet hoe
+        # ver overheen het verbruik zit.
         st.warning(
             f"Je tegoed voor de early-test (€{_budget_eur:.0f},-) is op. "
             f"Cumulatief verbruik: {_tot_in:,} invoer-tokens / "
