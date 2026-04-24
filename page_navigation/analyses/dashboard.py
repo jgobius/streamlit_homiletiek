@@ -326,7 +326,7 @@ else:
                 # opbouwt en als download aanbiedt. Zelfde interactiepatroon
                 # als de verwijder-knop hiernaast (session_state + dialog).
                 if st.button(
-                    "📄",
+                    ":material/description:",
                     key=f"word_{item['id']}",
                     help="Exporteer als Word-document",
                 ):
