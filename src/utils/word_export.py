@@ -266,24 +266,32 @@ def _format_aanmaak_label(created_at: str | None) -> str | None:
 
 
 def _render_analyse(doc, sub: dict) -> None:
-    """Rendert één sub-analyse: heading + body (walk) of status-melding."""
+    """Rendert één sub-analyse: heading + body (walk) of een lege-melding.
+
+    We filteren niet op een `status`-veld: de bestaande renderers in
+    page_navigation/analysis_results/analyses/ doen dat ook niet, en in de
+    praktijk blijkt het statusveld vaak niet op de verwachte sentinel-
+    waarde ('completed') te staan terwijl `result` wél bruikbare data
+    bevat. Presence van `result` is de enige betrouwbare indicator.
+    """
     doc.add_heading(_front_end_name(sub), level=2)
 
-    status = sub.get("status", "")
-    if status != "completed":
-        # Niet-voltooide analyses hebben meestal geen bruikbare `result`; we
-        # tonen een cursieve melding zodat de lezer weet dat hier iets mist.
-        p = doc.add_paragraph()
-        p.add_run("— deze analyse is nog niet voltooid.").italic = True
-        return
-
     result = sub.get("result")
-    if result is None or result == "":
+    if _is_leeg_resultaat(result):
         p = doc.add_paragraph()
-        p.add_run("— geen resultaat beschikbaar.").italic = True
+        p.add_run("— nog geen resultaat beschikbaar.").italic = True
         return
 
     _walk(result, doc, heading_level=3)
+
+
+def _is_leeg_resultaat(result: Any) -> bool:
+    """True wanneer er niks zinnigs in `result` staat om te renderen."""
+    if result is None:
+        return True
+    if isinstance(result, (str, list, dict)) and len(result) == 0:
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------------
