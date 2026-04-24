@@ -128,12 +128,24 @@ def bouw_kerkdienstanalyse_docx(
     # analyse-types die nog niet in de mapping staan (toekomstbestendig).
     tabs_in_volgorde: list[str] = list(TAB_VOLGORDE) + ["Overig"]
     i_globaal = 0
+    # Een nieuwe analyse start in principe op een nieuwe pagina (handig bij
+    # documenten met honderden pagina's). Uitzondering: de eerste analyse
+    # binnen een tab blijft op dezelfde pagina als de tab-heading, anders
+    # krijg je halve lege pagina's met alleen "Basis", "Verdieping" enz.
+    # Elke nieuwe tab krijgt wél een eigen startpagina.
+    eerste_tab = True
     for tab in tabs_in_volgorde:
         lijst = gegroepeerd.get(tab, [])
         if not lijst:
             continue
+        if not eerste_tab:
+            doc.add_page_break()
+        eerste_tab = False
         doc.add_heading(tab, level=1)
-        for sub in lijst:
+        for idx_in_tab, sub in enumerate(lijst):
+            if idx_in_tab > 0:
+                # Tweede en volgende analyse binnen een tab: nieuwe pagina.
+                doc.add_page_break()
             front_name = _front_end_name(sub)
             cb(
                 fractie_base + i_globaal * fractie_stap,
