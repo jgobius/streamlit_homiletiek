@@ -20,6 +20,10 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Pt
 
 from src.api.handler import APIHandler
 from src.utils.analyse_tabs import TAB_NAAR_ANALYSES, TAB_VOLGORDE
@@ -97,7 +101,19 @@ def bouw_kerkdienstanalyse_docx(
 
     cb(0.15, "Document opbouwen — kop...")
     doc = Document()
+    # Forceer Word om velden (TOC, paginanummers) bij openen automatisch
+    # bij te werken; anders moet de lezer handmatig F9 drukken.
+    _enable_auto_update_fields(doc)
+    # Footer met "Pagina X van Y", gecentreerd. Moet vóór de content, want
+    # de footer geldt voor alle pagina's van de huidige sectie.
+    _voeg_paginanummers_toe(doc)
     _render_kop(doc, sermon)
+    # Klikbare inhoudsopgave (tab-koppen + analyse-namen = niveau 1-2).
+    # Komt direct onder de kop zodat de lezer meteen kan navigeren; daarna
+    # een page break zodat de eerste inhoudelijke tab op een nieuwe pagina
+    # begint.
+    _render_inhoudsopgave(doc)
+    doc.add_page_break()
 
     gegroepeerd = _groepeer_per_tab(sub_analyses)
 
@@ -457,6 +473,114 @@ def _humanize_key(key: str) -> str:
     if not woorden:
         return key
     return woorden[0].upper() + woorden[1:]
+
+
+# ---------------------------------------------------------------------------
+# Inhoudsopgave, paginanummers en auto-update-fields (raw OOXML)
+# ---------------------------------------------------------------------------
+#
+# python-docx heeft geen high-level API voor TOC-velden of paginanummers,
+# dus we injecteren de benodigde OOXML-elementen rechtstreeks. Het "w:fldChar
+# begin / instrText / separate / end"-patroon is de standaard-constructie die
+# Word gebruikt voor alle veldcodes (TOC, PAGE, NUMPAGES, etc.).
+
+
+def _veld_invoegen(run, instructie: str, placeholder: str = "") -> None:
+    """Injecteert een Word-veldcode in een run.
+
+    Word berekent de zichtbare tekst op basis van `instructie` (bv. 'PAGE'
+    of 'TOC \\o "1-2" \\h \\z \\u'). Totdat het veld voor het eerst wordt
+    bijgewerkt, toont Word `placeholder` — handig voor de TOC die pas na
+    update gevuld wordt.
+    """
+    begin = OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = instructie
+
+    separate = OxmlElement("w:fldChar")
+    separate.set(qn("w:fldCharType"), "separate")
+
+    placeholder_t = OxmlElement("w:t")
+    placeholder_t.text = placeholder
+
+    eind = OxmlElement("w:fldChar")
+    eind.set(qn("w:fldCharType"), "end")
+
+    r_elem = run._element
+    r_elem.append(begin)
+    r_elem.append(instr)
+    r_elem.append(separate)
+    r_elem.append(placeholder_t)
+    r_elem.append(eind)
+
+
+def _enable_auto_update_fields(doc) -> None:
+    """Laat Word alle velden bij openen automatisch bijwerken.
+
+    Zet `<w:updateFields w:val="true"/>` in settings.xml. Zonder dit moet
+    de lezer handmatig F9 indrukken om de TOC en paginanummer-totalen te
+    berekenen; met deze setting verschijnt bij openen een prompt "Dit
+    document bevat velden die verwijzen naar andere bestanden. Wilt u ze
+    bijwerken?" waarop 'Ja' de TOC vult.
+    """
+    settings = doc.settings.element
+    element = OxmlElement("w:updateFields")
+    element.set(qn("w:val"), "true")
+    settings.append(element)
+
+
+def _voeg_paginanummers_toe(doc) -> None:
+    """Zet 'Pagina X van Y' gecentreerd in de footer van de eerste sectie."""
+    footer = doc.sections[0].footer
+    p = footer.paragraphs[0]
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    p.add_run("Pagina ")
+    run_page = p.add_run()
+    _veld_invoegen(run_page, "PAGE")
+    p.add_run(" van ")
+    run_total = p.add_run()
+    _veld_invoegen(run_total, "NUMPAGES")
+
+
+def _render_inhoudsopgave(doc) -> None:
+    """Voegt een klikbare inhoudsopgave in op niveau 1-2 (tabs + analyses).
+
+    Het label 'Inhoudsopgave' is bewust géén Heading 1/2 — anders zou de
+    TOC zichzelf als eerste item bevatten. We gebruiken een gewone
+    paragraph met bold + vergrote font.
+    """
+    label = doc.add_paragraph()
+    run = label.add_run("Inhoudsopgave")
+    run.bold = True
+    run.font.size = Pt(18)
+
+    # Lege regel tussen label en de feitelijke TOC-inhoud.
+    doc.add_paragraph()
+
+    p_toc = doc.add_paragraph()
+    run_toc = p_toc.add_run()
+    # \o "1-2"  → outline-levels 1 en 2 (onze Tab-headings en analyse-kops)
+    # \h        → items renderen als hyperlinks (klikbaar in Word)
+    # \z        → verberg tab-leaders/page-nummers in Web-layout
+    # \u        → gebruik outline-paragraphs als basis
+    _veld_invoegen(
+        run_toc,
+        'TOC \\o "1-2" \\h \\z \\u',
+        placeholder=(
+            "De inhoudsopgave wordt door Word automatisch gevuld bij het "
+            "openen van dit document. Gebeurt dat niet? Klik met de "
+            "rechtermuisknop op deze tekst en kies 'Veld bijwerken' (F9)."
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Bestandsnaam
+# ---------------------------------------------------------------------------
 
 
 def _bestandsnaam(sermon: dict) -> str:
