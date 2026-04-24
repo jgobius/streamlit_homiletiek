@@ -387,9 +387,28 @@ if scriptures_choice == "Eigen lezingen":
                 language="nl",
             )
 
-# Gestructureerde lezingen tonen in uitklapbare secties
+# Gestructureerde lezingen tonen in uitklapbare secties. Per lezing houden we
+# bij of hij bruikbaar is (d.w.z. minstens één vers). Een lezing zónder verzen
+# betekent dat de scripture-agent geen bijbeltekst heeft kunnen koppelen (bv.
+# boeknaam niet herkend, Tavily gaf geen match voor de gekozen vertaling) —
+# dan zou de gebruiker anders een lege expander zien en een analyse starten
+# die gegarandeerd faalt op de bijbeltekst-stap.
+_lege_lezingen: list[str] = []
 for scripture in st.session_state["structured_scriptures"]:
-    with st.expander(f"**{scripture.get('original_scripture')}**", expanded=False):
+    _heeft_verzen = any(
+        (sc.get("verses") or []) for sc in (scripture.get("scriptures") or [])
+    )
+    _titel = scripture.get("original_scripture") or "(onbekende lezing)"
+    with st.expander(f"**{_titel}**", expanded=not _heeft_verzen):
+        if not _heeft_verzen:
+            st.error(
+                f"Geen bijbeltekst gevonden voor **{_titel}**. Controleer de "
+                "spelling van het bijbelboek en probeer het opnieuw via de knop "
+                "'Lezingen ophalen'. Zolang deze lezing leeg is kun je de "
+                "analyse niet starten."
+            )
+            _lege_lezingen.append(_titel)
+            continue
         for sc in scripture.get("scriptures", []):
             st.markdown(f"Hoofdstuk **{sc.get('chapter')}**")
             for verse in sc.get("verses", []):
@@ -398,10 +417,24 @@ for scripture in st.session_state["structured_scriptures"]:
             st.write("---")
 
 if st.session_state.get("structured_scriptures"):
-    st.session_state["scriptures_approved"] = st.checkbox(
-        "Ik bevestig dat de lezingen zoals hierboven vermeld correct zijn en klaar voor analyse",
-        value=False,
-    )
+    # Bevestig-checkbox blokkeren zolang er nog lege lezingen zijn. Anders kan
+    # de gebruiker 'Analyse starten' indrukken met een half-gevulde set, wat
+    # downstream (bijbelteksten-agent, /original_scriptures/) faalt.
+    if _lege_lezingen:
+        st.warning(
+            "Eén of meer lezingen zijn niet opgehaald: "
+            + ", ".join(f"'{t}'" for t in _lege_lezingen)
+            + ". Los dit eerst op voordat je de analyse start."
+        )
+        # We zetten scriptures_approved expliciet op False zodat een eerdere
+        # (bij een geslaagde poging gezette) True-waarde niet blijft hangen en
+        # de analyse-knop per ongeluk actief wordt.
+        st.session_state["scriptures_approved"] = False
+    else:
+        st.session_state["scriptures_approved"] = st.checkbox(
+            "Ik bevestig dat de lezingen zoals hierboven vermeld correct zijn en klaar voor analyse",
+            value=False,
+        )
 
 # ── Indienen ───────────────────────────────────────────────────────────────────
 _readings_available = st.session_state.get("scriptures_approved", False)
