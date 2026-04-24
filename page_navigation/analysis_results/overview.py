@@ -55,6 +55,23 @@ from page_navigation.analysis_results.analyses.feedback_analyse import feedback_
 from page_navigation.analysis_results.analyses.volledige_preek import volledige_preek
 from src.components.user_feedback import render_analysis_footer
 from src.api.agent_request import AgentRequest
+# Tab-categorisatie (welke analyse-naam hoort bij welk tabblad) staat centraal
+# in src.utils.analyse_tabs zodat zowel deze pagina als de Word-export
+# (src.utils.word_export) dezelfde bron van waarheid gebruiken. We importeren
+# met de bestaande underscore-namen zodat de lokale referenties verderop in
+# dit bestand niet mee hoeven te veranderen.
+from src.utils.analyse_tabs import (
+    TAB_VOLGORDE as _TABS,
+    _BASIS_ORDER,
+    _PERSPECTIEVEN_NAMEN,
+    _VERDIEPING_NAMEN,
+    _GEBEDEN_NAMEN,
+    _PREEKSCHETSEN_NAMEN,
+    _PREEKSCHETS_HULPSTUKKEN,
+    _PREEKSCHETSEN_TAB,
+    _FEEDBACK_NAMEN,
+    _ALL_NON_BASIS,
+)
 
 # Paginascoped CSS: geef de "... toevoegen"-expanders in de zijbalk een
 # subtiele oranje rand zodat ze opvallen tussen de grijze analyse-knoppen,
@@ -97,149 +114,13 @@ REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
 # geplakte analyses.
 _EIGEN_PREEK_MAX_WOORDEN_TITEL = 30
 
-_PERSPECTIEVEN_NAMEN = {
-    "filosofie",
-    "culturele_antropologie",
-    "receptiegeschiedenis",
-    "literaire_theorie",
-    "psychologie",
-    "ecologie",
-    "postkoloniaal",
-    "rechtswetenschap",
-    "natuurwetenschappen",
-    "politieke_speltheorie",
-    "mystagogiek",
-    "gender_queer_body",
-    "digitale_cultuur",
-    "ruimtelijke_ordening",
-}
-
-_VERDIEPING_NAMEN = {
-    "kunst_cultuur",
-    "kindermoment",
-    "wetslezing",
-    "kalender",
-    "bezinningsmoment",
-    # Sociaal-maatschappelijk is verhuisd uit Basis naar Verdieping: het past
-    # inhoudelijk bij de andere contextduidende analyses (waardenoriëntatie,
-    # politieke oriëntatie) en hoort niet in de primaire Basis-flow.
-    "sociaal_maatschappelijk",
-    # Tavily-gedreven gemeente-spiritualiteitsanalyse. Parallel aan de
-    # basis-geloofsorientatie, maar met bronverantwoording en expliciete
-    # differentiatie van zustergemeenten in dezelfde plaats.
-    "gemeente_spiritualiteit",
-    # Tavily-gedreven politieke oriëntatie op wijk/kern-niveau (niet
-    # alleen gemeente als geheel). Zie politieke_orientatie.md.
-    "politieke_orientatie",
-    # Tavily-gedreven waardenoriëntatie (Vijf V's + Motivaction-milieus) op
-    # wijk/kern-niveau, met expliciete differentiatie tussen de burgerlijke
-    # wijk en de kerkelijke gemeente. Vervangt de oude basis-versie.
-    "waardenorientatie",
-    # Tavily-gedreven synthese die de voorgaande Verdieping-analyses
-    # (gemeente_spiritualiteit, waardenorientatie, politieke_orientatie,
-    # sociaal_maatschappelijk) samenbrengt met de Schriftlezingen. Verplaatst
-    # uit Basis omdat de nieuwe versie op wijk/kern-niveau werkt en Tavily
-    # gericht inzet voor actualiteit en hiaten.
-    "interpretatieve_synthese",
-}
-
-# Gebeden krijgen een eigen tabblad tussen Preekschetsen en Feedback. De vier
-# varianten (klassiek, profetisch, dialogisch, eenvoudig) delen één renderer
-# maar hebben verschillende prompts; ze horen visueel bij elkaar en werden
-# voorheen binnen Verdieping gegroepeerd.
-_GEBEDEN_NAMEN = {
-    "gebeden",
-    "gebeden_profetisch",
-    "gebeden_dialogisch",
-    "gebeden_eenvoudig",
-}
-
-_PREEKSCHETSEN_NAMEN = {
-    # Homiletische-structuur preekschetsen (Lowry & Buttrick) staan bovenaan
-    # via hun order (50/51) — Noordmans staat op 60. Volgorde in deze set
-    # maakt niet uit; _order_key sorteert op het `order`-veld.
-    "homiletische_lowry",
-    "homiletische_buttrick",
-    "preek_jungel",
-    "preek_fleming_rutledge",
-    "preek_brueggemann_poet",
-    "preek_literair",
-    "preek_noordmans",
-    "preek_kosuke_koyama",
-    "preek_zornberg",
-    "preek_brueggemann",
-    "preek_drewermann",
-    "preek_gardner_taylor",
-    "preek_solle",
-    "preek_peterson",
-    "preek_standup",
-}
-
-_FEEDBACK_NAMEN = {
-    "volledige_preek",
-    "feedback_adversarial",
-    "feedback_dekker",
-    "feedback_aristoteles",
-    "feedback_kolb",
-    "feedback_schulz_von_thun",
-    "feedback_transactional",
-    "feedback_esthetiek",
-    "feedback_metafoor",
-    "feedback_narratief",
-    "feedback_taalhandeling",
-}
-
-# Hulpstukken die visueel onder Preekschetsen horen maar *geen* preekschets
-# zijn: ze leveren input (focus-en-functie, illustraties, representatieve
-# aanwezigen) die de predikant kan gebruiken bij het opstellen van de
-# preekschetsselectie. Losse set zodat de preekschets-specifieke lock-logica
-# (`_preek_ready`) én de _trigger_preekschets-call ze kunnen uitsluiten.
-# representatieve_aanwezigen valt onder SermonOutlineAnalysis (voor tab-plaatsing)
-# maar is zelf geen preek; de renderer toont vijf persona's en het trigger-pad
-# gebruikt _trigger_analysis i.p.v. _trigger_preekschets (geen kerntekst-selectie).
-_PREEKSCHETS_HULPSTUKKEN = {
-    "focus_en_functie",
-    "illustraties",
-    "representatieve_aanwezigen",
-}
-
-# Alle analyses die op het Preekschetsen-tabblad zichtbaar moeten zijn:
-# de daadwerkelijke preekschetsen plus de twee hulpstukken.
-_PREEKSCHETSEN_TAB = _PREEKSCHETSEN_NAMEN | _PREEKSCHETS_HULPSTUKKEN
-
-# Alle niet-basis namen, gebruikt om basis-analyses te filteren.
-_ALL_NON_BASIS = (
-    _PERSPECTIEVEN_NAMEN
-    | _VERDIEPING_NAMEN
-    | _PREEKSCHETSEN_TAB
-    | _GEBEDEN_NAMEN
-    | _FEEDBACK_NAMEN
-)
-
-_TABS = [
-    "Basis",
-    "Verdieping",
-    "Perspectieven",
-    "Preekschetsen",
-    "Gebeden",
-    "Feedback",
-]
-
-# Gewenste volgorde van basis-analyses in de zijbalk. Postille staat altijd onderaan.
-# sociaal_maatschappelijk en illustraties zijn verhuisd naar Verdieping resp.
-# Preekschetsen en staan daarom niet meer in deze lijst.
-_BASIS_ORDER = [
-    "bijbelteksten",
-    "liturgisch_jaar",
-    "structuralistische_exegese",
-    "theology",
-    "commentaries",
-    "liedsuggesties",
-    "geloofsorientatie",
-    "representatieve_hoorders",
-    "wereldnieuws",
-    "lokaal_nieuws",
-]
+# Tab-categorisatie (_PERSPECTIEVEN_NAMEN, _VERDIEPING_NAMEN, _GEBEDEN_NAMEN,
+# _PREEKSCHETSEN_NAMEN, _FEEDBACK_NAMEN, _PREEKSCHETS_HULPSTUKKEN,
+# _PREEKSCHETSEN_TAB, _ALL_NON_BASIS, _TABS/TAB_VOLGORDE, _BASIS_ORDER) wordt
+# bovenaan geïmporteerd uit src.utils.analyse_tabs — zie die module voor
+# inhoudelijke toelichting (waarom bepaalde analyses van Basis naar Verdieping
+# zijn verhuisd, etc.). Gedupliceerde inline-definities zijn bewust
+# verwijderd zodat er één bron van waarheid is voor deze groepering.
 
 
 def _basis_sort_key(name: str) -> int:

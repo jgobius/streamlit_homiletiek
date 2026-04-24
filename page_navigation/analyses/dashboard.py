@@ -11,6 +11,9 @@ from src.utils.utils import (
     render_sidebar,
     haal_cumulatief_tokenverbruik_op,
 )
+# Word-export helper: pure module die de .docx-bytes bouwt uit één
+# kerkdienstanalyse (zie src/utils/word_export.py voor de implementatie).
+from src.utils.word_export import bouw_kerkdienstanalyse_docx
 
 redirect_to_login()
 
@@ -73,6 +76,70 @@ def format_title(title: str | None, congregation: str, sermon_date: str) -> str:
 
 def set_analysis_id(analysis_id: int) -> None:
     st.session_state.selected_analysis_id = analysis_id
+
+
+@st.dialog("Word-document aanmaken")
+def word_export_dialog() -> None:
+    # Haal het te exporteren item op uit session_state. Bij ontbreken herladen
+    # we de pagina zodat de dialog niet in een halve staat blijft hangen.
+    item = st.session_state.get("_pending_word_export")
+    if not item:
+        st.rerun()
+
+    # Korte header zodat de gebruiker ziet voor welke analyse het document
+    # wordt gegenereerd.
+    st.write(
+        f"Document voor **{item['church']['name']} — "
+        f"{datetime.strptime(item['sermon_date'], '%Y-%m-%d').strftime('%d-%m-%Y')}**"
+    )
+
+    # We cachen de gegenereerde bytes in session_state zodat een re-render van
+    # de dialog (bv. omdat de gebruiker op de download-knop klikt) niet steeds
+    # opnieuw een document bouwt. De key is per-analyse uniek.
+    cache_key = f"_word_bytes_{item['id']}"
+
+    if cache_key not in st.session_state:
+        # Voortgang-feedback: progressbar + caption-regel. word_export.py
+        # importeert zelf geen Streamlit; we voeden het via deze callback.
+        progress_bar = st.progress(0.0, text="Voorbereiden...")
+        status_slot = st.empty()
+
+        def toon_voortgang(fractie: float, tekst: str) -> None:
+            # Clamp tussen 0 en 1 zodat kleine afrondingsverschillen in de
+            # word_export-module geen StreamlitAPIException opleveren.
+            veilige_fractie = max(0.0, min(1.0, fractie))
+            progress_bar.progress(veilige_fractie, text=tekst)
+            status_slot.caption(tekst)
+
+        try:
+            handler = st.session_state["api_handler"]
+            data, bestandsnaam = bouw_kerkdienstanalyse_docx(
+                item["id"], handler, voortgang_callback=toon_voortgang
+            )
+            st.session_state[cache_key] = (data, bestandsnaam)
+        except Exception as e:
+            st.error(f"Fout bij genereren: {e}")
+            return
+        # Na succes de voortgang-widgets legen zodat alleen de download-knop
+        # in de dialog overblijft. .empty() verwijdert de placeholder-content.
+        progress_bar.empty()
+        status_slot.empty()
+
+    data, bestandsnaam = st.session_state[cache_key]
+    st.download_button(
+        "Download Word-document",
+        data=data,
+        file_name=bestandsnaam,
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        type="primary",
+        use_container_width=True,
+    )
+    if st.button("Sluiten", use_container_width=True):
+        # Opruimen zodat een volgende klik een frisse generatie triggert
+        # (bv. nadat een extra sub-analyse is afgerond).
+        st.session_state.pop(cache_key, None)
+        st.session_state.pop("_pending_word_export", None)
+        st.rerun()
 
 
 @st.dialog("Analyse verwijderen")
@@ -220,12 +287,13 @@ else:
             aanmaak_label = _format_aanmaak_label(
                 item.get("created_at"), aanmaaktijd_titel
             )
-            # Drie kolommen: knop, aanmaaktijdstip (grijs), verwijder-knop. De
-            # tijd-kolom krijgt ~20% van de breedte zodat 'dd-mm-yyyy HH:MM'
-            # netjes past. `vertical_alignment="center"` lijnt het grijze label
-            # op de verticale as van de knop uit.
-            col_btn, col_time, col_del = st.columns(
-                [6, 2, 1], vertical_alignment="center"
+            # Vier kolommen: knop, aanmaaktijdstip (grijs), Word-export-knop,
+            # verwijder-knop. De tijd-kolom krijgt ~20% van de breedte zodat
+            # 'dd-mm-yyyy HH:MM' netjes past. `vertical_alignment="center"`
+            # lijnt het grijze label op de verticale as van de knop uit. De
+            # Word-kolom (📄) staat tussen tijd en verwijder, zoals gevraagd.
+            col_btn, col_time, col_word, col_del = st.columns(
+                [6, 2, 1, 1], vertical_alignment="center"
             )
             # Alleen de hoofdknop van de laatste analyse krijgt een geïdentificeerde
             # container (via key='dashboard_latest_analysis'); de CSS bovenaan de
@@ -253,6 +321,17 @@ else:
                         f"<span style='color: #888; font-size: 0.9em;'>{aanmaak_label}</span>",
                         unsafe_allow_html=True,
                     )
+            with col_word:
+                # Word-export: opent een popup-dialog die het document
+                # opbouwt en als download aanbiedt. Zelfde interactiepatroon
+                # als de verwijder-knop hiernaast (session_state + dialog).
+                if st.button(
+                    "📄",
+                    key=f"word_{item['id']}",
+                    help="Exporteer als Word-document",
+                ):
+                    st.session_state["_pending_word_export"] = item
+                    word_export_dialog()
             with col_del:
                 # Verwijder-knop: sla het item op in session_state en open de bevestigingsdialoog.
                 if st.button("✕", key=f"delete_{item['id']}", help="Verwijder analyse"):
