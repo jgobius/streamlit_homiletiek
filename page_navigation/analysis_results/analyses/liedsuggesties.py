@@ -53,8 +53,12 @@ _BOGUS_EERSTE_REGEL_RE = re.compile(
 # blijft staan ('1. <tekst>', '1 <tekst>'). Bij nieuwe re-embeddings is
 # deze prefix al weggehaald, maar oude AnalysisResult-rijen bevatten hem
 # nog — daarom strippen we hem ook hier in de renderer voor consistente
-# weergave.
-_LEADING_COUPLET_PREFIX_RE = re.compile(r"^\s*\d+\s*\.?\s+(\S.*)$")
+# weergave. Eis dat wat ná de prefix komt met een letter begint, zodat
+# we cijferreeksen in echte teksten (telversjes als '1 2 3 4 5 6 7 8'
+# in Oke4Kids 14) niet ten onrechte ontmantelen.
+_LEADING_COUPLET_PREFIX_RE = re.compile(
+    r"^\s*\d+\s*\.?\s+([A-Za-zÀ-ÖØ-öø-ÿ].*)$"
+)
 
 # Placeholder die de prompt-builder injecteert wanneer titel ontbreekt;
 # mag nooit als zichtbare titel naar de gebruiker doorlekken.
