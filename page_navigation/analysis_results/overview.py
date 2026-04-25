@@ -16,6 +16,9 @@ from src.utils.utils import (
     EIGEN_PREEK_MAX_WOORDEN as _EIGEN_PREEK_MAX_WOORDEN,
 )
 from page_navigation.analysis_results.aanpassen_dialog import aanpassen_dialog
+from page_navigation.analysis_results.selectie_instellen_dialog import (
+    selectie_instellen_dialog,
+)
 from page_navigation.analysis_results.analyses.postille import postille
 from page_navigation.analysis_results.analyses.bijbelteksten import bijbelteksten
 from page_navigation.analysis_results.analyses.liturgisch_jaar import liturgisch_jaar
@@ -1526,6 +1529,26 @@ if not analysis_results:
 
 # --- Hoofdinhoud per tabblad ---
 if current_tab == "Basis":
+    # "Selectie instellen"-knop boven aan het Basis-tabblad. De knop hoort
+    # bij de hele SermonAnalysis (lezingen + liedbundels), niet bij één
+    # specifieke renderer; daarom plaatsen we hem buiten de
+    # selected_analysis-tak zodat hij ook zichtbaar is als er nog geen
+    # Basis-resultaat (bv. bijbelteksten) beschikbaar is. Layout (kolom 7:3,
+    # rechts uitgelijnd) is identiek aan de Preekschetsen-knop verderop.
+    _, _btn_col = st.columns([7, 3])
+    with _btn_col:
+        if st.button(
+            "Selectie instellen",
+            icon="🎯",
+            use_container_width=True,
+            key="basis_selectie_instellen",
+        ):
+            selectie_instellen_dialog(
+                int(analysis_id),
+                sermon_analysis,
+                get_cached_data("api/song-books/"),
+            )
+
     selected_analysis = next(
         (
             r

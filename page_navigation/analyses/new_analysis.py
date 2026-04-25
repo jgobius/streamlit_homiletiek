@@ -19,6 +19,7 @@ from src.utils.utils import (
     render_sidebar,
     save_scriptures,
     load_scriptures,
+    sanitize_cv,
     valideer_tekstinvoer,
 )
 
@@ -35,14 +36,6 @@ _ANALYSIS_LOCK_TIMEOUT_SECONDS = 120
 
 
 ########### HULPFUNCTIES ###########
-
-
-def _sanitize_cv(key: str) -> None:
-    """Verwijder ongeldige tekens uit het hoofdstuk/verzen-veld (alleen cijfers, :, - en a/b)."""
-    raw = st.session_state.get(key, "")
-    cleaned = "".join(c for c in raw if c.isdigit() or c in ":-ab")
-    if cleaned != raw:
-        st.session_state[key] = cleaned
 
 
 @st.dialog("Eigen lezingen toevoegen", width="large")
@@ -89,7 +82,7 @@ def _show_own_readings_dialog() -> None:
                 placeholder="Bijv. 1:1-10",
                 label_visibility="collapsed",
                 disabled=not book_selected,
-                on_change=_sanitize_cv,
+                on_change=sanitize_cv,
                 args=(cv_key,),
             )
 

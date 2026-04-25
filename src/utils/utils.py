@@ -48,6 +48,39 @@ BIBLE_BOOKS = [
 READING_TYPES = ["Eerste lezing", "Tweede lezing", "Derde lezing", "Vierde lezing"]
 
 
+def sanitize_cv(key: str) -> None:
+    """Verwijder ongeldige tekens uit een hoofdstuk/verzen-veld.
+
+    Toegestaan zijn alleen cijfers, ':', '-' en de letters 'a'/'b' (voor
+    half-vers-aanduidingen zoals "5a"). Wordt als ``on_change``-callback
+    gebruikt door zowel het eigen-lezingen-dialoog bij het aanmaken van
+    een analyse, als de "Selectie instellen"-dialog op het Basis-tabblad
+    — daarom centraal in utils zodat beide exact dezelfde whitelist hanteren.
+    """
+    raw = st.session_state.get(key, "")
+    cleaned = "".join(c for c in raw if c.isdigit() or c in ":-ab")
+    if cleaned != raw:
+        st.session_state[key] = cleaned
+
+
+def parse_original_scripture(s: str) -> tuple[str, str]:
+    """Splits "Genesis 1:1-3" naar ("Genesis", "1:1-3").
+
+    Boeknamen kunnen zelf cijfers bevatten ("1 Korintiërs"), dus de splitsing
+    op de eerste spatie volstaat niet. We zoeken de langste prefix uit
+    ``BIBLE_BOOKS`` die past — zo wordt "1 Korintiërs 13:4-7" correct
+    gesplitst in ("1 Korintiërs", "13:4-7"). Bij geen match geven we een
+    leeg boek terug; de aanroeper kan dan een fallback-waarschuwing tonen.
+    """
+    if not s:
+        return "", ""
+    for book in sorted(BIBLE_BOOKS, key=len, reverse=True):
+        prefix = f"{book} "
+        if s.startswith(prefix):
+            return book, s[len(prefix):]
+    return "", s
+
+
 # Woordentelling-grenzen voor het 'Eigen preek'-invoerveld. Centraal in utils
 # zodat zowel de dialog in overview.py als het bewerk-paneel in
 # analysis_results/analyses/volledige_preek.py exact dezelfde limieten
