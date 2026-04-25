@@ -31,16 +31,30 @@ _MATCH_LABELS: dict[str, str] = {
 # Bundels zonder officieel liednummersysteem. Hun "nummer" is een interne
 # database-index (volgorde in de bron) en komt niet overeen met enig
 # extern bekend nummer — tonen werkt verwarrend, dus laten we hem weg.
+# Oke4Kids zit hier ook in: de bundel kent in de praktijk geen vaste
+# nummering die voorgangers gebruiken — titel + eerste regel zijn de
+# enige informatieve identifier.
 _BUNDELS_ZONDER_OFFICIEEL_NUMMER: frozenset[str] = frozenset({
     "Sela",
     "Schrijvers voor Gerechtigheid",
+    "Oke4Kids",
 })
 
 # Patroon voor onbruikbare 'eerste regel'-waardes: pure couplet-markers
-# ("1", "1."), losse streepjes en de '(onbekend)'-placeholder uit de
-# prompt-builder. Deze ontstaan in de embed-pipeline voor multi-couplet
-# bundels zonder titel-marker (Liedboek, Op Toonhoogte, Weerklank).
-_BOGUS_EERSTE_REGEL_RE = re.compile(r"^\s*(?:\d+\s*\.?|-+|\(onbekend\))\s*$")
+# ("1", "1."), refrein-aanduidingen ('Refrein', 'Refr.', 'refr.', 'ref.'),
+# losse streepjes en de '(onbekend)'-placeholder uit de prompt-builder.
+# Deze ontstaan in de embed-pipeline en lekken anders 1-op-1 naar de UI.
+_BOGUS_EERSTE_REGEL_RE = re.compile(
+    r"^\s*(?:\d+\s*\.?|refrein|refr\.?|ref\.|-+|\(onbekend\)):?\s*$",
+    re.IGNORECASE,
+)
+
+# Inline couplet-prefix die in oudere analyse-resultaten in eerste_regel
+# blijft staan ('1. <tekst>', '1 <tekst>'). Bij nieuwe re-embeddings is
+# deze prefix al weggehaald, maar oude AnalysisResult-rijen bevatten hem
+# nog — daarom strippen we hem ook hier in de renderer voor consistente
+# weergave.
+_LEADING_COUPLET_PREFIX_RE = re.compile(r"^\s*\d+\s*\.?\s+(\S.*)$")
 
 # Placeholder die de prompt-builder injecteert wanneer titel ontbreekt;
 # mag nooit als zichtbare titel naar de gebruiker doorlekken.
@@ -77,15 +91,26 @@ def _zuiver_titel(titel: str) -> str:
 
 
 def _zuiver_eerste_regel(eerste_regel: str) -> str:
-    """Filter pure couplet-markers en placeholders weg.
+    """Filter bogus markers weg en strip inline couplet-prefixes.
 
-    De embed-pipeline schrijft voor multi-couplet bundels zonder titel-marker
-    soms '1.' weg als 'eerste regel' — dat is de verse-header, geen tekst.
-    Voor de gebruiker is zo'n waarde nutteloos en willen we hem niet tonen.
+    Drie soorten waardes komen vanuit de embed-pipeline of oude analyse-
+    resultaten binnen waar we niets aan hebben:
+
+    1. Pure couplet-markers ('1', '1.') uit multi-couplet bundels.
+    2. Refrein-aanduidingen ('Refrein', 'Refr.', 'refrein:').
+    3. Echte regels met inline couplet-prefix ('1. <tekst>') uit NPB en
+       JdH waar de coupletten als losse regels in één DB-verse staan.
+
+    Categorie 1 en 2 leveren niets op en worden volledig weggefilterd.
+    Bij categorie 3 knippen we alleen de prefix eraf zodat de gebruiker
+    de echte tekst overhoudt.
     """
     eerste_regel = (eerste_regel or "").strip()
     if not eerste_regel or _BOGUS_EERSTE_REGEL_RE.match(eerste_regel):
         return ""
+    m_prefix = _LEADING_COUPLET_PREFIX_RE.match(eerste_regel)
+    if m_prefix:
+        return m_prefix.group(1).strip()
     return eerste_regel
 
 
