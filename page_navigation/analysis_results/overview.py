@@ -577,13 +577,14 @@ with st.sidebar:
                 st.session_state["current_tab"] = current_tab
                 st.rerun()
 
-        # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
-        # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
-        # Bij overschreden tokenlimiet verbergen we de expander in zijn geheel.
-        if not _limiet_overschreden:
+        # Verberg de expander zodra alle verdiepingsanalyses aanwezig zijn:
+        # er valt dan niets meer toe te voegen. Zodra de gebruiker er één
+        # verwijdert, komt het type weer in `verdiep_missing` en verschijnt
+        # de expander automatisch terug. Container-key zorgt dat de
+        # paginascoped CSS deze expander subtiel oranje kleurt. Bij
+        # overschreden tokenlimiet verbergen we de expander in zijn geheel.
+        if verdiep_missing and not _limiet_overschreden:
             with st.container(key="sidebar_toevoegen_verdieping"), st.expander("Verdieping toevoegen"):
-                if not verdiep_missing:
-                    st.caption("Geen types beschikbaar.")
                 for at in verdiep_missing:
                     _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
                     _add_locked = _reanalysis_is_locked(_add_lock_key)
@@ -613,13 +614,14 @@ with st.sidebar:
                 st.session_state["current_tab"] = current_tab
                 st.rerun()
 
-        # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
-        # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
-        # Bij overschreden tokenlimiet verbergen we de expander in zijn geheel.
-        if not _limiet_overschreden:
+        # Verberg de expander zodra alle perspectieven aanwezig zijn: er valt
+        # dan niets meer toe te voegen. Zodra de gebruiker er één verwijdert,
+        # komt het type weer in `perspect_missing` en verschijnt de expander
+        # automatisch terug. Container-key zorgt dat de paginascoped CSS deze
+        # expander subtiel oranje kleurt. Bij overschreden tokenlimiet
+        # verbergen we de expander in zijn geheel.
+        if perspect_missing and not _limiet_overschreden:
             with st.container(key="sidebar_toevoegen_perspectieven"), st.expander("Perspectief toevoegen"):
-                if not perspect_missing:
-                    st.caption("Geen types beschikbaar.")
                 for at in perspect_missing:
                     _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
                     _add_locked = _reanalysis_is_locked(_add_lock_key)
@@ -649,15 +651,17 @@ with st.sidebar:
                 st.session_state["current_tab"] = current_tab
                 st.rerun()
 
-        # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
-        # Bij overschreden tokenlimiet verbergen we de expander in zijn geheel.
-        if not _limiet_overschreden:
+        # Verberg de expander zodra alle preekschets-types aanwezig zijn:
+        # er valt dan niets meer toe te voegen. Zodra de gebruiker er één
+        # verwijdert, komt het type weer in `preek_missing` en verschijnt
+        # de expander automatisch terug. Container-key zorgt dat de
+        # paginascoped CSS deze expander subtiel oranje kleurt. Bij
+        # overschreden tokenlimiet verbergen we de expander in zijn geheel.
+        if preek_missing and not _limiet_overschreden:
             with st.container(key="sidebar_toevoegen_preekschetsen"), st.expander("Preekschets toevoegen"):
                 _preek_ready = st.session_state.get(
                     f"preek_selectie_{analysis_id}", {}
                 ).get("opgeslagen", False)
-                if not preek_missing:
-                    st.caption("Geen preekschets-types beschikbaar.")
                 for at in preek_missing:
                     _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
                     _add_locked = _reanalysis_is_locked(_add_lock_key)
@@ -710,13 +714,14 @@ with st.sidebar:
                 st.session_state["current_tab"] = current_tab
                 st.rerun()
 
-        # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
-        # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
-        # Bij overschreden tokenlimiet verbergen we de expander in zijn geheel.
-        if not _limiet_overschreden:
+        # Verberg de expander zodra alle gebeden aanwezig zijn: er valt
+        # dan niets meer toe te voegen. Zodra de gebruiker er één
+        # verwijdert, komt het type weer in `gebed_missing` en verschijnt
+        # de expander automatisch terug. Container-key zorgt dat de
+        # paginascoped CSS deze expander subtiel oranje kleurt. Bij
+        # overschreden tokenlimiet verbergen we de expander in zijn geheel.
+        if gebed_missing and not _limiet_overschreden:
             with st.container(key="sidebar_toevoegen_gebeden"), st.expander("Gebed toevoegen"):
-                if not gebed_missing:
-                    st.caption("Geen types beschikbaar.")
                 for at in gebed_missing:
                     _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
                     _add_locked = _reanalysis_is_locked(_add_lock_key)
@@ -747,13 +752,14 @@ with st.sidebar:
                 st.session_state["current_tab"] = current_tab
                 st.rerun()
 
-        # Expander altijd tonen (ook als er nog geen types zijn), zodat de zijbalk nooit leeg is.
-        # Container-key zorgt dat de paginascoped CSS deze expander subtiel oranje kleurt.
+        # Verberg de expander zodra alle feedback-types aanwezig zijn: er
+        # valt dan niets meer toe te voegen. Zodra de gebruiker er één
+        # verwijdert, komt het type weer in `feedback_nav_missing` en
+        # verschijnt de expander automatisch terug. Container-key zorgt
+        # dat de paginascoped CSS deze expander subtiel oranje kleurt.
         # Bij overschreden tokenlimiet verbergen we de expander in zijn geheel.
-        if not _limiet_overschreden:
+        if feedback_nav_missing and not _limiet_overschreden:
             with st.container(key="sidebar_toevoegen_feedback"), st.expander("Feedback toevoegen"):
-                if not feedback_nav_missing:
-                    st.caption("Geen types beschikbaar.")
                 for at in feedback_nav_missing:
                     _add_lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
                     _add_locked = _reanalysis_is_locked(_add_lock_key)
