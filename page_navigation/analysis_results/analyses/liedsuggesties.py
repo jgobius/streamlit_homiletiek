@@ -155,20 +155,19 @@ def _render_lied(lied: dict[str, Any]) -> None:
     toon_nummer = bool(nummer) and bundel not in _BUNDELS_ZONDER_OFFICIEEL_NUMMER
 
     with st.container(border=True):
-        if toon_nummer:
-            col_nr, col_title = st.columns([1, 8])
-            with col_nr:
-                st.markdown(f"### {nummer}")
-            with col_title:
-                if hoofdtitel:
-                    st.markdown(f"**{hoofdtitel}**")
-                if caption_regel:
-                    st.caption(f"*{caption_regel}*")
-        else:
-            if hoofdtitel:
-                st.markdown(f"**{hoofdtitel}**")
-            if caption_regel:
-                st.caption(f"*{caption_regel}*")
+        # Nummer + titel renderen we als één markdown-regel zodat ze op
+        # exact dezelfde baseline staan en even groot zijn. De oude opzet
+        # met `st.columns` + `### {nummer}` zette het nummer als h3-kop
+        # naast bold body-tekst, wat zowel verticaal scheef als visueel
+        # te groot uitviel.
+        if toon_nummer and hoofdtitel:
+            st.markdown(f"**{nummer}** &nbsp;·&nbsp; **{hoofdtitel}**")
+        elif toon_nummer:
+            st.markdown(f"**{nummer}**")
+        elif hoofdtitel:
+            st.markdown(f"**{hoofdtitel}**")
+        if caption_regel:
+            st.caption(f"*{caption_regel}*")
 
         if karakter:
             st.caption(f"🎵 {karakter}")
