@@ -547,6 +547,7 @@ def render_sidebar():
             
         with st.expander("Account"):
             st.page_link(label="Uitloggen", page=f"{st.session_state['page_navigation_dir']}/logout.py")
+            st.page_link(label="Wachtwoord resetten", page=f"{st.session_state['page_navigation_dir']}/reset_password.py")
             # Gebruik '_dark_mode_toggle' als widget-key zodat de voorkeur-key 'dark_mode'
             # geen widget-key is. Streamlit wist widget-keys bij paginanavigatie wanneer
             # het widget niet meer gerenderd wordt (overview.py heeft geen render_sidebar()),

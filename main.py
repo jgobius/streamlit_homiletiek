@@ -10,7 +10,7 @@ from src.api.handler import APIHandler
 
 # Laad .env één keer bovenin zodat alle child-pages (die in dezelfde Python-
 # proces draaien via st.navigation) de environment-variabelen geërfd krijgen.
-load_dotenv()
+load_dotenv(override=True)
 
 # Sleutel waaronder het refresh token in de browser-cookie wordt opgeslagen.
 _COOKIE_KEY = "auth_refresh_token"
@@ -841,6 +841,7 @@ def main():
     login_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/login.py", title='Inloggen')
     logout_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/logout.py", title='Uitloggen')
     register_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/register.py", title='Registreren')
+    reset_password_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/reset_password.py", title='Wachtwoord resetten')
     dashboard_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py", title='Overzicht kerkdienstanalyses')
     # settings_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/settings.py", title='Instellingen')
     new_analysis_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py", title='Nieuwe kerkdienstanalyse')
@@ -850,7 +851,7 @@ def main():
 
     analysis_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py", title='Analyse overzicht')
 
-    pages = [dashboard_page, new_analysis_page, liturgisch_jaar_page, church_overview_page, new_church_page, analysis_overview_page, logout_page]
+    pages = [dashboard_page, new_analysis_page, liturgisch_jaar_page, church_overview_page, new_church_page, analysis_overview_page, logout_page, reset_password_page]
 
     if 'api_handler' not in st.session_state:
         # logout_page wordt ook in de unauthenticated lijst opgenomen zodat de
