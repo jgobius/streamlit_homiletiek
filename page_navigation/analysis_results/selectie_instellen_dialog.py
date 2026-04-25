@@ -212,67 +212,96 @@ def selectie_instellen_dialog(
         st.error("Selecteer minimaal één liedbundel.")
         return
 
-    # ── Verzen synchroon ophalen via de structured-scripture-agent ─────────
-    # Zelfde flow als bij het aanmaken van een analyse (new_analysis.py:384):
-    # de gebruiker krijgt direct een fout als een lezing niet gestructureerd
-    # kan worden, in plaats van pas een asynchrone fout in een latere rerun.
-    bible_version_obj = sermon_analysis.get("bible_version") or {}
-    bible_version_str = (
-        bible_version_obj.get("version")
-        if isinstance(bible_version_obj, dict)
-        else None
-    )
-    with st.status("Lezingen structureren (kan even duren)..."):
-        nieuwe_scripture_json = get_structured_scriptures(
-            scriptures=nieuwe_lezingen,
-            bible_version=bible_version_str,
-            language="nl",
-        )
-
-    # Lege lezingen (geen verzen gevonden) blokkeren de PATCH — anders zou de
-    # Bijbelteksten-tab na opslaan stilletjes leeg blijven en moest de
-    # voorganger zelf raden waarom.
-    lege: list[str] = [
-        sc.get("original_scripture") or "(onbekende lezing)"
-        for sc in nieuwe_scripture_json
-        if not any((s.get("verses") or []) for s in (sc.get("scriptures") or []))
+    # ── Wijzigingen detecteren ────────────────────────────────────────────
+    # Vergelijk de nieuwe selectie met de oorspronkelijke uit sermon_analysis.
+    # Geen wijziging → niets doen (dialog sluiten zonder API-/LLM-calls).
+    # Alleen liedbundels gewijzigd → PATCH zonder de structured-scripture-LLM
+    # opnieuw te draaien. Alleen lezingen gewijzigd, of beide → volledig pad.
+    oorspronkelijke_lezingen = [
+        item.get("original_scripture", "") or ""
+        for item in (sermon_analysis.get("scripture_json") or [])
     ]
-    if lege:
-        st.error(
-            "Geen bijbeltekst gevonden voor: "
-            + ", ".join(f"'{t}'" for t in lege)
-            + ". Controleer de spelling van het bijbelboek en probeer het opnieuw."
-        )
-        return
+    nieuwe_song_book_ids = sorted(b["id"] for b in geselecteerde_bundels)
+    oorspronkelijke_song_books = sermon_analysis.get("song_books") or []
+    oorspronkelijke_song_book_ids = sorted(
+        sb["id"] if isinstance(sb, dict) else sb for sb in oorspronkelijke_song_books
+    )
 
-    # ── PATCH op de backend ───────────────────────────────────────────────
+    lezingen_gewijzigd = nieuwe_lezingen != oorspronkelijke_lezingen
+    bundels_gewijzigd = nieuwe_song_book_ids != oorspronkelijke_song_book_ids
+
+    if not lezingen_gewijzigd and not bundels_gewijzigd:
+        # Geen verschil — dialog gewoon sluiten zonder netwerkverkeer.
+        _wis_state(analysis_id)
+        st.rerun()
+
     handler = st.session_state["api_handler"]
-    payload = {
-        "scripture_json": nieuwe_scripture_json,
-        "song_books": [b["id"] for b in geselecteerde_bundels],
-    }
+
+    if lezingen_gewijzigd:
+        # ── Verzen synchroon ophalen via de structured-scripture-agent ─────
+        # Zelfde flow als bij het aanmaken van een analyse (new_analysis.py:384):
+        # de gebruiker krijgt direct een fout als een lezing niet gestructureerd
+        # kan worden, in plaats van pas een asynchrone fout in een latere rerun.
+        bible_version_obj = sermon_analysis.get("bible_version") or {}
+        bible_version_str = (
+            bible_version_obj.get("version")
+            if isinstance(bible_version_obj, dict)
+            else None
+        )
+        with st.status("Lezingen structureren (kan even duren)..."):
+            nieuwe_scripture_json = get_structured_scriptures(
+                scriptures=nieuwe_lezingen,
+                bible_version=bible_version_str,
+                language="nl",
+            )
+
+        # Lege lezingen (geen verzen gevonden) blokkeren de PATCH — anders zou de
+        # Bijbelteksten-tab na opslaan stilletjes leeg blijven en moest de
+        # voorganger zelf raden waarom.
+        lege: list[str] = [
+            sc.get("original_scripture") or "(onbekende lezing)"
+            for sc in nieuwe_scripture_json
+            if not any((s.get("verses") or []) for s in (sc.get("scriptures") or []))
+        ]
+        if lege:
+            st.error(
+                "Geen bijbeltekst gevonden voor: "
+                + ", ".join(f"'{t}'" for t in lege)
+                + ". Controleer de spelling van het bijbelboek en probeer het opnieuw."
+            )
+            return
+
+        payload: dict[str, Any] = {
+            "scripture_json": nieuwe_scripture_json,
+            "song_books": nieuwe_song_book_ids,
+        }
+    else:
+        # Alleen liedbundels zijn gewijzigd — geen LLM-call nodig.
+        payload = {"song_books": nieuwe_song_book_ids}
+
     try:
         handler.patch(f"api/sermon-analyses/{analysis_id}/", data=payload)
     except requests.exceptions.HTTPError as exc:
         st.error(f"Opslaan mislukt: {exc}. Probeer het opnieuw.")
         return
 
-    # ── Bijbelteksten-renderer opnieuw triggeren ──────────────────────────
+    # ── Bijbelteksten-renderer opnieuw triggeren (alleen bij lezing-wijziging) ─
     # /original_scriptures/ koppelt de verzen aan een AnalysisResult van het
     # type 'bijbelteksten'. Faalt deze stap, dan blijft scripture_json wél
     # bijgewerkt — de gebruiker kan dan zelf via de "Opnieuw"-knop op de
     # Bijbelteksten-analyse de renderer alsnog herstarten.
-    try:
-        AgentRequest().post(
-            "original_scriptures/",
-            payload={"sermon_analysis_id": analysis_id},
-        )
-    except requests.exceptions.RequestException as exc:
-        st.warning(
-            "Selectie is opgeslagen, maar de bijbelteksten konden niet "
-            f"automatisch ververst worden ({exc}). Klik op 'Opnieuw' bij de "
-            "Bijbelteksten-analyse om ze handmatig op te halen."
-        )
+    if lezingen_gewijzigd:
+        try:
+            AgentRequest().post(
+                "original_scriptures/",
+                payload={"sermon_analysis_id": analysis_id},
+            )
+        except requests.exceptions.RequestException as exc:
+            st.warning(
+                "Selectie is opgeslagen, maar de bijbelteksten konden niet "
+                f"automatisch ververst worden ({exc}). Klik op 'Opnieuw' bij de "
+                "Bijbelteksten-analyse om ze handmatig op te halen."
+            )
 
     # ── Cache invalideren + dialog-state opruimen ─────────────────────────
     # Zelfde key als overview.py:1369 gebruikt — zo haalt de eerstvolgende
