@@ -115,20 +115,22 @@ def selectie_instellen_dialog(
     count = st.session_state[f"{prefix}count"]
     active_types = READING_TYPES[:count]
 
+    book_options = [""] + BIBLE_BOOKS
     for rt in active_types:
         st.markdown(f"**{rt}**")
         col1, col2 = st.columns([1, 1])
 
-        book_options = [""] + BIBLE_BOOKS
-        huidig_boek = st.session_state.get(f"{prefix}book_{rt}", "")
-        book_index = (
-            book_options.index(huidig_boek) if huidig_boek in book_options else 0
-        )
+        # We zetten de defaults al in _hydrate_state via session_state, dus
+        # geven hier géén `index=` mee — Streamlit waarschuwt anders dat een
+        # widget zowel een default als een session_state-waarde heeft. Als de
+        # gehydrateerde waarde toevallig niet in BIBLE_BOOKS staat (bv. een
+        # boeknaam die later hernoemd is), valt de selectbox terug op "".
         with col1:
+            if st.session_state.get(f"{prefix}book_{rt}", "") not in book_options:
+                st.session_state[f"{prefix}book_{rt}"] = ""
             st.selectbox(
                 f"Bijbelboek ({rt})",
                 options=book_options,
-                index=book_index,
                 key=f"{prefix}book_{rt}",
                 label_visibility="collapsed",
             )
