@@ -178,7 +178,7 @@ analysis = st.session_state["dashboard_analyses_cache"]
 
 # Controleer cumulatief verbruik van de ingelogde gebruiker tegen het
 # persoonlijke EUR-budget uit UserPreferences (backend). Per 2026-04
-# vergelijken we geschatte kosten (€2 / 1M invoer, €12 / 1M uitvoer) met
+# vergelijken we geschatte kosten (€1 / 1M invoer, €6 / 1M uitvoer) met
 # `BUDGET_EUR` in plaats van tegen aparte token-drempels: het tegoed in
 # euro's is wat we de testgebruiker beloven en dus ook de juiste
 # stop-conditie. De vlag `_limiet_overschreden` wordt verderop hergebruikt

@@ -600,8 +600,8 @@ _TOKENVERBRUIK_CACHE_KEY = "_tokenverbruik_cache"
 # tokenverbruik om te rekenen naar EUR. Bewust geen DB-veld of secrets-bestand:
 # de testgebruikers hebben één tarief dat zelden verandert, en de echte
 # afrekening gebeurt elders. Tarieven luiden in EUR per 1.000.000 tokens.
-_KOSTEN_EUR_PER_MILJOEN_INPUT = 2.0
-_KOSTEN_EUR_PER_MILJOEN_OUTPUT = 12.0
+_KOSTEN_EUR_PER_MILJOEN_INPUT = 1.0
+_KOSTEN_EUR_PER_MILJOEN_OUTPUT = 6.0
 
 
 def bereken_kosten_eur(input_tokens: int, output_tokens: int) -> float:
