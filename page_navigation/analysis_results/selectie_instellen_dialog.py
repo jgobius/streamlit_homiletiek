@@ -23,6 +23,7 @@ from src.utils.utils import (
     get_structured_scriptures,
     parse_original_scripture,
     sanitize_cv,
+    tokenlimiet_bereikt,
 )
 
 
@@ -321,6 +322,18 @@ def selectie_instellen_dialog(
     handler = st.session_state["api_handler"]
 
     if lezingen_gewijzigd:
+        # Tokenlimiet-check vlak vóór de LLM-call: get_structured_scriptures()
+        # is een betaalde agent-aanroep ("Lezingen structureren"-status).
+        # Bundel-only-wijzigingen blijven mogelijk omdat die geen LLM raken;
+        # daarom zit de check hier en niet op de "Selectie instellen"-knop.
+        if tokenlimiet_bereikt():
+            st.error(
+                "Je tokenlimiet is bereikt. Wijzigingen aan de schriftlezingen "
+                "vereisen een AI-aanroep en zijn daarom geblokkeerd. Wijzig "
+                "alleen de liedbundels, of neem contact op om je limiet te "
+                "verhogen."
+            )
+            return
         # ── Verzen synchroon ophalen via de structured-scripture-agent ─────
         # Zelfde flow als bij het aanmaken van een analyse (new_analysis.py:384):
         # de gebruiker krijgt direct een fout als een lezing niet gestructureerd
