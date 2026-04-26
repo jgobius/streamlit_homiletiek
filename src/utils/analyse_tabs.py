@@ -136,6 +136,26 @@ _ALL_NON_BASIS: set[str] = (
     | _FEEDBACK_NAMEN
 )
 
+def heeft_preekschets_resultaten(
+    latest: dict, sermon_analysis: dict
+) -> bool:
+    """Bepaal of een SermonAnalysis al preekschets-context bevat.
+
+    Wordt gebruikt in volledige_preek_dialog om te beslissen of de derde
+    radio-optie ('Bijbelteksten + Preekschets-materiaal') beschikbaar is.
+    Een SermonAnalysis telt als 'preekschets aanwezig' zodra er minstens
+    één gerenderd preekschets-onderdeel (schets of hulpstuk) bestaat, of
+    als de prediker al een opgeslagen preekschets_selectie heeft. Beide
+    signalen zijn voldoende; in praktijk loopt de selectie meestal vóór
+    de daadwerkelijke schets-runs.
+    """
+    namen = _PREEKSCHETSEN_NAMEN | _PREEKSCHETS_HULPSTUKKEN
+    if any(latest.get(n) for n in namen):
+        return True
+    selectie = sermon_analysis.get("preekschets_selectie") or {}
+    return bool(selectie)
+
+
 # Volgorde van de tabbladen zoals de gebruiker ze ziet. Exports en andere
 # consumers moeten deze volgorde respecteren.
 TAB_VOLGORDE: list[str] = [

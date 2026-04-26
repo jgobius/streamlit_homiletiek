@@ -75,6 +75,7 @@ from src.utils.analyse_tabs import (
     _PREEKSCHETSEN_TAB,
     _FEEDBACK_NAMEN,
     _ALL_NON_BASIS,
+    heeft_preekschets_resultaten,
 )
 
 # Paginascoped CSS: geef de "... toevoegen"-expanders in de zijbalk een
@@ -1382,7 +1383,10 @@ def preekschets_selectie_dialog(
 
 @st.dialog("Eigen preek invoeren", width="large")
 def volledige_preek_dialog(
-    analysis_id: int, latest: dict, all_analysis_types: list
+    analysis_id: int,
+    latest: dict,
+    all_analysis_types: list,
+    sermon_analysis: dict,
 ) -> None:
     """Dialoog voor het invoeren of bewerken van de volledige preektekst."""
     existing = latest.get("volledige_preek")
@@ -1422,6 +1426,50 @@ def volledige_preek_dialog(
         f"Aantal woorden: {_aantal_woorden} "
         f"(minimaal {_EIGEN_PREEK_MIN_WOORDEN}, maximaal {_EIGEN_PREEK_MAX_WOORDEN})"
     )
+
+    # Radio voor de feedback-context-keuze. De voorganger kiest welke extra
+    # context (Bijbelteksten en/of preekschets-materiaal) door de feedback-
+    # prompts mag worden meegelezen. De derde optie (incl. preekschets) is
+    # alleen beschikbaar als er ook daadwerkelijk preekschets-resultaten of
+    # een opgeslagen selectie bestaan; anders zou hij naar lege injecties
+    # leiden. De keuze geldt voor toekomstige feedback-runs op deze preek;
+    # bestaande feedback-resultaten blijven ongewijzigd staan.
+    _preekschets_beschikbaar = heeft_preekschets_resultaten(
+        latest, sermon_analysis
+    )
+    _ctx_label_naar_waarde: dict[str, str] = {
+        "Geen extra context": "geen",
+        "Alleen Bijbelteksten": "bijbelteksten",
+    }
+    if _preekschets_beschikbaar:
+        _ctx_label_naar_waarde["Bijbelteksten + Preekschets-materiaal"] = (
+            "bijbelteksten_preekschets"
+        )
+    _ctx_opties: list[str] = list(_ctx_label_naar_waarde.keys())
+    _huidige_keuze = (
+        sermon_analysis.get("feedback_context_keuze") or "bijbelteksten"
+    )
+    # Als de huidige opgeslagen keuze niet (meer) in de zichtbare opties zit
+    # — bv. preekschets-keuze maar inmiddels geen preekschets-context meer
+    # beschikbaar — vallen we terug op 'Alleen Bijbelteksten' als veilige default.
+    _huidig_label = next(
+        (l for l, v in _ctx_label_naar_waarde.items() if v == _huidige_keuze),
+        "Alleen Bijbelteksten",
+    )
+    _ctx_keuze_label = st.radio(
+        "Welke context mag in de feedback-prompts worden meegelezen?",
+        _ctx_opties,
+        index=_ctx_opties.index(_huidig_label) if _huidig_label in _ctx_opties else 1,
+        help=(
+            "Bijbelteksten zijn altijd beschikbaar omdat elke kerkdienst-"
+            "analyse de Schriftlezingen heeft. Preekschets-materiaal "
+            "(perspectieven, representatieve hoorders, kernteksten, "
+            "focus/functie en illustraties) is alleen bruikbaar als je de "
+            "Preekschetsen-tab eerder hebt gedraaid."
+        ),
+        key=f"feedback_ctx_radio_{analysis_id}",
+    )
+    _gekozen_feedback_ctx: str = _ctx_label_naar_waarde[_ctx_keuze_label]
 
     _kan_opslaan = bool(new_preektekst.strip())
     if st.button(
@@ -1507,6 +1555,19 @@ def volledige_preek_dialog(
                         "prompt": {},
                         "result": updated,
                     },
+                )
+            # Persisteer de feedback-context-keuze op de SermonAnalysis zelf,
+            # niet op het analyse-resultaat. Reden: de keuze geldt voor
+            # alle (toekomstige) feedback-runs op deze preek en moet een
+            # logout/login-cyclus overleven; SermonAnalysis is daarvoor de
+            # juiste home, want het Read-Serializer-veld
+            # feedback_context_keuze wordt door de agent-pipeline gelezen.
+            # Alleen patchen als de keuze daadwerkelijk veranderd is, om
+            # onnodige writes naar de DB te voorkomen.
+            if _gekozen_feedback_ctx != _huidige_keuze:
+                handler.patch(
+                    f"api/sermon-analyses/{analysis_id}/",
+                    data={"feedback_context_keuze": _gekozen_feedback_ctx},
                 )
             st.toast("Preektekst opgeslagen.")
             # Markeer de cache als vervuild zodat de pagina opnieuw laadt.
@@ -1751,7 +1812,9 @@ elif current_tab == "Feedback":
     _, btn_col = st.columns([7, 3])
     with btn_col:
         if st.button("Eigen preek invoeren", icon="✏️", use_container_width=True):
-            volledige_preek_dialog(int(analysis_id), latest, all_analysis_types)
+            volledige_preek_dialog(
+                int(analysis_id), latest, all_analysis_types, sermon_analysis
+            )
     _vp = latest.get("volledige_preek")
     if _vp:
         # Toon de opgeslagen titel als bevestiging dat er al een preektekst is.
