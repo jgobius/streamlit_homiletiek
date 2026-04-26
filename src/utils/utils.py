@@ -51,14 +51,19 @@ READING_TYPES = ["Eerste lezing", "Tweede lezing", "Derde lezing", "Vierde lezin
 def sanitize_cv(key: str) -> None:
     """Verwijder ongeldige tekens uit een hoofdstuk/verzen-veld.
 
-    Toegestaan zijn alleen cijfers, ':', '-' en de letters 'a'/'b' (voor
-    half-vers-aanduidingen zoals "5a"). Wordt als ``on_change``-callback
-    gebruikt door zowel het eigen-lezingen-dialoog bij het aanmaken van
-    een analyse, als de "Selectie instellen"-dialog op het Basis-tabblad
-    — daarom centraal in utils zodat beide exact dezelfde whitelist hanteren.
+    Toegestaan zijn cijfers, ':', '-', '.', ',' en de letters 'a'/'b' (voor
+    half-vers-aanduidingen zoals "5a"). De punt en komma zijn nodig omdat
+    het kerkelijk rooster lezingen opslaat in de notatie "8,5-8.14-17"
+    (komma scheidt hoofdstuk van vers, punt scheidt opeenvolgende
+    versgroepen). Zonder die tekens werd "8,5-8.14-17" bij hydratatie
+    direct teruggebracht tot "8:5-814-17" wanneer de gebruiker het veld
+    aanraakte. Wordt als ``on_change``-callback gebruikt door zowel het
+    eigen-lezingen-dialoog bij het aanmaken van een analyse, als de
+    "Selectie instellen"-dialog op het Basis-tabblad — daarom centraal in
+    utils zodat beide exact dezelfde whitelist hanteren.
     """
     raw = st.session_state.get(key, "")
-    cleaned = "".join(c for c in raw if c.isdigit() or c in ":-ab")
+    cleaned = "".join(c for c in raw if c.isdigit() or c in ":-.,ab")
     if cleaned != raw:
         st.session_state[key] = cleaned
 
