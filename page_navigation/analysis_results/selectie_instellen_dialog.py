@@ -112,8 +112,17 @@ def _hydrate_state(analysis_id: int, sermon_analysis: dict[str, Any]) -> None:
     bronlezingen: list[str] = [
         item.get("original_scripture") or "" for item in scripture_json
     ]
-    if not any(bronlezingen):
-        bronlezingen = _lectionary_readings(sermon_analysis)
+    # Vul ontbrekende rooster-slots aan vanuit liturgy. Een eerdere
+    # onvolledige opslag (bv. een 4-lezingen-rooster waarvan één lezing
+    # door een legacy-bug wegviel) zou anders permanent de gemiste lezing
+    # uit het dialog laten verdwijnen, ook al staat hij wél in het rooster.
+    # Voor "Eigen lezingen"-analyses heeft sermon_analysis geen liturgy en
+    # is _lectionary_readings leeg, dus dan verandert er niets.
+    rooster = _lectionary_readings(sermon_analysis)
+    if len(bronlezingen) < len(rooster):
+        bronlezingen.extend(rooster[len(bronlezingen):])
+    # Volledig leeg (geen scripture_json én geen rooster): laat de dialog
+    # met één lege slot openen zodat de gebruiker direct kan invullen.
 
     for i, original in enumerate(bronlezingen[: len(READING_TYPES)]):
         boek, cv = parse_original_scripture(original)
