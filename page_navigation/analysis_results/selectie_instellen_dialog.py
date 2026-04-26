@@ -26,6 +26,28 @@ from src.utils.utils import (
 )
 
 
+def _lectionary_readings(sermon_analysis: dict[str, Any]) -> list[str]:
+    """Haal de roosterlezingen op uit de geneste liturgy van een
+    kerkelijk-rooster-analyse.
+
+    Bij ``use_calendar=True`` wordt ``scripture_json`` bij het aanmaken niet
+    gevuld (zie ``new_analysis.py``: alleen ``selected_scripture_id`` wordt
+    meegestuurd), waardoor de selectie-dialog zonder fallback met lege velden
+    opende. De read-serializer geeft ``liturgy`` met depth=2 terug, dus we
+    kunnen ``first_scripture``/``second_scripture``/``psalm``/``gospel``
+    rechtstreeks uitlezen. Lege/None-velden filteren we eruit zodat de
+    overgebleven lezingen netjes in de eerste N slots terechtkomen — en niet
+    een lege "Tweede lezing"-slot doorschuift naar de derde positie.
+    """
+    liturgy = sermon_analysis.get("liturgy")
+    # Defensief: als een toekomstige serializer-aanpassing alleen het ID
+    # retourneert (int) i.p.v. een nested dict, kunnen we niets uitlezen.
+    if not isinstance(liturgy, dict):
+        return []
+    velden = ("first_scripture", "second_scripture", "psalm", "gospel")
+    return [str(liturgy[v]).strip() for v in velden if liturgy.get(v)]
+
+
 def _hydrate_state(analysis_id: int, sermon_analysis: dict[str, Any]) -> None:
     """Vul de session-state van de dialog vanuit de huidige sermon_analysis.
 
@@ -46,18 +68,28 @@ def _hydrate_state(analysis_id: int, sermon_analysis: dict[str, Any]) -> None:
         rt: {"book": "", "chapter_verses": ""} for rt in READING_TYPES
     }
     scripture_json = sermon_analysis.get("scripture_json") or []
-    for i, item in enumerate(scripture_json[: len(READING_TYPES)]):
-        original = item.get("original_scripture") or ""
+    # Lijst van originele leesstrings ("Genesis 1:1-3", …) die we als basis
+    # voor de hydratatie gebruiken. Voor "Eigen lezingen"-analyses komt deze
+    # uit scripture_json; voor "Kerkelijk rooster volgen"-analyses is
+    # scripture_json bij het aanmaken leeg en vallen we terug op de geneste
+    # liturgy zodat de roosterlezingen alsnog vooringevuld verschijnen.
+    bronlezingen: list[str] = [
+        item.get("original_scripture") or "" for item in scripture_json
+    ]
+    if not any(bronlezingen):
+        bronlezingen = _lectionary_readings(sermon_analysis)
+
+    for i, original in enumerate(bronlezingen[: len(READING_TYPES)]):
         boek, cv = parse_original_scripture(original)
         own_readings[READING_TYPES[i]] = {"book": boek, "chapter_verses": cv}
 
     st.session_state[f"{prefix}own_readings"] = own_readings
     # Aantal lezingen: minimaal 1, maximaal len(READING_TYPES). We tellen op
-    # basis van de gevulde lezingen — een lege scripture_json levert 1 op
-    # zodat de gebruiker direct een eerste lezing kan invullen.
+    # basis van de gevulde bronlezingen — een lege bron levert 1 op zodat de
+    # gebruiker direct een eerste lezing kan invullen.
     aantal = max(
         1,
-        min(len(scripture_json) or 1, len(READING_TYPES)),
+        min(len(bronlezingen) or 1, len(READING_TYPES)),
     )
     st.session_state[f"{prefix}count"] = aantal
 
@@ -221,6 +253,11 @@ def selectie_instellen_dialog(
         item.get("original_scripture", "") or ""
         for item in (sermon_analysis.get("scripture_json") or [])
     ]
+    # Bij rooster-analyses is scripture_json leeg bij het aanmaken; zonder
+    # deze fallback zou een ongewijzigde roosterselectie als 'gewijzigd'
+    # gelden en een onnodige structured-scripture-LLM-call triggeren.
+    if not any(oorspronkelijke_lezingen):
+        oorspronkelijke_lezingen = _lectionary_readings(sermon_analysis)
     nieuwe_song_book_ids = sorted(b["id"] for b in geselecteerde_bundels)
     oorspronkelijke_song_books = sermon_analysis.get("song_books") or []
     oorspronkelijke_song_book_ids = sorted(
