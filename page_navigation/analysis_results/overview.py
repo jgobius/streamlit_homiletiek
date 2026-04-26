@@ -1541,19 +1541,24 @@ if current_tab == "Basis":
     # selected_analysis-tak zodat hij ook zichtbaar is als er nog geen
     # Basis-resultaat (bv. bijbelteksten) beschikbaar is. Layout (kolom 7:3,
     # rechts uitgelijnd) is identiek aan de Preekschetsen-knop verderop.
-    _, _btn_col = st.columns([7, 3])
-    with _btn_col:
-        if st.button(
-            "Selectie instellen",
-            icon="🎯",
-            use_container_width=True,
-            key="basis_selectie_instellen",
-        ):
-            selectie_instellen_dialog(
-                int(analysis_id),
-                sermon_analysis,
-                get_cached_data("api/song-books/"),
-            )
+    # Bij overschreden tokenlimiet verbergen we de knop: het opslag-pad in
+    # selectie_instellen_dialog roept get_structured_scriptures() aan zodra
+    # de lezingen wijzigen ("Lezingen structureren"-status), en dat is een
+    # LLM-call. Consistent met "Analyse toevoegen" en "Opnieuw" hierboven.
+    if not _limiet_overschreden:
+        _, _btn_col = st.columns([7, 3])
+        with _btn_col:
+            if st.button(
+                "Selectie instellen",
+                icon="🎯",
+                use_container_width=True,
+                key="basis_selectie_instellen",
+            ):
+                selectie_instellen_dialog(
+                    int(analysis_id),
+                    sermon_analysis,
+                    get_cached_data("api/song-books/"),
+                )
 
     selected_analysis = next(
         (
