@@ -730,22 +730,16 @@ def _try_restore_session(controller: CookieController) -> bool:
         return False
 
 
-def _calc_token_totals(usage: dict) -> tuple[int, int, float]:
-    # Haal modelprijzen op uit st.secrets; ontbrekende sleutels leveren 0.0 op.
-    model_prices = st.secrets.get("model_prices", {})
-    fallback_model = st.secrets.get("CURRENT_MODEL", "")
+def _calc_token_totals(usage: dict) -> tuple[int, int]:
+    # Aggregeer input- en output-tokens over alle modellen. De
+    # kostenberekening op basis van ``st.secrets['model_prices']`` is
+    # verwijderd: ``secrets.toml`` is niet langer in gebruik en we tonen
+    # alleen nog token-aantallen.
     total_input = total_output = 0
-    total_cost = 0.0
-    for model, counts in usage.items():
-        inp = counts.get("input_tokens", 0) or 0
-        out = counts.get("output_tokens", 0) or 0
-        # Gebruik modelprijzen als beschikbaar, anders de fallback.
-        prices = model_prices.get(model) or model_prices.get(fallback_model, {})
-        total_input += inp
-        total_output += out
-        total_cost += (inp / 1_000_000) * prices.get("input_eur", 0.0)
-        total_cost += (out / 1_000_000) * prices.get("output_eur", 0.0)
-    return total_input, total_output, total_cost
+    for counts in usage.values():
+        total_input += counts.get("input_tokens", 0) or 0
+        total_output += counts.get("output_tokens", 0) or 0
+    return total_input, total_output
 
 
 def _render_token_usage_sidebar() -> None:
@@ -754,6 +748,10 @@ def _render_token_usage_sidebar() -> None:
     if not handler:
         return
     analysis_id = st.session_state.get('current_analysis_id')
+    # De cumulatieve variant van het endpoint retourneert {usage, limits};
+    # de niet-cumulatieve variant retourneert direct de usage-dict. Hier
+    # gebruiken we de niet-cumulatieve variant (eventueel gefilterd op
+    # huidige analyse).
     endpoint = f"api/token-usage/?sermon_analysis_id={analysis_id}" if analysis_id else "api/token-usage/"
     try:
         usage = handler.get(endpoint)
@@ -762,12 +760,11 @@ def _render_token_usage_sidebar() -> None:
         return
     if not isinstance(usage, dict):
         return
-    total_input, total_output, total_cost = _calc_token_totals(usage)
+    total_input, total_output = _calc_token_totals(usage)
     with st.sidebar:
         st.divider()
         st.caption(
-            f"Tokens huidige analyse: {total_input:,} in / {total_output:,} uit  \n"
-            f"Kosten huidige analyse: €{total_cost:.2f}"
+            f"Tokens huidige analyse: {total_input:,} in / {total_output:,} uit"
         )
 
 
@@ -777,18 +774,25 @@ def _render_cumulative_token_usage_sidebar() -> None:
     if not handler:
         return
     try:
-        usage = handler.get("api/token-usage/cumulative/")
+        payload = handler.get("api/token-usage/cumulative/")
     except requests.exceptions.HTTPError:
         # Endpoint nog niet beschikbaar in deze omgeving; sidebar stilletjes overslaan.
         return
+    if not isinstance(payload, dict):
+        return
+    # De cumulatieve variant levert {"usage": {...}, "limits": {...}}; we
+    # hebben alleen `usage` nodig voor de token-totalen. Oudere backends
+    # die nog de platte dict-vorm teruggeven (zonder `usage`-sleutel)
+    # blijven ook werken doordat we dan de payload zelf als usage-dict
+    # behandelen.
+    usage = payload.get("usage") if "usage" in payload else payload
     if not isinstance(usage, dict):
         return
-    total_input, total_output, total_cost = _calc_token_totals(usage)
+    total_input, total_output = _calc_token_totals(usage)
     with st.sidebar:
         st.divider()
         st.caption(
-            f"Totaal tokenverbruik: {total_input:,} in / {total_output:,} uit  \n"
-            f"Totale kosten: €{total_cost:.2f}"
+            f"Totaal tokenverbruik: {total_input:,} in / {total_output:,} uit"
         )
 
 
@@ -873,12 +877,12 @@ def main():
     else:
         pg = st.navigation(pages, position='hidden')
         pg.run()
-        # # Toon tokenverbruik van de huidige analyse op de analyse-overzichtspagina.
-        # if pg == analysis_overview_page:
-        #     _render_token_usage_sidebar()
-        # # Toon cumulatief tokenverbruik op de hoofdpagina (dashboard).
-        # if pg == dashboard_page:
-        #     _render_cumulative_token_usage_sidebar()
+        # Toon tokenverbruik van de huidige analyse op de analyse-overzichtspagina.
+        if pg == analysis_overview_page:
+            _render_token_usage_sidebar()
+        # Toon cumulatief tokenverbruik op de hoofdpagina (dashboard).
+        if pg == dashboard_page:
+            _render_cumulative_token_usage_sidebar()
 
 if __name__ == "__main__":
     main()

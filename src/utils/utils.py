@@ -607,10 +607,13 @@ def haal_cumulatief_tokenverbruik_op() -> tuple[int, int, float, int, int, float
       "limits": {"max_input_tokens": N, "max_output_tokens": N,
                  "budget_eur": F}}``.
 
-    De kosten worden op basis van ``st.secrets['model_prices']`` berekend
-    (prijs per 1M tokens). De limieten worden door de backend uit
-    ``UserPreferences`` gehaald zodat ze per gebruiker via Django admin
-    overruled kunnen worden.
+    De totale kostenberekening op basis van ``st.secrets['model_prices']``
+    is verwijderd: ``secrets.toml`` is niet langer in gebruik en de UI
+    toont alleen nog input-/output-tokens. Het cost-veld in de tuple
+    blijft bestaan (altijd 0.0) zodat bestaande callers niet hoeven te
+    veranderen. De limieten worden door de backend uit ``UserPreferences``
+    gehaald zodat ze per gebruiker via Django admin overruled kunnen
+    worden.
 
     Het resultaat wordt in ``st.session_state`` gecachet (TTL uit
     ``_TOKENVERBRUIK_CACHE_TTL_SECONDS``) zodat zowel het dashboard als de
@@ -621,8 +624,9 @@ def haal_cumulatief_tokenverbruik_op() -> tuple[int, int, float, int, int, float
     Returnt ``(total_input, total_output, total_cost, max_input_tokens,
     max_output_tokens, budget_eur)`` of ``None`` als de API-handler
     ontbreekt, het endpoint niet bereikbaar is, of het antwoord onverwacht
-    gevormd is. ``None`` laat de aanroepende pagina stilletjes verdergaan
-    zonder foutmelding.
+    gevormd is. ``total_cost`` is altijd 0.0 sinds de
+    ``st.secrets``-afhankelijkheid is verwijderd. ``None`` laat de
+    aanroepende pagina stilletjes verdergaan zonder foutmelding.
     """
     nu = time.time()
     cached = st.session_state.get(_TOKENVERBRUIK_CACHE_KEY)
@@ -651,22 +655,15 @@ def haal_cumulatief_tokenverbruik_op() -> tuple[int, int, float, int, int, float
     if not isinstance(usage, dict) or not isinstance(limits, dict):
         return None
 
-    model_prices = st.secrets.get("model_prices", {})
-    fallback_model = st.secrets.get("CURRENT_MODEL", "")
+    # secrets.toml wordt niet langer gebruikt voor model_prices; we tonen
+    # uitsluitend input-/output-tokens. total_cost blijft op 0.0 staan
+    # zodat de tuple-shape voor bestaande callers gelijk blijft.
     total_input = 0
     total_output = 0
     total_cost = 0.0
-    for model, counts in usage.items():
-        inp = counts.get("input_tokens", 0) or 0
-        out = counts.get("output_tokens", 0) or 0
-        # Val terug op de prijzen van het huidige model als het gebruikte
-        # model niet in de prijstabel voorkomt; ontbreken beide, dan is de
-        # kosten-bijdrage 0 en zien we alleen token-aantallen.
-        prices = model_prices.get(model) or model_prices.get(fallback_model, {})
-        total_input += inp
-        total_output += out
-        total_cost += (inp / 1_000_000) * prices.get("input_eur", 0.0)
-        total_cost += (out / 1_000_000) * prices.get("output_eur", 0.0)
+    for counts in usage.values():
+        total_input += counts.get("input_tokens", 0) or 0
+        total_output += counts.get("output_tokens", 0) or 0
 
     max_input = int(limits.get("max_input_tokens", 0) or 0)
     max_output = int(limits.get("max_output_tokens", 0) or 0)
