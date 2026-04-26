@@ -88,9 +88,15 @@ def _hydrate_state(analysis_id: int, sermon_analysis: dict[str, Any]) -> None:
     """
     prefix = f"sel_dlg_{analysis_id}_"
 
-    # Idempotent: alleen de eerste opening hydrateert; daarna bewaart de
-    # widget-state zelf de gebruikerswijzigingen tot het dialog gesloten wordt.
-    if st.session_state.get(f"{prefix}hydrated"):
+    # Idempotent: zolang de widget-keys nog in session_state staan, behouden
+    # we ze (en dus eventuele wijzigingen die de gebruiker tijdens deze
+    # dialogsessie heeft gemaakt). Streamlit ruimt widget-state op zodra een
+    # @st.dialog gesloten wordt — dus bij een volgende opening zijn de keys
+    # weer weg en hydrateren we opnieuw vanuit sermon_analysis. Een eerder
+    # gebruikte aparte ``hydrated``-vlag overleefde die opruim­ing en
+    # blokkeerde re-hydratatie, waardoor alle velden leeg openden bij de
+    # tweede klik op "Selectie instellen".
+    if f"{prefix}book_{READING_TYPES[0]}" in st.session_state:
         return
 
     # ── Schriftlezingen vanuit scripture_json terugparsen ─────────────────
@@ -124,7 +130,10 @@ def _hydrate_state(analysis_id: int, sermon_analysis: dict[str, Any]) -> None:
     st.session_state[f"{prefix}count"] = aantal
 
     # Pre-vul widget-keys zodat de selectbox/text_input direct de juiste
-    # default tonen bij de eerste render binnen het dialog.
+    # default tonen bij de eerste render binnen het dialog. De aanwezigheid
+    # van de eerste book-key fungeert tegelijk als idempotency-marker bij
+    # een volgende rerun (zie de check bovenaan deze functie); een aparte
+    # ``hydrated``-vlag is daarom niet meer nodig.
     for rt in READING_TYPES:
         data = own_readings[rt]
         st.session_state[f"{prefix}book_{rt}"] = data["book"]
@@ -140,8 +149,6 @@ def _hydrate_state(analysis_id: int, sermon_analysis: dict[str, Any]) -> None:
         # Defensief: als een toekomstige serializer-aanpassing IDs i.p.v.
         # nested objects retourneert, accepteren we die ook zonder crash.
         st.session_state[f"{prefix}song_book_ids"] = list(huidige_song_books)
-
-    st.session_state[f"{prefix}hydrated"] = True
 
 
 def _wis_state(analysis_id: int) -> None:
