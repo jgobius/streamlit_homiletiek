@@ -273,7 +273,6 @@ else:
     with st.container():
         for item in sorted_analysis:
             id = item["id"]
-            status = item["status"]
             title = item["title"]
             congregation = item["church"]["name"]
             sermon_date = datetime.strptime(item["sermon_date"], "%Y-%m-%d").strftime(
