@@ -596,6 +596,33 @@ def render_sidebar():
 _TOKENVERBRUIK_CACHE_TTL_SECONDS = 30
 _TOKENVERBRUIK_CACHE_KEY = "_tokenverbruik_cache"
 
+# Schatting van de OpenRouter-prijzen die we frontend-side hanteren om
+# tokenverbruik om te rekenen naar EUR. Bewust geen DB-veld of secrets-bestand:
+# de testgebruikers hebben één tarief dat zelden verandert, en de echte
+# afrekening gebeurt elders. Tarieven luiden in EUR per 1.000.000 tokens.
+_KOSTEN_EUR_PER_MILJOEN_INPUT = 2.0
+_KOSTEN_EUR_PER_MILJOEN_OUTPUT = 12.0
+
+
+def bereken_kosten_eur(input_tokens: int, output_tokens: int) -> float:
+    """Geeft de geschatte cumulatieve kosten in EUR voor de meegegeven tokens.
+
+    Gebruikt vaste tarieven (€2 / 1M invoer, €12 / 1M uitvoer) zodat zowel de
+    waarschuwing op het dashboard als het sidebar-label dezelfde formule
+    gebruiken. Geen DB-roundtrip nodig.
+    """
+    return (
+        input_tokens * _KOSTEN_EUR_PER_MILJOEN_INPUT
+        + output_tokens * _KOSTEN_EUR_PER_MILJOEN_OUTPUT
+    ) / 1_000_000
+
+
+def formatteer_eur(bedrag: float) -> str:
+    """Formatteert een EUR-bedrag in Nederlandse stijl (komma als decimaal)."""
+    # `:.2f` levert standaard een punt; we wisselen die in voor een komma zodat
+    # de UI consistent Nederlands oogt (matcht "€20,-" elders in dashboard.py).
+    return f"€{bedrag:.2f}".replace(".", ",")
+
 
 def haal_cumulatief_tokenverbruik_op() -> tuple[int, int, float, int, int, float] | None:
     """Haalt cumulatief tokenverbruik + per-user tokenlimiet op bij de backend.
@@ -677,19 +704,28 @@ def haal_cumulatief_tokenverbruik_op() -> tuple[int, int, float, int, int, float
 
 
 def tokenlimiet_bereikt() -> bool:
-    """Geeft terug of het cumulatieve verbruik de per-user limiet heeft overschreden.
+    """Geeft terug of het cumulatieve EUR-verbruik het persoonlijke budget overschrijdt.
+
+    Per 2026-04 voert de UI de limietcheck uit op basis van geschatte EUR-kosten
+    in plaats van token-aantallen: ``BUDGET_EUR`` op ``UserPreferences`` is wat
+    we de testgebruiker garanderen, terwijl ``max_input_tokens`` en
+    ``max_output_tokens`` daar slechts een vertaling van waren. De berekening
+    leeft frontend-side (``bereken_kosten_eur``) zodat er geen DB-wijziging
+    nodig is.
 
     Hergebruikt de gecachete waarde van ``haal_cumulatief_tokenverbruik_op()``
     zodat een sidebar- én dashboard-aanroep binnen dezelfde render samen
-    maximaal één roundtrip veroorzaken. Bij ontbrekende data (endpoint
-    onbereikbaar, niet ingelogd) retourneert ``False`` — de default is
-    "limiet niet bereikt" zodat de UI niet onterecht knoppen verbergt.
+    maximaal één roundtrip veroorzaken. Bij ontbrekende data of een budget
+    van 0 retourneert ``False`` — de default is "limiet niet bereikt" zodat de
+    UI niet onterecht knoppen verbergt.
     """
     info = haal_cumulatief_tokenverbruik_op()
     if info is None:
         return False
-    total_input, total_output, _cost, max_input, max_output, _budget = info
-    return (total_input > max_input) or (total_output > max_output)
+    total_input, total_output, _cost, _max_input, _max_output, budget_eur = info
+    if budget_eur <= 0:
+        return False
+    return bereken_kosten_eur(total_input, total_output) > budget_eur
 
 
 def render_analysis_results_sidebar(analysis_results: list[dict[str, Any]]) -> None:

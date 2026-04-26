@@ -10,6 +10,8 @@ from src.utils.utils import (
     get_data,
     render_sidebar,
     haal_cumulatief_tokenverbruik_op,
+    bereken_kosten_eur,
+    formatteer_eur,
 )
 # Word-export helper: pure module die de .docx-bytes bouwt uit één
 # kerkdienstanalyse (zie src/utils/word_export.py voor de implementatie).
@@ -174,31 +176,27 @@ if st.session_state.pop("dashboard_data_dirty", False) or "dashboard_analyses_ca
     st.session_state["dashboard_analyses_cache"] = get_data("api/sermon-analyses/")
 analysis = st.session_state["dashboard_analyses_cache"]
 
-# Controleer cumulatief tokenverbruik van de ingelogde gebruiker tegen de
-# per-user tokenlimiet uit UserPreferences (backend). Zodra één van beide
-# drempels (invoer- of uitvoer-tokens) is overschreden, toont een oranje
-# `st.warning` bovenaan dat het €-tegoed op is. We doen dit vóór st.title
-# zodat de melding het eerste is dat de gebruiker ziet op het
-# kerkdienstanalyse-overzicht. De vlag `_limiet_overschreden` wordt verderop
-# hergebruikt om de "Nieuwe analyse"-knop te verbergen — zo hoeven we niet
-# dezelfde tuple twee keer te unpacken.
+# Controleer cumulatief verbruik van de ingelogde gebruiker tegen het
+# persoonlijke EUR-budget uit UserPreferences (backend). Per 2026-04
+# vergelijken we geschatte kosten (€2 / 1M invoer, €12 / 1M uitvoer) met
+# `BUDGET_EUR` in plaats van tegen aparte token-drempels: het tegoed in
+# euro's is wat we de testgebruiker beloven en dus ook de juiste
+# stop-conditie. De vlag `_limiet_overschreden` wordt verderop hergebruikt
+# om de "Nieuwe analyse"-knop te verbergen — zo hoeven we niet dezelfde
+# tuple twee keer te unpacken.
 _token_info = haal_cumulatief_tokenverbruik_op()
 _limiet_overschreden = False
 if _token_info is not None:
-    # De vierde tuple-waarde (geschatte kosten in EUR) wordt in de melding
-    # niet meer getoond: ze week zichtbaar af van het budget-bedrag (prijs
-    # per 1M tokens × verbruik vs. de €20 early-test-cap) en dat leverde
-    # verwarring op. De helper blijft de kosten nog wel berekenen voor
-    # eventuele toekomstige consumers.
     _tot_in, _tot_uit, _, _max_in, _max_uit, _budget_eur = _token_info
-    _limiet_overschreden = _tot_in > _max_in or _tot_uit > _max_uit
+    # Frontend-only kostenberekening (zie `bereken_kosten_eur`); blijft
+    # parallel lopen met de bestaande token-velden zonder DB-wijziging.
+    _kosten_eur = bereken_kosten_eur(_tot_in, _tot_uit)
+    _limiet_overschreden = _budget_eur > 0 and _kosten_eur > _budget_eur
     if _limiet_overschreden:
         # st.warning geeft Streamlit's native oranje/gele waarschuwingsbalk.
         st.warning(
-            f"Je tegoed voor de early-test (€{_budget_eur:.0f},-) is op. "
-            f"Cumulatief verbruik: {_tot_in:,} invoer-tokens / "
-            f"{_tot_uit:,} uitvoer-tokens. "
-            f"Limiet: {_max_in:,} in / {_max_uit:,} uit."
+            f"Je tegoed voor de early-test ({formatteer_eur(_budget_eur)}) is op. "
+            f"Cumulatief verbruik: {formatteer_eur(_kosten_eur)}."
         )
 
 st.title("Kerkdienstanalyses")

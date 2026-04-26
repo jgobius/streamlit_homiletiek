@@ -7,6 +7,7 @@ from streamlit_cookies_controller import CookieController
 
 from src.api.jwthandler import JwtHandler
 from src.api.handler import APIHandler
+from src.utils.utils import bereken_kosten_eur, formatteer_eur
 
 # Laad .env één keer bovenin zodat alle child-pages (die in dezelfde Python-
 # proces draaien via st.navigation) de environment-variabelen geërfd krijgen.
@@ -769,7 +770,10 @@ def _render_token_usage_sidebar() -> None:
 
 
 def _render_cumulative_token_usage_sidebar() -> None:
-    # Toon het cumulatieve tokenverbruik van de ingelogde gebruiker in de sidebar.
+    # Toon het cumulatieve tokenverbruik + EUR-equivalent van de ingelogde
+    # gebruiker in de sidebar. Het EUR-bedrag wordt frontend-side berekend
+    # (zie `bereken_kosten_eur`) en afgezet tegen `BUDGET_EUR` uit
+    # UserPreferences zodat de testgebruiker ziet hoeveel ruimte er nog is.
     handler = st.session_state.get('api_handler')
     if not handler:
         return
@@ -789,10 +793,27 @@ def _render_cumulative_token_usage_sidebar() -> None:
     if not isinstance(usage, dict):
         return
     total_input, total_output = _calc_token_totals(usage)
+
+    # `limits` ontbreekt op oudere backends; in dat geval tonen we alleen het
+    # geschatte verbruik zonder budget-percentage zodat de UI niet breekt.
+    raw_limits = payload.get("limits")
+    limits = raw_limits if isinstance(raw_limits, dict) else {}
+    budget_eur = float(limits.get("budget_eur", 0) or 0)
+    kosten_eur = bereken_kosten_eur(total_input, total_output)
+    if budget_eur > 0:
+        percentage = (kosten_eur / budget_eur) * 100
+        budget_label = (
+            f" ({formatteer_eur(kosten_eur)} van {formatteer_eur(budget_eur)} "
+            f"— {percentage:.0f}% verbruikt)"
+        )
+    else:
+        budget_label = f" ({formatteer_eur(kosten_eur)})"
+
     with st.sidebar:
         st.divider()
         st.caption(
             f"Totaal tokenverbruik: {total_input:,} in / {total_output:,} uit"
+            f"{budget_label}"
         )
 
 
