@@ -184,6 +184,13 @@ def selectie_instellen_dialog(
     _hydrate_state(analysis_id, sermon_analysis)
     prefix = f"sel_dlg_{analysis_id}_"
 
+    # Tokenlimiet bepaalt of de schriftlezingen-velden bewerkbaar zijn:
+    # wijzigingen aan de lezingen triggeren get_structured_scriptures()
+    # (een betaalde LLM-call), dus bij overschreden limiet vergrendelen we
+    # alle lezingen-widgets én de + / - knoppen. Liedbundels blijven wél
+    # bewerkbaar — die wijziging gaat via een PATCH zonder AI-aanroep.
+    _limiet_bereikt = tokenlimiet_bereikt()
+
     st.write(
         "Pas hieronder de schriftlezingen en de geselecteerde liedbundels aan. "
         "Na opslaan worden de bijbelteksten automatisch opnieuw opgehaald."
@@ -191,6 +198,12 @@ def selectie_instellen_dialog(
 
     # ── Schriftlezingen ────────────────────────────────────────────────────
     st.subheader("Schriftlezingen")
+    if _limiet_bereikt:
+        st.info(
+            "Je tokenlimiet is bereikt. De schriftlezingen kunnen niet worden "
+            "gewijzigd omdat dit een AI-aanroep vereist. Je kunt nog wel de "
+            "liedbundels aanpassen."
+        )
     count = st.session_state[f"{prefix}count"]
     active_types = READING_TYPES[:count]
 
@@ -212,6 +225,7 @@ def selectie_instellen_dialog(
                 options=book_options,
                 key=f"{prefix}book_{rt}",
                 label_visibility="collapsed",
+                disabled=_limiet_bereikt,
             )
         with col2:
             book_selected = bool(st.session_state.get(f"{prefix}book_{rt}", ""))
@@ -225,7 +239,7 @@ def selectie_instellen_dialog(
                 key=cv_key,
                 placeholder="Bijv. 1:1-10",
                 label_visibility="collapsed",
-                disabled=not book_selected,
+                disabled=_limiet_bereikt or not book_selected,
                 on_change=sanitize_cv,
                 args=(cv_key,),
             )
@@ -234,14 +248,22 @@ def selectie_instellen_dialog(
     btn_col1, btn_col2 = st.columns([1, 1])
     with btn_col1:
         if count < len(READING_TYPES):
-            if st.button("+ Lezing toevoegen", key=f"{prefix}add"):
+            if st.button(
+                "+ Lezing toevoegen",
+                key=f"{prefix}add",
+                disabled=_limiet_bereikt,
+            ):
                 st.session_state[f"{prefix}count"] = count + 1
                 # scope="fragment" herstart alleen het dialoogvenster zodat het
                 # open blijft na de rerun.
                 st.rerun(scope="fragment")
     with btn_col2:
         if count > 1:
-            if st.button("- Lezing verwijderen", key=f"{prefix}remove"):
+            if st.button(
+                "- Lezing verwijderen",
+                key=f"{prefix}remove",
+                disabled=_limiet_bereikt,
+            ):
                 last_rt = READING_TYPES[count - 1]
                 st.session_state[f"{prefix}book_{last_rt}"] = ""
                 st.session_state[f"{prefix}cv_{last_rt}"] = ""
