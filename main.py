@@ -686,9 +686,19 @@ def _hydrate_user_preferences() -> None:
         # is_superuser komt uit het gekoppelde User-object op de backend.
         # Ontbreekt het veld (oudere backend), dan standaard niet-superuser.
         st.session_state['is_superuser'] = bool(prefs.get('is_superuser', False))
+        # Naam en email komen ook read-only mee uit het gekoppelde User-object,
+        # zodat de Account-sectie van de sidebar kan tonen met welk account
+        # de gebruiker is ingelogd. Bij een oudere backend zonder deze velden
+        # blijven ze leeg en wordt er simpelweg niets getoond.
+        st.session_state['user_first_name'] = prefs.get('first_name', '') or ''
+        st.session_state['user_last_name'] = prefs.get('last_name', '') or ''
+        st.session_state['user_email'] = prefs.get('email', '') or ''
     else:
         st.session_state['dark_mode'] = False
         st.session_state['is_superuser'] = False
+        st.session_state['user_first_name'] = ''
+        st.session_state['user_last_name'] = ''
+        st.session_state['user_email'] = ''
 
 st.session_state['page_navigation_dir'] = 'page_navigation'
 

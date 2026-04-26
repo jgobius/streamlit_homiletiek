@@ -546,6 +546,21 @@ def render_sidebar():
             st.page_link(label="Nieuwe gemeente", page=f"{st.session_state['page_navigation_dir']}/churches/new_church.py")
             
         with st.expander("Account"):
+            # Toon naam + email van de ingelogde gebruiker zodat duidelijk is
+            # met welk account je bent ingelogd. Velden komen uit
+            # _hydrate_user_preferences in main.py (read-only via
+            # /api/user-preferences/). Bij een oudere backend zonder deze
+            # velden blijven de strings leeg en wordt niets getoond.
+            voornaam = st.session_state.get('user_first_name', '')
+            achternaam = st.session_state.get('user_last_name', '')
+            email_adres = st.session_state.get('user_email', '')
+            volledige_naam = f"{voornaam} {achternaam}".strip()
+            if volledige_naam:
+                st.markdown(f"**{volledige_naam}**")
+            if email_adres:
+                st.caption(email_adres)
+            if volledige_naam or email_adres:
+                st.divider()
             st.page_link(label="Uitloggen", page=f"{st.session_state['page_navigation_dir']}/logout.py")
             st.page_link(label="Wachtwoord resetten", page=f"{st.session_state['page_navigation_dir']}/reset_password.py")
             # Gebruik '_dark_mode_toggle' als widget-key zodat de voorkeur-key 'dark_mode'
