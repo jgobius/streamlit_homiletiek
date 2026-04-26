@@ -109,6 +109,17 @@ def tel_woorden(tekst: str) -> int:
     return len(tekst.split())
 
 
+def woord_meervoud(aantal: int) -> str:
+    """Geef "woord" of "woorden" passend bij het aantal.
+
+    Voorkomt grammaticaal foutieve foutmeldingen als "1 woorden". Wordt
+    door zowel de eigen-preek-dialoog (overview.py) als het bewerk-
+    paneel (analyses/volledige_preek.py) gebruikt; daarom centraal hier
+    naast tel_woorden().
+    """
+    return "woord" if aantal == 1 else "woorden"
+
+
 # Regex-patronen die typische SQL-injectie-pogingen herkennen. We escapen
 # niets aan de clientkant — de Django-backend gebruikt parameterized queries
 # via het ORM — maar we weigeren invoer met duidelijk kwaadaardige patronen

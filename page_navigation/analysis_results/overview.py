@@ -12,6 +12,7 @@ from src.utils.utils import (
     toon_analysenaam,
     valideer_tekstinvoer,
     tokenlimiet_bereikt,
+    woord_meervoud,
     EIGEN_PREEK_MIN_WOORDEN as _EIGEN_PREEK_MIN_WOORDEN,
     EIGEN_PREEK_MAX_WOORDEN as _EIGEN_PREEK_MAX_WOORDEN,
 )
@@ -1443,15 +1444,22 @@ def volledige_preek_dialog(
         # grenzen tonen we een foutmelding en keren we terug zonder het veld
         # leeg te maken — Streamlit's dialog-rerun behoudt de widget-state.
         if _aantal_woorden < _EIGEN_PREEK_MIN_WOORDEN:
+            # woord_meervoud() voorkomt grammaticaal foutieve uitvoer als
+            # "1 woorden"; de grenzen zijn altijd >1 maar we gebruiken de
+            # helper consistent voor beide getallen.
             st.error(
-                f"De preektekst bevat {_aantal_woorden} woorden; "
-                f"minimaal {_EIGEN_PREEK_MIN_WOORDEN} woorden vereist."
+                f"De preektekst bevat {_aantal_woorden} "
+                f"{woord_meervoud(_aantal_woorden)}; "
+                f"minimaal {_EIGEN_PREEK_MIN_WOORDEN} "
+                f"{woord_meervoud(_EIGEN_PREEK_MIN_WOORDEN)} vereist."
             )
             return
         if _aantal_woorden > _EIGEN_PREEK_MAX_WOORDEN:
             st.error(
-                f"De preektekst bevat {_aantal_woorden} woorden; "
-                f"maximaal {_EIGEN_PREEK_MAX_WOORDEN} woorden toegestaan."
+                f"De preektekst bevat {_aantal_woorden} "
+                f"{woord_meervoud(_aantal_woorden)}; "
+                f"maximaal {_EIGEN_PREEK_MAX_WOORDEN} "
+                f"{woord_meervoud(_EIGEN_PREEK_MAX_WOORDEN)} toegestaan."
             )
             return
         # Aanvullende SQL-injectie-check op de preektekst zelf. De woorden-

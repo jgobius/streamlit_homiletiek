@@ -3,6 +3,7 @@ from src.utils.utils import (
     clean_md,
     tel_woorden,
     valideer_tekstinvoer,
+    woord_meervoud,
     EIGEN_PREEK_MIN_WOORDEN,
     EIGEN_PREEK_MAX_WOORDEN,
 )
@@ -49,9 +50,13 @@ def volledige_preek(analysis: dict, analysis_id: int) -> None:
                     return
             # Valideer preektekst: eerst woordentelling (min/max), dan SQL-check.
             if _aantal_woorden < EIGEN_PREEK_MIN_WOORDEN:
+                # woord_meervoud() voorkomt "1 woorden"; de min-grens is
+                # altijd plural maar we gebruiken de helper consistent.
                 st.error(
-                    f"De preektekst bevat {_aantal_woorden} woorden; "
-                    f"minimaal {EIGEN_PREEK_MIN_WOORDEN} woorden vereist."
+                    f"De preektekst bevat {_aantal_woorden} "
+                    f"{woord_meervoud(_aantal_woorden)}; "
+                    f"minimaal {EIGEN_PREEK_MIN_WOORDEN} "
+                    f"{woord_meervoud(EIGEN_PREEK_MIN_WOORDEN)} vereist."
                 )
                 return
             ok_preek, fout_preek = valideer_tekstinvoer(
