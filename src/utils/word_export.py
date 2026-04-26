@@ -101,21 +101,33 @@ def bouw_kerkdienstanalyse_docx(
 
     cb(0.15, "Document opbouwen — kop...")
     doc = Document()
-    # Forceer Word om velden (TOC, paginanummers) bij openen automatisch
-    # bij te werken; anders moet de lezer handmatig F9 drukken.
-    _enable_auto_update_fields(doc)
     # Footer met "Pagina X van Y", gecentreerd. Moet vóór de content, want
     # de footer geldt voor alle pagina's van de huidige sectie.
     _voeg_paginanummers_toe(doc)
     _render_kop(doc, sermon)
+
+    # Plan eerst de groepering + bookmark-namen, zodat de inhoudsopgave
+    # vooraf gerenderd kan worden met dezelfde bookmark-namen die later
+    # aan de tab- en analyse-headings worden gehangen. Door de TOC zelf
+    # op te bouwen (in plaats van een Word TOC-veld) hoeft Word bij het
+    # openen geen velden meer bij te werken — en verschijnt de prompt
+    # "Dit document bevat velden die verwijzen naar andere bestanden"
+    # niet meer.
+    gegroepeerd = _groepeer_per_tab(sub_analyses)
+    tabs_in_volgorde: list[str] = list(TAB_VOLGORDE) + ["Overig"]
+    toc_entries, tab_bookmarks, sub_bookmarks = _plan_inhoudsopgave(
+        gegroepeerd, tabs_in_volgorde
+    )
+
     # Klikbare inhoudsopgave (tab-koppen + analyse-namen = niveau 1-2).
     # Komt direct onder de kop zodat de lezer meteen kan navigeren; daarna
     # een page break zodat de eerste inhoudelijke tab op een nieuwe pagina
-    # begint.
-    _render_inhoudsopgave(doc)
-    doc.add_page_break()
-
-    gegroepeerd = _groepeer_per_tab(sub_analyses)
+    # begint. Bij een lege analyse-set slaan we de TOC over — een lege
+    # inhoudsopgave heeft geen meerwaarde en de fallback-melding verderop
+    # vangt dat geval al af.
+    if toc_entries:
+        _render_inhoudsopgave(doc, toc_entries)
+        doc.add_page_break()
 
     # Voortgang tijdens de per-analyse loop: lineair verdeeld over het
     # interval [0.20, 0.95]. Bij 0 analyses slaan we het interval simpelweg
@@ -124,9 +136,8 @@ def bouw_kerkdienstanalyse_docx(
     fractie_base = 0.20
     fractie_stap = (0.95 - fractie_base) / max(n_totaal, 1)
 
-    # Volgorde: eerst de bekende tabs (TAB_VOLGORDE), daarna 'Overig' voor
-    # analyse-types die nog niet in de mapping staan (toekomstbestendig).
-    tabs_in_volgorde: list[str] = list(TAB_VOLGORDE) + ["Overig"]
+    # Volgorde van tabs is hierboven al bepaald (`tabs_in_volgorde`) zodat
+    # de TOC-planning dezelfde volgorde gebruikt als de feitelijke render.
     i_globaal = 0
     # Een nieuwe analyse start in principe op een nieuwe pagina (handig bij
     # documenten met honderden pagina's). Uitzondering: de eerste analyse
@@ -141,7 +152,12 @@ def bouw_kerkdienstanalyse_docx(
         if not eerste_tab:
             doc.add_page_break()
         eerste_tab = False
-        doc.add_heading(tab, level=1)
+        # Bookmark op de tab-heading, zodat de overeenkomstige TOC-regel
+        # er klikbaar naartoe kan springen.
+        tab_heading = doc.add_heading(tab, level=1)
+        bm = tab_bookmarks.get(tab)
+        if bm is not None:
+            _voeg_bookmark_toe(tab_heading, bm[0], bm[1])
         for idx_in_tab, sub in enumerate(lijst):
             if idx_in_tab > 0:
                 # Tweede en volgende analyse binnen een tab: nieuwe pagina.
@@ -151,7 +167,10 @@ def bouw_kerkdienstanalyse_docx(
                 fractie_base + i_globaal * fractie_stap,
                 f"Bezig met {front_name} ({i_globaal + 1}/{n_totaal})...",
             )
-            _render_analyse(doc, sub)
+            # Bookmark voor deze analyse koppelen aan de heading binnen
+            # _render_analyse via de meegegeven bookmark-tuple.
+            sub_bm = sub_bookmarks.get(id(sub))
+            _render_analyse(doc, sub, bookmark=sub_bm)
             i_globaal += 1
 
     if n_totaal == 0:
@@ -293,7 +312,11 @@ def _format_aanmaak_label(created_at: str | None) -> str | None:
         return None
 
 
-def _render_analyse(doc, sub: dict) -> None:
+def _render_analyse(
+    doc,
+    sub: dict,
+    bookmark: tuple[int, str] | None = None,
+) -> None:
     """Rendert één sub-analyse: heading + body (walk) of een lege-melding.
 
     We filteren niet op een `status`-veld: de bestaande renderers in
@@ -301,8 +324,14 @@ def _render_analyse(doc, sub: dict) -> None:
     praktijk blijkt het statusveld vaak niet op de verwachte sentinel-
     waarde ('completed') te staan terwijl `result` wél bruikbare data
     bevat. Presence van `result` is de enige betrouwbare indicator.
+
+    `bookmark` is een optionele (id, naam)-tuple die op de analyse-heading
+    wordt gehangen zodat de inhoudsopgave er klikbaar naartoe kan
+    springen.
     """
-    doc.add_heading(_front_end_name(sub), level=2)
+    heading = doc.add_heading(_front_end_name(sub), level=2)
+    if bookmark is not None:
+        _voeg_bookmark_toe(heading, bookmark[0], bookmark[1])
 
     result = sub.get("result")
     if _is_leeg_resultaat(result):
@@ -488,22 +517,35 @@ def _humanize_key(key: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Inhoudsopgave, paginanummers en auto-update-fields (raw OOXML)
+# Inhoudsopgave, bookmarks en paginanummers (raw OOXML)
 # ---------------------------------------------------------------------------
 #
-# python-docx heeft geen high-level API voor TOC-velden of paginanummers,
-# dus we injecteren de benodigde OOXML-elementen rechtstreeks. Het "w:fldChar
-# begin / instrText / separate / end"-patroon is de standaard-constructie die
-# Word gebruikt voor alle veldcodes (TOC, PAGE, NUMPAGES, etc.).
+# python-docx heeft geen high-level API voor veldcodes, hyperlinks naar
+# bookmarks of bookmark-tags, dus we injecteren de benodigde OOXML-elementen
+# rechtstreeks. Het "w:fldChar begin / instrText / separate / end"-patroon
+# is de standaard-constructie die Word gebruikt voor PAGE/NUMPAGES in de
+# footer.
+#
+# We gebruiken bewust géén Word TOC-veld: dat veld dwingt Word ertoe bij het
+# openen alle velden bij te werken, wat de prompt "Dit document bevat velden
+# die verwijzen naar andere bestanden. Wilt u ze bijwerken?" oplevert. In
+# plaats daarvan rendert deze module de inhoudsopgave zelf als een lijst van
+# klikbare hyperlinks naar interne bookmarks. Die hyperlinks zijn geen
+# velden, dus Word toont geen prompt.
+
+# Hyperlink-styling: blauw + onderstreept, rechtstreeks op de run gezet
+# zodat we niet afhankelijk zijn van het bestaan van een 'Hyperlink'-style
+# in de standaard python-docx Document().
+_HYPERLINK_KLEUR = "0563C1"
 
 
 def _veld_invoegen(run, instructie: str, placeholder: str = "") -> None:
     """Injecteert een Word-veldcode in een run.
 
     Word berekent de zichtbare tekst op basis van `instructie` (bv. 'PAGE'
-    of 'TOC \\o "1-2" \\h \\z \\u'). Totdat het veld voor het eerst wordt
-    bijgewerkt, toont Word `placeholder` — handig voor de TOC die pas na
-    update gevuld wordt.
+    of 'NUMPAGES'). PAGE/NUMPAGES worden door Word lazily berekend zodra
+    het document gepagineerd wordt; daar is geen `w:updateFields`-setting
+    voor nodig en dus ook geen prompt bij openen.
     """
     begin = OxmlElement("w:fldChar")
     begin.set(qn("w:fldCharType"), "begin")
@@ -529,21 +571,6 @@ def _veld_invoegen(run, instructie: str, placeholder: str = "") -> None:
     r_elem.append(eind)
 
 
-def _enable_auto_update_fields(doc) -> None:
-    """Laat Word alle velden bij openen automatisch bijwerken.
-
-    Zet `<w:updateFields w:val="true"/>` in settings.xml. Zonder dit moet
-    de lezer handmatig F9 indrukken om de TOC en paginanummer-totalen te
-    berekenen; met deze setting verschijnt bij openen een prompt "Dit
-    document bevat velden die verwijzen naar andere bestanden. Wilt u ze
-    bijwerken?" waarop 'Ja' de TOC vult.
-    """
-    settings = doc.settings.element
-    element = OxmlElement("w:updateFields")
-    element.set(qn("w:val"), "true")
-    settings.append(element)
-
-
 def _voeg_paginanummers_toe(doc) -> None:
     """Zet 'Pagina X van Y' gecentreerd in de footer van de eerste sectie."""
     footer = doc.sections[0].footer
@@ -558,12 +585,90 @@ def _voeg_paginanummers_toe(doc) -> None:
     _veld_invoegen(run_total, "NUMPAGES")
 
 
-def _render_inhoudsopgave(doc) -> None:
-    """Voegt een klikbare inhoudsopgave in op niveau 1-2 (tabs + analyses).
+def _voeg_bookmark_toe(paragraph, bookmark_id: int, bookmark_naam: str) -> None:
+    """Plaatst `<w:bookmarkStart>`/`<w:bookmarkEnd>` rond een paragraph.
 
-    Het label 'Inhoudsopgave' is bewust géén Heading 1/2 — anders zou de
-    TOC zichzelf als eerste item bevatten. We gebruiken een gewone
-    paragraph met bold + vergrote font.
+    De bookmark omsluit de hele paragraph-inhoud, zodat een hyperlink met
+    `w:anchor` naar deze bookmark direct naar de heading scrollt. De
+    `bookmarkStart` moet ná `w:pPr` komen (anders accepteert Word het
+    bestand niet meer); we vinden of voegen `w:pPr` als eerste kindelement.
+    """
+    p_elem = paragraph._element
+    start = OxmlElement("w:bookmarkStart")
+    start.set(qn("w:id"), str(bookmark_id))
+    start.set(qn("w:name"), bookmark_naam)
+    eind = OxmlElement("w:bookmarkEnd")
+    eind.set(qn("w:id"), str(bookmark_id))
+
+    pPr = p_elem.find(qn("w:pPr"))
+    if pPr is not None:
+        pPr.addnext(start)
+    else:
+        p_elem.insert(0, start)
+    p_elem.append(eind)
+
+
+def _plan_inhoudsopgave(
+    gegroepeerd: dict[str, list[dict]],
+    tabs_in_volgorde: list[str],
+) -> tuple[
+    list[tuple[int, str, int, str]],
+    dict[str, tuple[int, str]],
+    dict[int, tuple[int, str]],
+]:
+    """Plant de inhoudsopgave en wijst bookmarks toe.
+
+    Returnt een tuple `(toc_entries, tab_bookmarks, sub_bookmarks)`:
+
+    - `toc_entries` is de lijst die door `_render_inhoudsopgave` gerenderd
+      wordt: `(level, label, bookmark_id, bookmark_naam)` per regel,
+      level 1 voor tabs en level 2 voor analyses.
+    - `tab_bookmarks` mapt tabnaam → `(bookmark_id, bookmark_naam)` zodat
+      de tab-heading later met dezelfde bookmark gemarkeerd kan worden.
+    - `sub_bookmarks` doet hetzelfde, maar per sub-analyse, gekeyd op
+      `id(sub_dict)` — dat is uniek voor de levensduur van de generatie
+      en vermijdt dat we ervan uit moeten gaan dat sub-analyses een
+      stabiele eigen identifier hebben in dit pad.
+
+    Bookmark-namen volgen het simpele patroon `_bm_<n>`: stabiel, kort en
+    bevat geen tekens die Word lastig vindt.
+    """
+    toc_entries: list[tuple[int, str, int, str]] = []
+    tab_bookmarks: dict[str, tuple[int, str]] = {}
+    sub_bookmarks: dict[int, tuple[int, str]] = {}
+
+    teller = 0
+    for tab in tabs_in_volgorde:
+        lijst = gegroepeerd.get(tab, [])
+        if not lijst:
+            continue
+        teller += 1
+        bm = (teller, f"_bm_{teller}")
+        tab_bookmarks[tab] = bm
+        toc_entries.append((1, tab, bm[0], bm[1]))
+        for sub in lijst:
+            teller += 1
+            bm = (teller, f"_bm_{teller}")
+            sub_bookmarks[id(sub)] = bm
+            toc_entries.append((2, _front_end_name(sub), bm[0], bm[1]))
+
+    return toc_entries, tab_bookmarks, sub_bookmarks
+
+
+def _render_inhoudsopgave(
+    doc, toc_entries: list[tuple[int, str, int, str]]
+) -> None:
+    """Rendert een vooraf opgebouwde, klikbare inhoudsopgave (geen TOC-veld).
+
+    Elke entry wordt een paragraph met één `<w:hyperlink w:anchor="...">`
+    die naar de bijbehorende bookmark op een tab- of analyse-heading
+    verwijst. Doordat dit gewone hyperlinks zijn (geen veldcodes), heeft
+    Word geen reden om bij het openen velden bij te werken — en dus geen
+    "Dit document bevat velden..."-prompt.
+
+    Het label 'Inhoudsopgave' is bewust géén Heading 1/2: anders zou de
+    eigen heading van de inhoudsopgave als eerste item in de TOC
+    verschijnen wanneer iemand later toch een TOC-veld wil gebruiken.
     """
     label = doc.add_paragraph()
     run = label.add_run("Inhoudsopgave")
@@ -573,21 +678,45 @@ def _render_inhoudsopgave(doc) -> None:
     # Lege regel tussen label en de feitelijke TOC-inhoud.
     doc.add_paragraph()
 
-    p_toc = doc.add_paragraph()
-    run_toc = p_toc.add_run()
-    # \o "1-2"  → outline-levels 1 en 2 (onze Tab-headings en analyse-kops)
-    # \h        → items renderen als hyperlinks (klikbaar in Word)
-    # \z        → verberg tab-leaders/page-nummers in Web-layout
-    # \u        → gebruik outline-paragraphs als basis
-    _veld_invoegen(
-        run_toc,
-        'TOC \\o "1-2" \\h \\z \\u',
-        placeholder=(
-            "De inhoudsopgave wordt door Word automatisch gevuld bij het "
-            "openen van dit document. Gebeurt dat niet? Klik met de "
-            "rechtermuisknop op deze tekst en kies 'Veld bijwerken' (F9)."
-        ),
-    )
+    for level, tekst, _bm_id, bm_naam in toc_entries:
+        _render_toc_regel(doc, tekst, bm_naam, level)
+
+
+def _render_toc_regel(doc, tekst: str, bookmark_naam: str, level: int) -> None:
+    """Rendert één klikbare regel in de inhoudsopgave.
+
+    Niveau 2 (analyse-namen) krijgt een lichte inspring zodat de
+    hiërarchie zichtbaar blijft. We gebruiken `Pt(18)` als inspring —
+    dat is visueel ongeveer een tab-stop en past bij de puntgrootte van
+    body text.
+    """
+    p = doc.add_paragraph()
+    if level >= 2:
+        p.paragraph_format.left_indent = Pt(18)
+
+    hyperlink = OxmlElement("w:hyperlink")
+    hyperlink.set(qn("w:anchor"), bookmark_naam)
+
+    r = OxmlElement("w:r")
+    rPr = OxmlElement("w:rPr")
+
+    color = OxmlElement("w:color")
+    color.set(qn("w:val"), _HYPERLINK_KLEUR)
+    rPr.append(color)
+
+    underline = OxmlElement("w:u")
+    underline.set(qn("w:val"), "single")
+    rPr.append(underline)
+
+    r.append(rPr)
+
+    t = OxmlElement("w:t")
+    t.set(qn("xml:space"), "preserve")
+    t.text = tekst
+    r.append(t)
+
+    hyperlink.append(r)
+    p._element.append(hyperlink)
 
 
 # ---------------------------------------------------------------------------
