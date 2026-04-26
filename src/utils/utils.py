@@ -414,12 +414,33 @@ def _fetch_single_structured_scripture(
         "language": language,
     }
     try:
-        response = requests.post(
-            url=f"{os.environ.get('API_AGENT_URL').rstrip('/')}/structured_scripture/",
-            json=data,
-            headers=auth_headers,
+        
+        agent_request = AgentRequest()
+        
+        response = agent_request.post(
+            endpoint="structured_scripture/",
+            payload=data,
             timeout=_STRUCTURED_SCRIPTURE_TIMEOUT_SECONDS,
         )
+        
+        task_id = response.json().get("task_id")
+        
+        while True:
+            status_response = agent_request.post(
+                endpoint=f"structured_scripture/{task_id}/",
+                payload={},
+                timeout=_STRUCTURED_SCRIPTURE_TIMEOUT_SECONDS,
+            )
+            status_data = status_response.json()
+            if status_data.get("status") == "SUCCESS":
+                return status_data.get('result')
+            
+            if status_data.get("status") == "FAILURE":
+                return scripture, None, f"Backend-fout: {status_data.get('result', 'Onbekende fout')}"
+            time.sleep(5)  
+        
+         
+       
     except requests.exceptions.Timeout:
         return scripture, None, f"Timeout na {_STRUCTURED_SCRIPTURE_TIMEOUT_SECONDS}s"
     except requests.exceptions.RequestException as exc:
