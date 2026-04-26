@@ -26,6 +26,33 @@ from src.utils.utils import (
 )
 
 
+# De Liturgy-tabel slaat boeknamen soms in een vorm op die niet identiek is
+# aan ``BIBLE_BOOKS`` in ``src/utils/utils.py``. ``parse_original_scripture``
+# valt dan terug op een leeg boek, en de dialog wist vervolgens ook het
+# hoofdstuk/verzen-veld (zie ``if not book_selected`` verderop), waardoor
+# de hele lezing onzichtbaar leeg opent. Normaliseer hier centraal zodat de
+# parser ongewijzigd blijft. Bekende afwijking nu: 'Psalm 66' (NL singular,
+# zoals het rooster opslaat) versus 'Psalmen' (NL plural, de canonieke vorm
+# in BIBLE_BOOKS en scripture_json). Andere afwijkingen die we in het
+# lectionary tegenkwamen (Matteüs/Mattheüs, Zacharias/Zacharia, Sirach,
+# Wijsheid) komen pas via een nieuwe analyse aan de oppervlakte; voeg een
+# alias toe zodra een gebruiker er last van krijgt.
+_LECTIONARY_BOEK_ALIASES: dict[str, str] = {"Psalm": "Psalmen"}
+
+
+def _normaliseer_lectionary_boek(s: str) -> str:
+    """Vervang een lectionary-boeknaam door de variant uit BIBLE_BOOKS.
+
+    Werkt alleen op de boek-prefix (gevolgd door een spatie) zodat een
+    eventueel verschijnend hoofdstuk/verzen-deel onaangeraakt blijft.
+    """
+    for alias, canoniek in _LECTIONARY_BOEK_ALIASES.items():
+        prefix = f"{alias} "
+        if s.startswith(prefix):
+            return f"{canoniek} {s[len(prefix):]}"
+    return s
+
+
 def _lectionary_readings(sermon_analysis: dict[str, Any]) -> list[str]:
     """Haal de roosterlezingen op uit de geneste liturgy van een
     kerkelijk-rooster-analyse.
@@ -45,7 +72,10 @@ def _lectionary_readings(sermon_analysis: dict[str, Any]) -> list[str]:
     if not isinstance(liturgy, dict):
         return []
     velden = ("first_scripture", "second_scripture", "psalm", "gospel")
-    return [str(liturgy[v]).strip() for v in velden if liturgy.get(v)]
+    return [
+        _normaliseer_lectionary_boek(str(liturgy[v]).strip())
+        for v in velden if liturgy.get(v)
+    ]
 
 
 def _hydrate_state(analysis_id: int, sermon_analysis: dict[str, Any]) -> None:
