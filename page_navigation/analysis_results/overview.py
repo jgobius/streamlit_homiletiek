@@ -1,4 +1,5 @@
 import json
+import re
 import time
 
 import requests
@@ -1026,6 +1027,12 @@ def preekschets_selectie_dialog(
     # `bijbelteksten.result` is sinds de lijst-refactor een list van lezing-entries
     # (elk met 'reference' en 'verses'). Zie analyses/bijbelteksten.py voor de reden:
     # Postgres jsonb bewaart object-key-volgorde niet, list-volgorde wél.
+    #
+    # `reference` kan het volledige perikoop-bereik bevatten, bv. "Lucas 24,13-35"
+    # of "Lucas 24:13-35". We strippen de versbereik-suffix zodat elk afzonderlijk
+    # vers als `Lucas 24:33` wordt getoond — anders krijg je lelijke labels zoals
+    # `Lucas 24,13-35:33` die óók in de prompt belanden en door het LLM worden
+    # overgenomen. De backend doet exact dezelfde normalisatie; wijzig ze samen.
     bijbel = latest.get("bijbelteksten", {})
     bijbel_result = bijbel.get("result") if bijbel else None
     verzen = []
@@ -1033,7 +1040,9 @@ def preekschets_selectie_dialog(
         for scripture in bijbel_result:
             if not isinstance(scripture, dict):
                 continue
-            book_chapter = (scripture.get("reference") or "").rstrip(".").strip()
+            raw_ref = (scripture.get("reference") or "").rstrip(".").strip()
+            # Knip vanaf de eerste ':' of ',' zodat alleen 'Boek Hoofdstuk' overblijft.
+            book_chapter = re.split(r"[:,]", raw_ref, maxsplit=1)[0].strip()
             for verse in scripture.get("verses", []) or []:
                 number = verse.get("number", "")
                 text = (verse.get("modern_text") or "").strip()
