@@ -23,15 +23,22 @@ if 'api_handler' in st.session_state:
         st.error('Er is een fout opgetreden tijdens het uitloggen. Probeer het opnieuw.')
         st.stop()
 
-    st.session_state.pop('api_handler')
-    # Verwijder ook de gecachete UI-voorkeur zodat een volgende inlog (mogelijk
-    # een andere gebruiker in dezelfde browsersessie) zijn eigen dark_mode uit
-    # /api/user-preferences/ ophaalt in plaats van die van de vorige gebruiker
-    # te erven.
-    st.session_state.pop('dark_mode', None)
-    # Ook is_superuser wissen zodat een volgende gebruiker niet per ongeluk
-    # rechten erft (hoofdmenu zichtbaar) voordat hydration opnieuw draait.
-    st.session_state.pop('is_superuser', None)
+    # Veeg de complete session_state schoon op een whitelist na. Eerdere
+    # versies popten alleen 'api_handler', 'dark_mode' en 'is_superuser';
+    # daardoor bleven user-specifieke caches als 'dashboard_analyses_cache'
+    # en 'user_email' staan en kreeg een volgende gebruiker in dezelfde
+    # browser de gecachete /api/sermon-analyses/-response van de vorige
+    # gebruiker te zien — een privacy-lek voor accounts zonder eigen
+    # analyses. Een whitelist-aanpak voorkomt ook dat nieuwe user-data-keys
+    # in de toekomst per ongeluk blijven hangen.
+    #
+    # Behouden: 'page_navigation_dir' (navigatie-root, niet user-specifiek)
+    # en 'cookie_controller' (live JS-handle, hergebruikt voor de cookies
+    # waarmee main.py de sessie probeert te herstellen).
+    _te_behouden = {'page_navigation_dir', 'cookie_controller'}
+    for _key in list(st.session_state.keys()):
+        if _key not in _te_behouden:
+            del st.session_state[_key]
     # Voorkom dat main.py op de volgende render (bv. na klik op 'Opnieuw
     # inloggen') zijn st.stop-guard triggert bij een mislukte sessie-
     # herstelpoging met de ongeldige cookie. Zie de toelichting bovenaan.
