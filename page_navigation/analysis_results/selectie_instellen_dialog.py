@@ -42,6 +42,21 @@ from src.utils.utils import (
 _LECTIONARY_BOEK_ALIASES: dict[str, str] = {"Psalm": "Psalmen"}
 
 
+def _strip_trailing_dot(s: str) -> str:
+    """Verwijder achterliggende punten en spaties uit een leesstring.
+
+    De structured-scripture-agent (homiletiek_agent/src/scripture_agent/
+    graph_nodes.py:118) heeft in zijn prompt een literal punt direct ná de
+    interpolatie van de scripture_data. Het LLM neemt die punt over in het
+    `original_scripture`-veld van de output, waardoor "Genesis 1" telkens
+    een extra punt kreeg ("Genesis 1.", "Genesis 1..", …) bij elke save+
+    reopen-cyclus van de selectie-dialog. We strippen daarom centraal vóór
+    opslag én bij het terugparsen, zodat dezelfde lezing idempotent blijft
+    ongeacht of de gebruiker iets wijzigt.
+    """
+    return s.rstrip(". ").strip()
+
+
 def _normaliseer_lectionary_boek(s: str) -> str:
     """Vervang een lectionary-boeknaam door de variant uit BIBLE_BOOKS.
 
@@ -112,7 +127,8 @@ def _hydrate_state(analysis_id: int, sermon_analysis: dict[str, Any]) -> None:
     # scripture_json bij het aanmaken leeg en vallen we terug op de geneste
     # liturgy zodat de roosterlezingen alsnog vooringevuld verschijnen.
     bronlezingen: list[str] = [
-        item.get("original_scripture") or "" for item in scripture_json
+        _strip_trailing_dot(item.get("original_scripture") or "")
+        for item in scripture_json
     ]
     # Vul ontbrekende rooster-slots aan vanuit liturgy — alleen bij analyses
     # die expliciet 'Kerkelijk rooster volgen' gebruiken. Bij 'Eigen lezingen'
@@ -308,7 +324,11 @@ def selectie_instellen_dialog(
         boek = st.session_state.get(f"{prefix}book_{rt}", "")
         cv = st.session_state.get(f"{prefix}cv_{rt}", "")
         if boek and cv:
-            nieuwe_lezingen.append(f"{boek} {cv}")
+            # Strip trailing dots zodat "Genesis 1." en "Genesis 1" als
+            # identiek worden behandeld; zonder deze normalisatie groeide
+            # de referentie bij elke save+reopen-cyclus aan met een extra
+            # punt (zie _strip_trailing_dot voor de oorzaak in de agent).
+            nieuwe_lezingen.append(_strip_trailing_dot(f"{boek} {cv}"))
         elif boek and not cv:
             onvolledig.append(rt)
 
@@ -329,10 +349,15 @@ def selectie_instellen_dialog(
     # Geen wijziging → niets doen (dialog sluiten zonder API-/LLM-calls).
     # Alleen liedbundels gewijzigd → PATCH zonder de structured-scripture-LLM
     # opnieuw te draaien. Alleen lezingen gewijzigd, of beide → volledig pad.
-    oorspronkelijke_lezingen = [
-        item.get("original_scripture", "") or ""
+    # Index van bestaande scripture_json-entries op genormaliseerde
+    # original_scripture, zodat we ongewijzigde lezingen direct kunnen
+    # hergebruiken (zonder een nieuwe structured-scripture-LLM-call).
+    bestaande_per_lezing: dict[str, dict[str, Any]] = {
+        _strip_trailing_dot(item.get("original_scripture") or ""): item
         for item in (sermon_analysis.get("scripture_json") or [])
-    ]
+        if isinstance(item, dict)
+    }
+    oorspronkelijke_lezingen = list(bestaande_per_lezing.keys())
     # Bij rooster-analyses is scripture_json leeg bij het aanmaken; zonder
     # deze fallback zou een ongewijzigde roosterselectie als 'gewijzigd'
     # gelden en een onnodige structured-scripture-LLM-call triggeren. We
@@ -340,7 +365,9 @@ def selectie_instellen_dialog(
     # is scripture_json de waarheid en mag een eventuele rest-koppeling met
     # liturgy de vergelijking niet vertroebelen (zie ook _hydrate_state).
     if sermon_analysis.get("use_calendar") and not any(oorspronkelijke_lezingen):
-        oorspronkelijke_lezingen = _lectionary_readings(sermon_analysis)
+        oorspronkelijke_lezingen = [
+            _strip_trailing_dot(s) for s in _lectionary_readings(sermon_analysis)
+        ]
     nieuwe_song_book_ids = sorted(b["id"] for b in geselecteerde_bundels)
     oorspronkelijke_song_books = sermon_analysis.get("song_books") or []
     oorspronkelijke_song_book_ids = sorted(
@@ -370,22 +397,58 @@ def selectie_instellen_dialog(
                 "verhogen."
             )
             return
-        # ── Verzen synchroon ophalen via de structured-scripture-agent ─────
-        # Zelfde flow als bij het aanmaken van een analyse (new_analysis.py:384):
-        # de gebruiker krijgt direct een fout als een lezing niet gestructureerd
-        # kan worden, in plaats van pas een asynchrone fout in een latere rerun.
+        # ── Verzen synchroon ophalen voor alléén de NIEUWE lezingen ────────
+        # Ongewijzigde lezingen hergebruiken hun bestaande scripture_json-
+        # entry (verzen + structuur). Zo voorkomen we dat het toevoegen of
+        # verwijderen van één lezing alle andere lezingen opnieuw door de
+        # structured-scripture-LLM laat lopen (kost tokens en tijd, en kon
+        # via de prompt-template een trailing dot toevoegen aan
+        # original_scripture).
+        te_fetchen = [
+            l for l in nieuwe_lezingen if l not in bestaande_per_lezing
+        ]
         bible_version_obj = sermon_analysis.get("bible_version") or {}
         bible_version_str = (
             bible_version_obj.get("version")
             if isinstance(bible_version_obj, dict)
             else None
         )
-        with st.status("Lezingen structureren (kan even duren)..."):
-            nieuwe_scripture_json = get_structured_scriptures(
-                scriptures=nieuwe_lezingen,
-                bible_version=bible_version_str,
-                language="nl",
-            )
+        if te_fetchen:
+            # Zelfde flow als new_analysis.py:384 — synchrone fout zodra een
+            # lezing niet gestructureerd kan worden, i.p.v. pas in een latere rerun.
+            with st.status("Lezingen structureren (kan even duren)..."):
+                gefetchte_entries = get_structured_scriptures(
+                    scriptures=te_fetchen,
+                    bible_version=bible_version_str,
+                    language="nl",
+                )
+            # Defensief stripppen: het LLM zet de trailing dot uit zijn prompt
+            # soms alsnog in original_scripture; zonder strip zou de cv-key in
+            # bestaande_per_lezing bij een volgende save niet matchen.
+            for entry in gefetchte_entries:
+                if isinstance(entry, dict) and entry.get("original_scripture"):
+                    entry["original_scripture"] = _strip_trailing_dot(
+                        entry["original_scripture"]
+                    )
+            gefetcht_per_lezing = {
+                _strip_trailing_dot(item.get("original_scripture") or ""): item
+                for item in gefetchte_entries if isinstance(item, dict)
+            }
+        else:
+            gefetcht_per_lezing = {}
+
+        # Bouw scripture_json in de volgorde van nieuwe_lezingen, met voor
+        # elke positie óf een hergebruikte óf een nieuw gefetchte entry.
+        nieuwe_scripture_json: list[dict[str, Any]] = []
+        for lezing in nieuwe_lezingen:
+            if lezing in bestaande_per_lezing:
+                hergebruikt_entry = dict(bestaande_per_lezing[lezing])
+                hergebruikt_entry["original_scripture"] = lezing
+                nieuwe_scripture_json.append(hergebruikt_entry)
+            elif lezing in gefetcht_per_lezing:
+                nieuwe_scripture_json.append(gefetcht_per_lezing[lezing])
+            # else: lezing kwam niet terug uit de fetch — wordt afgevangen
+            # door de "lege"-check hieronder die de PATCH blokkeert.
 
         # Lege lezingen (geen verzen gevonden) blokkeren de PATCH — anders zou de
         # Bijbelteksten-tab na opslaan stilletjes leeg blijven en moest de
