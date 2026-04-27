@@ -2,6 +2,8 @@ from typing import Any
 
 import streamlit as st
 
+from src.utils.utils import clean_md
+
 
 def postille(analysis: dict[str, Any]) -> None:
     """Render a preekschets (postille) analysis result."""
@@ -43,16 +45,18 @@ def postille(analysis: dict[str, Any]) -> None:
             st.markdown(f"**Aanvullend:** {', '.join(aanvullend)}")
 
     # ── Eigene van de zondag ──────────────────────────────────────────────────
+    # clean_md herstelt letterlijke "\n" en spaties in bold-markers (** tekst **),
+    # zodat LLM-output met kopjes en vetgedrukte termen correct rendert.
     with st.expander("🗓️ Eigene van de zondag", expanded=False):
-        st.write(preekschets.get("eigene_van_de_zondag", ""))
+        st.markdown(clean_md(preekschets.get("eigene_van_de_zondag", "")))
 
     # ── Uitleg / Exegese ──────────────────────────────────────────────────────
     with st.expander("🔍 Uitleg & exegese", expanded=False):
-        st.markdown(preekschets.get("uitleg", ""))
+        st.markdown(clean_md(preekschets.get("uitleg", "")))
 
     # ── Aanwijzingen prediking ────────────────────────────────────────────────
     with st.expander("🎤 Aanwijzingen voor de prediking", expanded=False):
-        st.markdown(preekschets.get("aanwijzingen_prediking", ""))
+        st.markdown(clean_md(preekschets.get("aanwijzingen_prediking", "")))
 
     # ── Liturgische aanwijzingen ──────────────────────────────────────────────
     with st.expander("🎵 Liturgische aanwijzingen", expanded=False):
