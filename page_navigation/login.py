@@ -33,10 +33,6 @@ user_name = st.text_input("Username")
 password = st.text_input("Password", type="password")
 login_button = st.button("Login", disabled=not user_name or not password)
 
-if st.session_state.get('login_error'):
-    st.error("Ongeldige gebruikersnaam of wachtwoord. Probeer het opnieuw.")
-    st.session_state['login_error'] = False
-
 if login_button:
 
     try:
@@ -50,11 +46,27 @@ if login_button:
         st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
 
     except requests.exceptions.HTTPError as e:
-
-        if e.response.status_code == 401:
-            st.session_state['login_error'] = True
+        # Foutmelding direct tonen i.p.v. via session_state op de volgende rerun:
+        # Streamlit rendert top-to-bottom, dus een vlag die ná de render-fase
+        # wordt gezet zou pas verschijnen op een volgende rerun — die er hier
+        # niet automatisch komt, waardoor de gebruiker niets zag.
+        status_code = e.response.status_code if e.response is not None else None
+        if status_code == 401:
+            # Django SimpleJWT geeft voor zowel verkeerde inloggegevens als een
+            # niet-geactiveerd account dezelfde 401 met dezelfde detail-tekst,
+            # dus we kunnen ze client-side niet onderscheiden — daarom beide
+            # mogelijkheden expliciet noemen.
+            st.error(
+                "Inloggen mislukt. Mogelijke oorzaken: ongeldige gebruikersnaam of "
+                "wachtwoord, of het account is nog niet geactiveerd. Controleer je "
+                "e-mail voor de activatielink."
+            )
         else:
-            raise e
-            
+            st.error(f"Onverwachte fout bij inloggen (status {status_code}): {e}")
+
+    except requests.exceptions.RequestException as e:
+        # Netwerkfout, timeout, DNS-probleem — afvangen zodat de gebruiker
+        # geen Streamlit-traceback ziet.
+        st.error(f"Kon de server niet bereiken: {e}")
 
     
