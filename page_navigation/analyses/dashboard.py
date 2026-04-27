@@ -233,15 +233,17 @@ st.markdown(
 if len(analysis) == 0:
     st.info("Er zijn nog geen kerkdienstanalyses gestart.")
 else:
-    # Detecteer superuser-scenario: de DRF-viewset filtert voor superusers
-    # NIET op `user=request.user`, dus zij krijgen analyses van álle
-    # gebruikers terug. We herkennen dit aan meerdere unieke `user_email`-
-    # waardes in de response. Voor niet-superusers is er altijd één e-mail
-    # (hun eigen) en blijft de bestaande, ongegroepeerde weergave actief.
+    # Detecteer superuser-scenario op basis van de gehydrateerde flag
+    # `st.session_state['is_superuser']` (via /api/user-preferences/, zie
+    # main._hydrate_user_preferences). Dit triggert de groepering óók als
+    # de superuser slechts analyses van één andere gebruiker terugziet —
+    # belangrijk om in dat geval alsnog te zien van wie die analyses zijn.
+    # De vroegere drempel "len(unieke_emails) > 1" werkte niet als de
+    # superuser zelf nog geen actieve analyses had.
+    superuser_modus = bool(st.session_state.get("is_superuser", False))
     unieke_emails = sorted({
         it.get("user_email") for it in analysis if it.get("user_email")
     })
-    superuser_modus = len(unieke_emails) > 1
 
     # Sorteren op zondagdatum. Tonen we meer dan één analyse, dan krijgt de
     # gebruiker een segmented_control om de volgorde te wisselen. Default is
@@ -283,7 +285,12 @@ else:
     # e-mail; binnen elke sectie blijft de bestaande zondagdatum-sortering
     # actief. Zo is in één oogopslag duidelijk welke analyses bij welk
     # account horen.
-    if superuser_modus:
+    #
+    # Fallback: als de backend nog geen `user_email` teruggeeft (oude
+    # serializer-versie tijdens deploy), is `unieke_emails` leeg. We vallen
+    # dan terug op één ongegroepeerde sectie zodat de superuser de analyses
+    # nog wel ziet — anders zou het overzicht visueel leeg lijken.
+    if superuser_modus and unieke_emails:
         sectie_groepen: list[tuple[str, list[dict[str, Any]]]] = [
             (
                 email,
@@ -292,8 +299,8 @@ else:
             for email in unieke_emails
         ]
     else:
-        # Niet-superuser: één impliciete sectie zonder subkop, identiek
-        # gedrag als vóór deze wijziging.
+        # Niet-superuser of geen user_email beschikbaar: één impliciete
+        # sectie zonder subkop, identiek gedrag als vóór deze wijziging.
         sectie_groepen = [("", sorted_analysis)]
 
     with st.container():
