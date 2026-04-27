@@ -342,6 +342,14 @@ else:
                     key=f"word_{item['id']}",
                     help="Exporteer als Word-document",
                 ):
+                    # Bust de eerder gegenereerde docx-bytes voor dit item:
+                    # zonder deze pop bleef een vorige cache-vulling staan
+                    # (de dialog clearde alleen op 'Sluiten'), waardoor een
+                    # nieuwe export na bv. een lezing-wijziging nog het oude
+                    # document teruggaf. Binnen één geopende dialog blijft de
+                    # cache wél werken, zodat een klik op 'Download' niet
+                    # opnieuw het hele document hoeft te genereren.
+                    st.session_state.pop(f"_word_bytes_{item['id']}", None)
                     st.session_state["_pending_word_export"] = item
                     word_export_dialog()
             with col_del:
