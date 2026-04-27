@@ -1,8 +1,74 @@
+import re
 from typing import Any
 
 import streamlit as st
 
 from src.utils.utils import clean_md
+
+
+# Leestekens die het einde van een zin markeren. Een regel die hierop eindigt
+# beschouwen we niet als kopje — kopjes bestaan uit losse korte regels zonder
+# afsluitend leesteken.
+_ZIN_EINDE: tuple[str, ...] = (".", "!", "?", ":", ";", ",", ")", "”", "’")
+
+
+def _structureer_postille_tekst(tekst: str) -> str:
+    """Voeg basisstructuur toe aan platte LLM-output van de postille.
+
+    De LLM levert vaak markdown-loze tekst voor `eigene_van_de_zondag`,
+    `uitleg` en `aanwijzingen_prediking`: korte regels fungeren als sectie-
+    kopjes en genummerde items hebben een titel-stuk vóór de eerste dubbele
+    punt, maar zonder vetgedrukt of `###`-prefix. Zonder hulp rendert
+    Streamlit dit als één lange paragraaf.
+
+    Twee transformaties:
+    1. Genummerde items "1. Titel — context: uitleg" worden "1. **Titel — context:** uitleg".
+    2. Een korte alleenstaande regel (na blank-line of aan begin) zonder
+       afsluitend leesteken wordt een `### kopje`.
+    """
+    if not tekst:
+        return tekst
+
+    tekst = tekst.replace("\r\n", "\n").replace("\r", "\n")
+    regels: list[str] = tekst.split("\n")
+
+    nieuw: list[str] = []
+    for idx, ruwe_regel in enumerate(regels):
+        regel = ruwe_regel.rstrip()
+        gestript = regel.strip()
+
+        if not gestript:
+            nieuw.append("")
+            continue
+
+        # Genummerd item: "1. Titel ... : body" of "1. Titel ... :"
+        m = re.match(r"^(\s*)(\d+)\.\s+([^:\n]+?)\s*:\s*(.*)$", regel)
+        if m:
+            inspring, num, titel, body = m.group(1), m.group(2), m.group(3), m.group(4)
+            if body:
+                nieuw.append(f"{inspring}{num}. **{titel}:** {body}")
+            else:
+                nieuw.append(f"{inspring}{num}. **{titel}:**")
+            continue
+
+        # Kopje: korte alleenstaande regel zonder afsluitend leesteken,
+        # voorafgegaan door een blanco regel (of het begin van de tekst).
+        vorige_blanco = idx == 0 or not regels[idx - 1].strip()
+        is_kort = len(gestript) <= 80
+        geen_eindleesteken = not gestript.endswith(_ZIN_EINDE)
+        begint_met_hoofdletter = gestript[:1].isupper() or gestript[:1] in {"“", "‘", "\""}
+        if vorige_blanco and is_kort and geen_eindleesteken and begint_met_hoofdletter:
+            nieuw.append(f"### {gestript}")
+            continue
+
+        nieuw.append(regel)
+
+    return "\n".join(nieuw)
+
+
+def _render_markdown(tekst: str) -> None:
+    """Render een postille-tekstveld met clean_md + postille-structurering."""
+    st.markdown(_structureer_postille_tekst(clean_md(tekst)))
 
 
 def postille(analysis: dict[str, Any]) -> None:
@@ -45,18 +111,19 @@ def postille(analysis: dict[str, Any]) -> None:
             st.markdown(f"**Aanvullend:** {', '.join(aanvullend)}")
 
     # ── Eigene van de zondag ──────────────────────────────────────────────────
-    # clean_md herstelt letterlijke "\n" en spaties in bold-markers (** tekst **),
-    # zodat LLM-output met kopjes en vetgedrukte termen correct rendert.
+    # clean_md herstelt letterlijke "\n" en spaties in bold-markers,
+    # _structureer_postille_tekst voegt kopjes en vetgedrukte titels toe
+    # aan de platte LLM-output zodat de structuur leesbaar wordt.
     with st.expander("🗓️ Eigene van de zondag", expanded=False):
-        st.markdown(clean_md(preekschets.get("eigene_van_de_zondag", "")))
+        _render_markdown(preekschets.get("eigene_van_de_zondag", ""))
 
     # ── Uitleg / Exegese ──────────────────────────────────────────────────────
     with st.expander("🔍 Uitleg & exegese", expanded=False):
-        st.markdown(clean_md(preekschets.get("uitleg", "")))
+        _render_markdown(preekschets.get("uitleg", ""))
 
     # ── Aanwijzingen prediking ────────────────────────────────────────────────
     with st.expander("🎤 Aanwijzingen voor de prediking", expanded=False):
-        st.markdown(clean_md(preekschets.get("aanwijzingen_prediking", "")))
+        _render_markdown(preekschets.get("aanwijzingen_prediking", ""))
 
     # ── Liturgische aanwijzingen ──────────────────────────────────────────────
     with st.expander("🎵 Liturgische aanwijzingen", expanded=False):
