@@ -113,15 +113,17 @@ def _hydrate_state(analysis_id: int, sermon_analysis: dict[str, Any]) -> None:
     bronlezingen: list[str] = [
         item.get("original_scripture") or "" for item in scripture_json
     ]
-    # Vul ontbrekende rooster-slots aan vanuit liturgy. Een eerdere
-    # onvolledige opslag (bv. een 4-lezingen-rooster waarvan één lezing
-    # door een legacy-bug wegviel) zou anders permanent de gemiste lezing
-    # uit het dialog laten verdwijnen, ook al staat hij wél in het rooster.
-    # Voor "Eigen lezingen"-analyses heeft sermon_analysis geen liturgy en
-    # is _lectionary_readings leeg, dus dan verandert er niets.
-    rooster = _lectionary_readings(sermon_analysis)
-    if len(bronlezingen) < len(rooster):
-        bronlezingen.extend(rooster[len(bronlezingen):])
+    # Vul ontbrekende rooster-slots aan vanuit liturgy — alleen bij analyses
+    # die expliciet 'Kerkelijk rooster volgen' gebruiken. Bij 'Eigen lezingen'
+    # kan sermon_analysis óók een liturgy-koppeling hebben (de session-state
+    # key 'selected_scripture_id' in new_analysis.py blijft hangen wanneer de
+    # gebruiker eerst rooster aantikte en daarna naar eigen lezingen wisselt),
+    # waardoor zonder deze use_calendar-check de roosterlezingen abusievelijk
+    # als 3e/4e lezing in het dialog opdoken náást de twee eigen lezingen.
+    if sermon_analysis.get("use_calendar"):
+        rooster = _lectionary_readings(sermon_analysis)
+        if len(bronlezingen) < len(rooster):
+            bronlezingen.extend(rooster[len(bronlezingen):])
     # Volledig leeg (geen scripture_json én geen rooster): laat de dialog
     # met één lege slot openen zodat de gebruiker direct kan invullen.
 
@@ -264,9 +266,17 @@ def selectie_instellen_dialog(
                 key=f"{prefix}remove",
                 disabled=_limiet_bereikt,
             ):
-                last_rt = READING_TYPES[count - 1]
-                st.session_state[f"{prefix}book_{last_rt}"] = ""
-                st.session_state[f"{prefix}cv_{last_rt}"] = ""
+                # We resetten de book/cv-keys van de te verwijderen lezing
+                # bewust NIET hier: die widgets zijn in deze rerun al
+                # geïnstantieerd, en Streamlit verbiedt het wijzigen van
+                # session_state voor een al-bestaande widget-key (gooit
+                # StreamlitAPIException). Na de rerun met lagere `count`
+                # wordt de laatste lezing-rij niet meer gerenderd, en de
+                # opslag-validatie (regel ~296) doorloopt alleen
+                # `active_types = READING_TYPES[:count]`, dus eventuele
+                # achtergebleven waardes komen niet in nieuwe_lezingen.
+                # Bij een volgende dialog-opening ruimt _wis_state de keys
+                # alsnog op.
                 st.session_state[f"{prefix}count"] = count - 1
                 st.rerun(scope="fragment")
 
@@ -324,8 +334,11 @@ def selectie_instellen_dialog(
     ]
     # Bij rooster-analyses is scripture_json leeg bij het aanmaken; zonder
     # deze fallback zou een ongewijzigde roosterselectie als 'gewijzigd'
-    # gelden en een onnodige structured-scripture-LLM-call triggeren.
-    if not any(oorspronkelijke_lezingen):
+    # gelden en een onnodige structured-scripture-LLM-call triggeren. We
+    # gebruiken de fallback alleen bij use_calendar=True; bij eigen lezingen
+    # is scripture_json de waarheid en mag een eventuele rest-koppeling met
+    # liturgy de vergelijking niet vertroebelen (zie ook _hydrate_state).
+    if sermon_analysis.get("use_calendar") and not any(oorspronkelijke_lezingen):
         oorspronkelijke_lezingen = _lectionary_readings(sermon_analysis)
     nieuwe_song_book_ids = sorted(b["id"] for b in geselecteerde_bundels)
     oorspronkelijke_song_books = sermon_analysis.get("song_books") or []
