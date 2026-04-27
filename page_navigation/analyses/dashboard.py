@@ -233,6 +233,16 @@ st.markdown(
 if len(analysis) == 0:
     st.info("Er zijn nog geen kerkdienstanalyses gestart.")
 else:
+    # Detecteer superuser-scenario: de DRF-viewset filtert voor superusers
+    # NIET op `user=request.user`, dus zij krijgen analyses van álle
+    # gebruikers terug. We herkennen dit aan meerdere unieke `user_email`-
+    # waardes in de response. Voor niet-superusers is er altijd één e-mail
+    # (hun eigen) en blijft de bestaande, ongegroepeerde weergave actief.
+    unieke_emails = sorted({
+        it.get("user_email") for it in analysis if it.get("user_email")
+    })
+    superuser_modus = len(unieke_emails) > 1
+
     # Sorteren op zondagdatum. Tonen we meer dan één analyse, dan krijgt de
     # gebruiker een segmented_control om de volgorde te wisselen. Default is
     # 'Nieuwste eerst' zodat de oranje gemarkeerde 'laatste' analyse ook direct
@@ -268,95 +278,119 @@ else:
         key=lambda it: (it["sermon_date"], it["id"]),
     )["id"]
 
+    # In superuser-modus tonen we per gebruiker een aparte sectie met een
+    # subkop (e-mailadres). De volgorde van de gebruikers is alfabetisch op
+    # e-mail; binnen elke sectie blijft de bestaande zondagdatum-sortering
+    # actief. Zo is in één oogopslag duidelijk welke analyses bij welk
+    # account horen.
+    if superuser_modus:
+        sectie_groepen: list[tuple[str, list[dict[str, Any]]]] = [
+            (
+                email,
+                [it for it in sorted_analysis if it.get("user_email") == email],
+            )
+            for email in unieke_emails
+        ]
+    else:
+        # Niet-superuser: één impliciete sectie zonder subkop, identiek
+        # gedrag als vóór deze wijziging.
+        sectie_groepen = [("", sorted_analysis)]
+
     with st.container():
-        for item in sorted_analysis:
-            id = item["id"]
-            title = item["title"]
-            congregation = item["church"]["name"]
-            sermon_date = datetime.strptime(item["sermon_date"], "%Y-%m-%d").strftime(
-                "%d-%m-%Y"
-            )
-            is_latest = item["id"] == latest_id
-            # Markeer analyses waar de agent in een fout is geëindigd. Single_analysis
-            # zet `status='error'` bij faal; we tonen dan een rode 'Mislukt'-badge in
-            # de tijd-kolom zodat de gebruiker direct ziet welke analyse opnieuw
-            # gestart moet worden. Andere statussen (`draft`) blijven onzichtbaar.
-            heeft_fout = item.get("status") == "error"
-            # Bepaal het label voor het grijze aanmaaktijdstip. Voorkeur:
-            # `created_at` uit de API (volledige datum+tijd); fallback: alleen
-            # de HH:MM-suffix uit de auto-gegenereerde titel voor oude records.
-            _, aanmaaktijd_titel = _split_aanmaaktijd(title)
-            aanmaak_label = _format_aanmaak_label(
-                item.get("created_at"), aanmaaktijd_titel
-            )
-            # Vier kolommen: knop, aanmaaktijdstip (grijs), Word-export-knop,
-            # verwijder-knop. De tijd-kolom krijgt ~20% van de breedte zodat
-            # 'dd-mm-yyyy HH:MM' netjes past. `vertical_alignment="center"`
-            # lijnt het grijze label op de verticale as van de knop uit. De
-            # Word-kolom (📄) staat tussen tijd en verwijder, zoals gevraagd.
-            col_btn, col_time, col_word, col_del = st.columns(
-                [6, 2, 1, 1], vertical_alignment="center"
-            )
-            # Alleen de hoofdknop van de laatste analyse krijgt een geïdentificeerde
-            # container (via key='dashboard_latest_analysis'); de CSS bovenaan de
-            # pagina vindt deze container op basis van de `st-key-...`-klasse en
-            # kleurt alleen deze specifieke knop oranje.
-            btn_container = (
-                col_btn.container(key="dashboard_latest_analysis")
-                if is_latest
-                else col_btn
-            )
-            with btn_container:
-                st.button(
-                    f"{format_title(title, congregation, sermon_date)}",
-                    type="secondary",
-                    key=item["id"],
-                    use_container_width=True,
-                    on_click=lambda id=id: set_analysis_id(id)
+        for sectie_email, sectie_items in sectie_groepen:
+            if sectie_email:
+                # Subkop met e-mailadres scheidt de blokken visueel in de
+                # superuser-modus. We gebruiken `st.subheader` zodat de
+                # styling consistent is met andere paginakoppen.
+                st.subheader(sectie_email)
+            for item in sectie_items:
+                id = item["id"]
+                title = item["title"]
+                congregation = item["church"]["name"]
+                sermon_date = datetime.strptime(item["sermon_date"], "%Y-%m-%d").strftime(
+                    "%d-%m-%Y"
                 )
-            with col_time:
-                # Bij een mislukte analyse vervangt een rode 'Mislukt'-badge het
-                # grijze aanmaaktijdstip. De timestamp is in dat geval minder
-                # relevant dan het signaal dat de analyse opnieuw gestart moet
-                # worden; ze in elkaar plakken zou de kolom te druk maken.
-                if heeft_fout:
-                    st.markdown(
-                        "<span style='color: #c62828; font-size: 0.9em;'>"
-                        "⚠️ Mislukt</span>",
-                        unsafe_allow_html=True,
+                is_latest = item["id"] == latest_id
+                # Markeer analyses waar de agent in een fout is geëindigd. Single_analysis
+                # zet `status='error'` bij faal; we tonen dan een rode 'Mislukt'-badge in
+                # de tijd-kolom zodat de gebruiker direct ziet welke analyse opnieuw
+                # gestart moet worden. Andere statussen (`draft`) blijven onzichtbaar.
+                heeft_fout = item.get("status") == "error"
+                # Bepaal het label voor het grijze aanmaaktijdstip. Voorkeur:
+                # `created_at` uit de API (volledige datum+tijd); fallback: alleen
+                # de HH:MM-suffix uit de auto-gegenereerde titel voor oude records.
+                _, aanmaaktijd_titel = _split_aanmaaktijd(title)
+                aanmaak_label = _format_aanmaak_label(
+                    item.get("created_at"), aanmaaktijd_titel
+                )
+                # Vier kolommen: knop, aanmaaktijdstip (grijs), Word-export-knop,
+                # verwijder-knop. De tijd-kolom krijgt ~20% van de breedte zodat
+                # 'dd-mm-yyyy HH:MM' netjes past. `vertical_alignment="center"`
+                # lijnt het grijze label op de verticale as van de knop uit. De
+                # Word-kolom (📄) staat tussen tijd en verwijder, zoals gevraagd.
+                col_btn, col_time, col_word, col_del = st.columns(
+                    [6, 2, 1, 1], vertical_alignment="center"
+                )
+                # Alleen de hoofdknop van de laatste analyse krijgt een geïdentificeerde
+                # container (via key='dashboard_latest_analysis'); de CSS bovenaan de
+                # pagina vindt deze container op basis van de `st-key-...`-klasse en
+                # kleurt alleen deze specifieke knop oranje.
+                btn_container = (
+                    col_btn.container(key="dashboard_latest_analysis")
+                    if is_latest
+                    else col_btn
+                )
+                with btn_container:
+                    st.button(
+                        f"{format_title(title, congregation, sermon_date)}",
+                        type="secondary",
+                        key=item["id"],
+                        use_container_width=True,
+                        on_click=lambda id=id: set_analysis_id(id)
                     )
-                # Alleen tonen als we een aanmaaktijdstip hebben (uit API of
-                # als fallback uit de titel). Voor custom titels zonder
-                # HH:MM-suffix én zonder `created_at` blijft de kolom leeg.
-                elif aanmaak_label:
-                    st.markdown(
-                        f"<span style='color: #888; font-size: 0.9em;'>{aanmaak_label}</span>",
-                        unsafe_allow_html=True,
-                    )
-            with col_word:
-                # Word-export: opent een popup-dialog die het document
-                # opbouwt en als download aanbiedt. Zelfde interactiepatroon
-                # als de verwijder-knop hiernaast (session_state + dialog).
-                if st.button(
-                    ":material/description:",
-                    key=f"word_{item['id']}",
-                    help="Exporteer als Word-document",
-                ):
-                    # Bust de eerder gegenereerde docx-bytes voor dit item:
-                    # zonder deze pop bleef een vorige cache-vulling staan
-                    # (de dialog clearde alleen op 'Sluiten'), waardoor een
-                    # nieuwe export na bv. een lezing-wijziging nog het oude
-                    # document teruggaf. Binnen één geopende dialog blijft de
-                    # cache wél werken, zodat een klik op 'Download' niet
-                    # opnieuw het hele document hoeft te genereren.
-                    st.session_state.pop(f"_word_bytes_{item['id']}", None)
-                    st.session_state["_pending_word_export"] = item
-                    word_export_dialog()
-            with col_del:
-                # Verwijder-knop: sla het item op in session_state en open de bevestigingsdialoog.
-                if st.button("✕", key=f"delete_{item['id']}", help="Verwijder analyse"):
-                    st.session_state["_pending_delete_analysis"] = item
-                    confirm_delete_analysis()
+                with col_time:
+                    # Bij een mislukte analyse vervangt een rode 'Mislukt'-badge het
+                    # grijze aanmaaktijdstip. De timestamp is in dat geval minder
+                    # relevant dan het signaal dat de analyse opnieuw gestart moet
+                    # worden; ze in elkaar plakken zou de kolom te druk maken.
+                    if heeft_fout:
+                        st.markdown(
+                            "<span style='color: #c62828; font-size: 0.9em;'>"
+                            "⚠️ Mislukt</span>",
+                            unsafe_allow_html=True,
+                        )
+                    # Alleen tonen als we een aanmaaktijdstip hebben (uit API of
+                    # als fallback uit de titel). Voor custom titels zonder
+                    # HH:MM-suffix én zonder `created_at` blijft de kolom leeg.
+                    elif aanmaak_label:
+                        st.markdown(
+                            f"<span style='color: #888; font-size: 0.9em;'>{aanmaak_label}</span>",
+                            unsafe_allow_html=True,
+                        )
+                with col_word:
+                    # Word-export: opent een popup-dialog die het document
+                    # opbouwt en als download aanbiedt. Zelfde interactiepatroon
+                    # als de verwijder-knop hiernaast (session_state + dialog).
+                    if st.button(
+                        ":material/description:",
+                        key=f"word_{item['id']}",
+                        help="Exporteer als Word-document",
+                    ):
+                        # Bust de eerder gegenereerde docx-bytes voor dit item:
+                        # zonder deze pop bleef een vorige cache-vulling staan
+                        # (de dialog clearde alleen op 'Sluiten'), waardoor een
+                        # nieuwe export na bv. een lezing-wijziging nog het oude
+                        # document teruggaf. Binnen één geopende dialog blijft de
+                        # cache wél werken, zodat een klik op 'Download' niet
+                        # opnieuw het hele document hoeft te genereren.
+                        st.session_state.pop(f"_word_bytes_{item['id']}", None)
+                        st.session_state["_pending_word_export"] = item
+                        word_export_dialog()
+                with col_del:
+                    # Verwijder-knop: sla het item op in session_state en open de bevestigingsdialoog.
+                    if st.button("✕", key=f"delete_{item['id']}", help="Verwijder analyse"):
+                        st.session_state["_pending_delete_analysis"] = item
+                        confirm_delete_analysis()
 
 # Verberg de "Nieuwe analyse"-knop zodra de early-test-tokenlimiet is
 # overschreden. Samen met het verdwijnen van de gelijknamige sidebar-link
