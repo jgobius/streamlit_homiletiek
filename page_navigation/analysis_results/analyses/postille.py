@@ -33,29 +33,14 @@ def postille(analysis: dict[str, Any]) -> None:
     st.divider()
 
     # ── Schriftlezingen ───────────────────────────────────────────────────────
+    # Alleen de referenties tonen; de volledige bijbeltekst staat al in de
+    # Bijbelteksten-analyse (zelfde Basis-tab) en hoeft hier niet herhaald.
     with st.expander("📚 Schriftlezingen", expanded=False):
         if schriftlezingen.get("hoofdlezing"):
             st.markdown(f"**Hoofdlezing:** {schriftlezingen['hoofdlezing']}")
         aanvullend: list = schriftlezingen.get("aanvullend", [])
         if aanvullend:
             st.markdown(f"**Aanvullend:** {', '.join(aanvullend)}")
-
-        scripture_json: list = sermon.get("scripture_json", [])
-        if scripture_json:
-            st.markdown("---")
-            for reading in scripture_json:
-                st.markdown(f"*{reading.get('original_scripture', '')}*")
-                for scripture in reading.get("scriptures", []):
-                    book = scripture.get("book", "")
-                    chapter = scripture.get("chapter", "")
-                    for verse in scripture.get("verses", []):
-                        st.markdown(
-                            f"<span style='color:grey;font-size:0.85em;'>"
-                            f"{book} {chapter}:{verse['number']}</span>&nbsp;&nbsp;"
-                            f"{verse['text']}",
-                            unsafe_allow_html=True,
-                        )
-                st.write("")
 
     # ── Eigene van de zondag ──────────────────────────────────────────────────
     with st.expander("🗓️ Eigene van de zondag", expanded=False):
