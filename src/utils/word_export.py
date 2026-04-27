@@ -98,6 +98,14 @@ def bouw_kerkdienstanalyse_docx(
         params={"sermon_analysis_id": analysis_id},
     )
     sub_analyses = _lijst_normaliseren(sub_raw)
+    # Behoud per analyse-type alleen de meest recente run, identiek aan
+    # overview.py:399-403. Soft-deleted records zijn al door de backend
+    # gefilterd (analysis_result/views.py:73-76), maar bij herhaaldelijk
+    # klikken op 'Opnieuw' staan er meerdere actieve records van hetzelfde
+    # type in de respons. Zonder deze deduplicatie zouden bv. de
+    # bijbelteksten-runs allemaal achter elkaar in het Word-document
+    # verschijnen, terwijl de Streamlit-UI alleen de nieuwste toont.
+    sub_analyses = _alleen_nieuwste_per_type(sub_analyses)
 
     cb(0.15, "Document opbouwen — kop...")
     doc = Document()
@@ -209,6 +217,32 @@ def _lijst_normaliseren(respons: Any) -> list[dict]:
     if isinstance(respons, dict) and isinstance(respons.get("results"), list):
         return respons["results"]
     return []
+
+
+def _alleen_nieuwste_per_type(sub_analyses: list[dict]) -> list[dict]:
+    """Houd per analysis_type alleen de AnalysisResult met de hoogste id.
+
+    Deze deduplicatie spiegelt de logica in
+    ``page_navigation/analysis_results/overview.py:399-403`` zodat de
+    Streamlit-UI en het Word-document dezelfde versie van elke analyse
+    tonen. Records zonder een leesbare ``id`` of ``analysis_type.name``
+    laten we ongemoeid in de output staan, want filteren zou data
+    verliezen waar we de oorzaak nog niet van kennen.
+    """
+    nieuwste_per_naam: dict[str, dict] = {}
+    overig: list[dict] = []
+    for sub in sub_analyses:
+        if not isinstance(sub, dict):
+            continue
+        naam = (sub.get("analysis_type") or {}).get("name")
+        sub_id = sub.get("id")
+        if not isinstance(naam, str) or not isinstance(sub_id, int):
+            overig.append(sub)
+            continue
+        bestaande = nieuwste_per_naam.get(naam)
+        if bestaande is None or sub_id > bestaande.get("id", -1):
+            nieuwste_per_naam[naam] = sub
+    return list(nieuwste_per_naam.values()) + overig
 
 
 def _groepeer_per_tab(sub_analyses: list[dict]) -> dict[str, list[dict]]:
