@@ -11,6 +11,7 @@ zodat de voorganger de selectie achteraf nog kan corrigeren zonder een
 nieuwe analyse te hoeven starten.
 """
 
+import time
 from typing import Any
 
 import requests
@@ -328,10 +329,14 @@ def selectie_instellen_dialog(
     # Geen wijziging → niets doen (dialog sluiten zonder API-/LLM-calls).
     # Alleen liedbundels gewijzigd → PATCH zonder de structured-scripture-LLM
     # opnieuw te draaien. Alleen lezingen gewijzigd, of beide → volledig pad.
+    # We onthouden hier ook het oorspronkelijke aantal lezingen — dat is de
+    # snelste signaal voor het detecteren van een toegevoegde lezing in de
+    # poll-loop verderop (zie commentaar bij de poll-stap).
     oorspronkelijke_lezingen = [
         item.get("original_scripture", "") or ""
         for item in (sermon_analysis.get("scripture_json") or [])
     ]
+    aantal_oorspronkelijke_lezingen = len(oorspronkelijke_lezingen)
     # Bij rooster-analyses is scripture_json leeg bij het aanmaken; zonder
     # deze fallback zou een ongewijzigde roosterselectie als 'gewijzigd'
     # gelden en een onnodige structured-scripture-LLM-call triggeren. We
@@ -427,6 +432,43 @@ def selectie_instellen_dialog(
                 "original_scriptures/",
                 payload={"sermon_analysis_id": analysis_id},
             )
+            # ── Wachten tot de agent klaar is met de extra lezing ─────────
+            # /original_scriptures/ retourneert direct; de agent schrijft het
+            # resultaat in een FastAPI background_task (zie homiletiek_agent
+            # api.py:122). Bij toevoegen van een lezing zou de Bijbelteksten-
+            # tab anders na de st.rerun() nog de oude (kortere) lijst tonen
+            # tot de gebruiker handmatig op Ververs klikt. We pollen daarom
+            # tot het aantal lezingen in de bijbelteksten-AnalysisResult.result
+            # toeneemt t.o.v. het origineel — dat is de eenvoudigste, robuuste
+            # voorwaarde voor de "extra lezing toegevoegd"-flow. Bij wijziging
+            # of weglaten van bestaande lezingen verandert het aantal niet en
+            # valt de poll na de timeout terug op de bestaande Ververs-knop.
+            # We pollen alléén als het aantal lezingen daadwerkelijk groter is
+            # geworden; anders wachten we onnodig.
+            if len(nieuwe_lezingen) > aantal_oorspronkelijke_lezingen:
+                _bijbelteksten_deadline = time.monotonic() + 10.0
+                with st.spinner("Bijbelteksten worden opgehaald..."):
+                    while time.monotonic() < _bijbelteksten_deadline:
+                        try:
+                            _resultaten = handler.get(
+                                f"api/analysis-results?sermon_analysis_id={analysis_id}"
+                            ) or []
+                        except requests.exceptions.RequestException:
+                            # Tijdelijke netwerkfout: geef de volgende iteratie
+                            # nog een kans; bij blijvende fout valt de loop
+                            # vanzelf naar de timeout.
+                            _resultaten = []
+                        _bijb = next(
+                            (
+                                r for r in _resultaten
+                                if (r.get("analysis_type") or {}).get("name") == "bijbelteksten"
+                            ),
+                            None,
+                        )
+                        if _bijb and isinstance(_bijb.get("result"), list):
+                            if len(_bijb["result"]) >= len(nieuwe_lezingen):
+                                break
+                        time.sleep(0.5)
         except requests.exceptions.RequestException as exc:
             st.warning(
                 "Selectie is opgeslagen, maar de bijbelteksten konden niet "
