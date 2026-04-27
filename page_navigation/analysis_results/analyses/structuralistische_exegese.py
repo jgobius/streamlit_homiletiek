@@ -52,12 +52,29 @@ def _render_lezing(lezing: dict) -> None:
     # ── Afbakening & vertaling ────────────────────────────────────────────────
     with st.expander("📜 Afbakening & vertaling", expanded=False):
         afbakening: dict = lezing.get("afbakening_vertaling", {})
+        # Cruciale werkvertaling: eigen werkvertaling van het exegetisch
+        # belangrijkste vers. Expliciet labelen zodat de lezer ziet dat het
+        # geen willekeurig citaat is maar een gemotiveerde vertaalkeuze.
         if afbakening.get("werkvertaling_cruciaal"):
+            st.markdown("**Cruciale werkvertaling**")
             st.info(f"📖 *{afbakening['werkvertaling_cruciaal']}*")
-        for item in afbakening.get("vertaalvergelijking", []):
-            st.markdown(f"**Vertaalvergelijking:** {item.get('vertaling', '')}")
-            if item.get("significante_verschillen"):
-                st.markdown(f"*Significante verschillen:* {item['significante_verschillen']}")
+
+        # Vertaalvergelijking: per item de bronvermelding (NBV21/HSV/SV/...)
+        # vóór de vertaling tonen. `bron` is een nieuwer veld; defensief
+        # afhandelen zodat oudere analyses zonder dit veld niet stukgaan.
+        vertaalvergelijking: list = afbakening.get("vertaalvergelijking", [])
+        if vertaalvergelijking:
+            st.markdown("**Vertaalvergelijking**")
+            for item in vertaalvergelijking:
+                bron = item.get("bron", "").strip()
+                vertaling = item.get("vertaling", "")
+                with st.container(border=True):
+                    if bron:
+                        st.markdown(f"**{bron}** — {vertaling}")
+                    else:
+                        st.markdown(vertaling)
+                    if item.get("significante_verschillen"):
+                        st.caption(f"Verschillen: {item['significante_verschillen']}")
 
     # ── Tekstkritiek ──────────────────────────────────────────────────────────
     with st.expander("🔍 Tekstkritiek", expanded=False):
