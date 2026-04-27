@@ -89,7 +89,6 @@ def feedback_schulz_von_thun(analysis: dict[str, Any]) -> None:
     analyse_blok = result.get("schulz_von_thun_analyse", {})
     congruentie = result.get("congruentie_en_storingen", {})
     receptie = result.get("receptie_simulatie", {})
-    meta = result.get("metadata", {})
 
     # === 1. Totaaloverzicht ===
     overall = totaal.get("overall_communicatie_score")
@@ -175,9 +174,3 @@ def feedback_schulz_von_thun(analysis: dict[str, Any]) -> None:
                 with st.expander(label, expanded=False):
                     st.markdown(clean_md(str(v)))
 
-    # === 5. Metadata ===
-    if meta:
-        with st.expander("Metadata", expanded=False):
-            for k, v in meta.items():
-                if v:
-                    st.markdown(f"**{k.replace('_', ' ').capitalize()}:** {clean_md(str(v))}")

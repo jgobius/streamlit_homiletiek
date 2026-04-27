@@ -50,7 +50,6 @@ def feedback_dekker(analysis: dict[str, Any]) -> None:
 
     criteria = result.get("analyse_per_criterium", {})
     algeheel = result.get("algehele_beoordeling", {})
-    meta = result.get("metadata", {})
 
     # === 1. Algehele beoordeling bovenaan ===
     eindoordeel = algeheel.get("eindoordeel_volgens_dekker", "")
@@ -119,10 +118,3 @@ def feedback_dekker(analysis: dict[str, Any]) -> None:
             verbeterpunt = blok.get("verbeterpunt", "")
             if verbeterpunt:
                 st.warning(f"△ {clean_md(verbeterpunt)}")
-
-    # === 4. Metadata ===
-    if meta:
-        with st.expander("Metadata", expanded=False):
-            for k, v in meta.items():
-                if v:
-                    st.markdown(f"**{k.replace('_', ' ').capitalize()}:** {clean_md(str(v))}")
