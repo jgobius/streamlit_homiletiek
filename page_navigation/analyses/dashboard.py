@@ -244,6 +244,16 @@ else:
     unieke_emails = sorted({
         it.get("user_email") for it in analysis if it.get("user_email")
     })
+    # Mapping e-mail → volledige naam, gebruikt om de subkop op te bouwen
+    # in de vorm 'email (Voornaam Achternaam)'. We pakken de eerste niet-
+    # lege match per e-mail; in praktijk is de naam per account constant
+    # binnen één response, dus de eerste hit is voldoende. Bij ontbrekende
+    # naam blijft de waarde leeg en valt de subkop terug op alleen e-mail.
+    naam_per_email: dict[str, str] = {}
+    for _it in analysis:
+        _email = _it.get("user_email")
+        if _email and _email not in naam_per_email:
+            naam_per_email[_email] = _it.get("user_full_name") or ""
 
     # Sorteren op zondagdatum. Tonen we meer dan één analyse, dan krijgt de
     # gebruiker een segmented_control om de volgorde te wisselen. Default is
@@ -306,10 +316,17 @@ else:
     with st.container():
         for sectie_email, sectie_items in sectie_groepen:
             if sectie_email:
-                # Subkop met e-mailadres scheidt de blokken visueel in de
-                # superuser-modus. We gebruiken `st.subheader` zodat de
-                # styling consistent is met andere paginakoppen.
-                st.subheader(sectie_email)
+                # Subtiele subkop in lichtgrijs, klein font. Bewust géén
+                # `st.subheader`: dat zou een anchor-link genereren (klikbaar
+                # met '#') en groot font geven, terwijl deze label puur
+                # informatief is. Naam tussen haakjes als die bekend is.
+                _naam = naam_per_email.get(sectie_email, "")
+                _label = f"{sectie_email} ({_naam})" if _naam else sectie_email
+                st.markdown(
+                    f"<div style='color: #888; font-size: 0.9em; "
+                    f"margin-top: 1.25em; margin-bottom: 0.25em;'>{_label}</div>",
+                    unsafe_allow_html=True,
+                )
             for item in sectie_items:
                 id = item["id"]
                 title = item["title"]
