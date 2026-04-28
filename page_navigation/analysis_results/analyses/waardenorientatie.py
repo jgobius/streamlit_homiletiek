@@ -1,12 +1,12 @@
 """Renderer voor de Tavily-gedreven waardenoriëntatie-analyse.
 
 Toont naast de Vijf V's en Motivaction-milieus (op zowel wijk- als
-gemeente-niveau) ook de wijk-/kern-context, trendanalyse, homiletische
-implicaties, bron-onderbouwing en een meta-sectie over bronkwaliteit.
-Dit is een Verdieping-analyse, parallel aan `politieke_orientatie` en
-`gemeente_spiritualiteit`, en gebruikt hetzelfde patroon (kwaliteit
-bovenaan, bronnen onderaan) zodat de prediker alle drie de Verdieping-
-rapporten op dezelfde manier kan lezen.
+gemeente-niveau) ook de wijk-/kern-context, trendanalyse en homiletische
+implicaties. De velden `bronnen` en `bronnen_kwaliteit` worden bewust
+NIET aan de prediker getoond — die meta-informatie heeft tijdens
+preekvoorbereiding geen toegevoegde waarde. Ze blijven wel in het schema
+omdat ze de LLM helpen zich te aarden en te zelfcontroleren tijdens de
+analyse.
 """
 
 from typing import Any
@@ -110,19 +110,12 @@ def waardenorientatie(analysis: dict[str, Any]) -> None:
     milieus_gemeente: dict = result.get("motivaction_milieus_gemeente", {}) or {}
     trendanalyse: dict = result.get("trendanalyse", {}) or {}
     homiletisch: dict = result.get("homiletische_implicaties", {}) or {}
-    bronnen: list = result.get("bronnen", []) or []
-    bronnen_kwaliteit: dict = result.get("bronnen_kwaliteit", {}) or {}
 
-    # Bronnen-kwaliteit bovenaan: de prediker moet vóór hij percentages
-    # leest weten op welk niveau (wijk/kern/gemeente) de analyse daadwerkelijk
-    # betrouwbaar is. Zonder dit risico je dat een gemeente-totaal wordt
-    # aangezien voor een wijk-profiel — precies de fout die dit prompt
-    # probeert te voorkomen.
-    _render_bronnen_kwaliteit(bronnen_kwaliteit, aantal_bronnen=len(bronnen))
-
-    # Lokale context meteen daarna — welk wijk/kern-profiel ligt onder dit
+    # Lokale context bovenaan — welk wijk/kern-profiel ligt onder dit
     # waardenprofiel? In grote steden is dit het verschil tussen een bruikbaar
-    # en een misleidend beeld.
+    # en een misleidend beeld. De vroegere "bronnen-kwaliteit"-metric en
+    # "onderbouwing ontbreekt"-waarschuwing zijn bewust verwijderd: dat is
+    # meta-informatie voor de analyse zelf, niet voor de prediker.
     _render_lokale_context(lokale_context)
 
     # ── Vijf V's wijk/kern ────────────────────────────────────────────────
@@ -261,11 +254,6 @@ def waardenorientatie(analysis: dict[str, Any]) -> None:
             st.markdown("**Te vermijden:**")
             _render_list(te_vermijden)
 
-    st.divider()
-
-    # ── Bronnen — klikbaar, per claim. ────────────────────────────────────
-    _render_bronnen(bronnen)
-
 
 def _render_lokale_context(lokale_context: dict) -> None:
     """Toon wijk-/kern-context bovenaan zodat het analyse-niveau duidelijk is.
@@ -305,85 +293,3 @@ def _render_lokale_context(lokale_context: dict) -> None:
     st.divider()
 
 
-def _render_bronnen_kwaliteit(
-    bronnen_kwaliteit: dict, *, aantal_bronnen: int
-) -> None:
-    """Toon compacte meta-indicatie van bronbetrouwbaarheid bovenaan.
-
-    Het `aantal_bronnen`-argument komt uit de lengte van `result["bronnen"]`;
-    we vertrouwen niet blind op een eventueel `aantal_bronnen`-veld in het
-    schema want een LLM kan dat veld vergeten bijwerken — zelf tellen is
-    autoritatief.
-    """
-    if not bronnen_kwaliteit:
-        return
-
-    niveau_bereikt: str = bronnen_kwaliteit.get("analyse_niveau_bereikt", "")
-    differentiatie: str = bronnen_kwaliteit.get(
-        "wijkdifferentiatie_geslaagd", ""
-    )
-
-    c1, c2, c3 = st.columns([1, 2, 2])
-    with c1:
-        st.metric("Bronnen", aantal_bronnen)
-    with c2:
-        st.markdown("**Niveau bereikt**")
-        st.markdown(clean_md(niveau_bereikt) if niveau_bereikt else "_onbekend_")
-    with c3:
-        st.markdown("**Wijkdifferentiatie**")
-        st.markdown(
-            clean_md(differentiatie) if differentiatie else "_onbekend_"
-        )
-
-    ontbreekt: list = bronnen_kwaliteit.get("onderbouwing_ontbreekt", []) or []
-    if ontbreekt:
-        with st.expander(
-            f"⚠ Onderbouwing ontbreekt voor {len(ontbreekt)} veld(en)",
-            expanded=False,
-        ):
-            # Uitleg vóór de lijst: zonder deze context is het label voor de
-            # prediker onduidelijk. Geen actie vereist, maar wees voorzichtig
-            # met deze specifieke claims in de preek.
-            st.caption(
-                "Voor deze onderdelen vond de analyse geen expliciete bron. "
-                "De inhoud kan nog steeds bruikbaar zijn, maar is speculatiever — "
-                "gebruik deze claims niet als harde feiten."
-            )
-            for dotpad in ontbreekt:
-                st.markdown(f"- `{clean_md(str(dotpad))}`")
-
-    st.divider()
-
-
-def _render_bronnen(bronnen: list) -> None:
-    """Toon klikbare bronnen met citaat en claim-verwijzing.
-
-    Sortering op claim_id zodat bronnen die hetzelfde veld onderbouwen
-    bij elkaar blijven staan — dat helpt de prediker snel te zien hoeveel
-    bronnen er voor een specifieke claim zijn.
-    """
-    if not bronnen:
-        st.caption(
-            "Geen bronnen geleverd door de analyse — inhoudelijke claims zijn dan speculatiever."
-        )
-        return
-
-    with st.expander(f"Bronnen ({len(bronnen)})", expanded=False):
-        sorted_bronnen = sorted(bronnen, key=lambda b: b.get("claim_id", ""))
-        for bron in sorted_bronnen:
-            claim_id = bron.get("claim_id", "")
-            citaat = bron.get("uitspraak_citaat", "")
-            url = bron.get("url", "")
-            datum = bron.get("datum_bron")
-            with st.container(border=True):
-                if claim_id:
-                    st.caption(f"Onderbouwt: `{claim_id}`")
-                if citaat:
-                    st.markdown(f"> {clean_md(citaat)}")
-                footer_parts: list[str] = []
-                if url:
-                    footer_parts.append(f"[bron]({url})")
-                if datum:
-                    footer_parts.append(f"*{clean_md(datum)}*")
-                if footer_parts:
-                    st.markdown(" · ".join(footer_parts))
