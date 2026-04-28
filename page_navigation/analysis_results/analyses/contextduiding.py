@@ -95,9 +95,12 @@ def contextduiding(analysis: dict[str, Any]) -> None:
                     for b in bronnen:
                         st.markdown(f"- {clean_md(str(b))}")
 
-    # Metadata: verbindingslijnen e.d.
+    # Metadata: verbindingslijnen e.d. Het label is bewust kort
+    # ('Samenhang') en in italics — st.expander accepteert markdown in
+    # zijn label, dus *...* rendert als cursief — om het submenu visueel
+    # te onderscheiden van de inhoudelijke perspectief-secties hierboven.
     if metadata:
-        with st.expander("Verbindingslijnen & metadata", expanded=False):
+        with st.expander("*Samenhang*", expanded=False):
             verbindingen: list = metadata.get("verbindingslijnen", [])
             if verbindingen:
                 st.markdown("**Verbindingslijnen**")
