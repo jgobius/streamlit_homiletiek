@@ -510,6 +510,17 @@ def get_structured_scriptures(scriptures: list[str], bible_version: str, languag
         Mislukte lezingen worden zichtbaar als foutmelding in de UI en
         overgeslagen in de output.
     """
+    # Toon de aangeleverde lezingen + bijbelvertaling binnen de omringende
+    # st.status('Lezingen structureren ...')-context. We renderen het als een
+    # JSON-codeblok i.p.v. via st.write/st.json: de streamlit pretty-json-
+    # viewer heeft een hardcoded witte achtergrond die in dark mode vrijwel
+    # onleesbaar is, terwijl st.code het actieve thema (incl. dark) volgt.
+    st.code(
+        json.dumps(scriptures, indent=2, ensure_ascii=False),
+        language="json",
+    )
+    st.write(bible_version)
+
     structured_scripture_data: list[dict[str, Any]] = []
 
     if not scriptures:
