@@ -387,9 +387,11 @@ if scriptures_choice == "Eigen lezingen":
 # die gegarandeerd faalt op de bijbeltekst-stap.
 _lege_lezingen: list[str] = []
 for scripture in st.session_state["structured_scriptures"]:
-    
-    scripture = scripture.get("scripture_json")
-
+    # /structured_scripture/ levert sinds de fix het inner scripture_json-dict
+    # direct ({original_scripture, scriptures}); geen extra unwrap nodig. Voor
+    # de Celery-refactor gaf de endpoint hetzelfde contract; tijdens de Celery-
+    # tussenstand werd de volledige State-dump teruggegeven en moest hier nog
+    # een `.get("scripture_json")`-unwrap staan.
     _heeft_verzen = any(
         (sc.get("verses") or []) for sc in (scripture.get('scriptures') or [])
     )
