@@ -42,6 +42,53 @@ def _section(label: str, text: Any, *, callout: bool = False) -> None:
         st.markdown(_md(text))
 
 
+def _meta_label(label: str, value: Any) -> None:
+    """Render een secundair veld als compact museum-bijschrift: kleinkapitaal
+    label in dempte grijstint boven de waarde. Bedoeld voor de zijkolom van
+    een plot-stadium of move, zodat de hoofdtekst (inhoud / uitgeschreven
+    tekst) visueel domineert en korte meta-info (Doel, Perspectief, Type
+    omkering) niet meer onder de hoofdtekst gestapeld staat."""
+    if not value:
+        return
+    # Inline HTML omdat Streamlit geen native 'kleinkapitaal'-component heeft;
+    # kleuren bewust neutraal grijs zodat het oranje thema (zie
+    # _hero_lezing en st.success-accenten) de hoofdaccenten blijft dragen.
+    st.markdown(
+        f"<div style='margin-bottom:0.75rem;'>"
+        f"<div style='font-size:0.72rem; letter-spacing:0.08em; "
+        f"text-transform:uppercase; color:#8a8a8a; font-weight:600; "
+        f"margin-bottom:0.15rem;'>{label}</div>"
+        f"<div style='font-size:0.92rem; line-height:1.45; color:#333;'>"
+        f"{_md(value)}</div></div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _hero_lezing(text: Any) -> None:
+    """Render de gekozen schriftlezing als oranje accent-pil bovenaan een
+    Tekstkeuze-blok. Het projectthema is oranje, dus deze pil functioneert
+    als visuele anker voor de bijbeltekst zonder de rest verticaal onder
+    elkaar te duwen."""
+    if not text:
+        return
+    st.markdown(
+        f"<div style='display:inline-block; padding:0.35rem 0.85rem; "
+        f"margin-bottom:0.8rem; background:#fff4e6; "
+        f"border-left:3px solid #f97316; border-radius:2px; "
+        f"font-weight:500;'>📖 {_md(text)}</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _is_woordtelling_key(key: str) -> bool:
+    """True voor velden die het aantal woorden van een (sub)analyse tellen
+    (bijv. 'woorden_telling', 'woordtelling', 'aantal_woorden'). De
+    gebruiker wil zulke meta-tellers niet meer in de Buttrick-UI zien — ze
+    voegen geen homiletische informatie toe en maken het blok rumoeriger."""
+    k = key.lower().replace("_", "").replace("-", "")
+    return "woord" in k and ("tell" in k or "aantal" in k or "count" in k)
+
+
 def _render_waarom_keten(items: list[dict[str, Any]]) -> None:
     """Render een 'waarom?'-keten (lijst van {vraag, antwoord}-paren) als
     genummerde markdown, in plaats van de ruwe Python-repr van de lijst.
@@ -128,13 +175,19 @@ def render_homiletische_lowry(analysis: dict) -> None:
         st.info("Geen resultaat beschikbaar.")
         return
 
-    # Tekstkeuze
+    # Tekstkeuze — gekozen lezing als oranje accent-pil, onderbouwing als
+    # hoofdparagraaf, omkerings-potentie als secundair meta-bijschrift.
+    # Voorheen stonden alledrie als bold-label + tekst onder elkaar; het
+    # nieuwe ontwerp geeft de bijbeltekst visuele voorrang en demt de
+    # toelichting tot een leesbaar maar ondergeschikt niveau.
     tk = result.get("tekstkeuze", {})
     if tk:
         with st.expander("Tekstkeuze", expanded=False):
-            _section("Gekozen lezing", tk.get("gekozen_lezing"))
-            _section("Onderbouwing", tk.get("onderbouwing"))
-            _section("Omkerings-potentie", tk.get("omkerings_potentie"))
+            _hero_lezing(tk.get("gekozen_lezing"))
+            onderbouwing = tk.get("onderbouwing")
+            if onderbouwing:
+                st.markdown(_md(onderbouwing))
+            _meta_label("Omkerings-potentie", tk.get("omkerings_potentie"))
 
     # Homiletical Plot
     plot = result.get("homiletical_plot", {})
@@ -148,26 +201,40 @@ def render_homiletische_lowry(analysis: dict) -> None:
                 titel = stap.get("titel", "")
                 if titel and titel != label:
                     st.caption(titel)
-                _section("Inhoud", stap.get("inhoud"))
-                _section("Doel", stap.get("doel"))
-                _section("Type omkering", stap.get("type_omkering"))
-                _section("Toelichting", stap.get("toelichting_type") or stap.get("toelichting"))
-                # Waarom-keten is een lijst van {vraag, antwoord}-paren en
-                # moet als genummerde keten worden getoond, niet als Python-repr.
+                # Twee-kolomslay-out à la kunstcatalogus: hoofdtekst (Inhoud)
+                # ademt links breed, korte meta-velden (Doel, Type omkering,
+                # Toelichting, Ambiguïteit) staan rechts in kleinkapitaal.
+                # Voorheen stond alles onder elkaar wat de plot-stadia
+                # onnodig lang en rumoerig maakte.
+                col_main, col_meta = st.columns([2, 1], gap="medium")
+                with col_main:
+                    inhoud = stap.get("inhoud")
+                    if inhoud:
+                        st.markdown(_md(inhoud))
+                with col_meta:
+                    _meta_label("Doel", stap.get("doel"))
+                    _meta_label("Type omkering", stap.get("type_omkering"))
+                    _meta_label(
+                        "Toelichting",
+                        stap.get("toelichting_type") or stap.get("toelichting"),
+                    )
+                    _meta_label("Ambiguïteit", stap.get("ambiguiteit"))
+                # Waarom-keten als genummerde lijst onder de kolommen
+                # (volle breedte) — de keten is een gestructureerde reeks
+                # vraag/antwoord-paren die zich slecht laat opvouwen in een
+                # smalle meta-zijkolom.
                 waarom = stap.get("waarom_keten")
                 if waarom:
                     _render_waarom_keten(waarom)
-                # Overige velden dynamisch; skip de al gerenderde
+                # Overige onbekende velden compact onderaan, zodat schema-
+                # uitbreidingen niet stilletjes verdwijnen maar de meta-
+                # zijkolom wel rustig blijft.
                 skip = {"titel", "inhoud", "doel", "type_omkering",
                         "toelichting_type", "toelichting", "ambiguiteit",
                         "waarom_keten"}
                 for k, v in stap.items():
                     if k not in skip and v:
-                        _section(k.replace("_", " ").capitalize(), v)
-                # Ambiguïteit apart onderaan om de volgorde leesbaar te houden
-                amb = stap.get("ambiguiteit", "")
-                if amb:
-                    _section("Ambiguïteit / spanning", amb)
+                        _meta_label(k.replace("_", " ").capitalize(), v)
 
     # Logica check (sluitcontrole op diagnose-remedie)
     lc = result.get("logica_check", {})
@@ -188,24 +255,38 @@ def render_homiletische_buttrick(analysis: dict) -> None:
         st.info("Geen resultaat beschikbaar.")
         return
 
-    # Tekstkeuze
+    # Tekstkeuze — zelfde patroon als Lowry: bijbeltekst als oranje pil
+    # bovenaan, onderbouwing als hoofdtekst, en aansluiting/alternatieven
+    # als compacte meta onderaan. Houdt het blok rustig en leesbaar.
     tk = result.get("tekstkeuze", {})
     if tk:
         with st.expander("Tekstkeuze", expanded=False):
-            _section("Gekozen lezing", tk.get("gekozen_lezing"))
-            _section("Onderbouwing", tk.get("onderbouwing"))
-            _section("Aansluiting context", tk.get("aansluiting_context"))
+            _hero_lezing(tk.get("gekozen_lezing"))
+            onderbouwing = tk.get("onderbouwing")
+            if onderbouwing:
+                st.markdown(_md(onderbouwing))
+            _meta_label("Aansluiting context", tk.get("aansluiting_context"))
             alt = tk.get("alternatieve_lezingen", [])
             if alt:
-                st.markdown("**Alternatieve lezingen:** " + ", ".join(str(a) for a in alt))
+                _meta_label("Alternatieve lezingen", ", ".join(str(a) for a in alt))
 
-    # Introductie
+    # Introductie — de uitgeschreven tekst is de eigenlijke preekopening en
+    # krijgt de hoofdkolom; focus-beeld en hermeneutische oriëntatie zijn
+    # regie-aanwijzingen en horen als meta in de zijkolom.
     intro = result.get("introductie", {})
     if intro:
         with st.expander("Introductie", expanded=False):
-            _section("Focus-beeld", intro.get("focus_beeld"))
-            _section("Hermeneutische oriëntatie", intro.get("hermeneutische_orientatie"))
-            _section("Uitgeschreven tekst", intro.get("uitgeschreven_tekst"))
+            col_main, col_meta = st.columns([2, 1], gap="medium")
+            with col_main:
+                tekst = intro.get("uitgeschreven_tekst")
+                if tekst:
+                    st.markdown(_md(tekst))
+            with col_meta:
+                _meta_label("Focus-beeld", intro.get("focus_beeld"))
+                _meta_label(
+                    "Hermeneutische oriëntatie",
+                    intro.get("hermeneutische_orientatie"),
+                )
 
     # Moves (3-4 min taalmodules, elk met eigen perspectief)
     moves = result.get("moves", [])
@@ -216,16 +297,35 @@ def render_homiletische_buttrick(analysis: dict) -> None:
             kernidee = move.get("kernidee", "")
             label = f"Move {nr}: {kernidee}" if kernidee else f"Move {nr}"
             with st.expander(label, expanded=False):
-                _section("Perspectief", move.get("perspectief"))
-                _section("Retorische strategie", move.get("retorische_strategie"))
-                _section("Verbinding vorige move", move.get("verbinding_vorige"))
-                _section("Uitgeschreven tekst", move.get("uitgeschreven_tekst"))
-                # Extra velden (bv. woorden_telling, verbinding_volgende)
-                skip = {"move_nummer", "kernidee", "perspectief", "retorische_strategie",
-                        "verbinding_vorige", "uitgeschreven_tekst"}
+                # Twee kolommen: uitgeschreven preektekst links, regie-meta
+                # (Perspectief, Retorische strategie, Verbinding vorige) rechts.
+                # Woordentellingen worden expliciet uitgefilterd — de gebruiker
+                # heeft aangegeven dat die per (sub)analyse niet vermeld
+                # hoeven te worden, omdat ze geen homiletische waarde toevoegen.
+                col_main, col_meta = st.columns([2, 1], gap="medium")
+                with col_main:
+                    tekst = move.get("uitgeschreven_tekst")
+                    if tekst:
+                        st.markdown(_md(tekst))
+                with col_meta:
+                    _meta_label("Perspectief", move.get("perspectief"))
+                    _meta_label(
+                        "Retorische strategie",
+                        move.get("retorische_strategie"),
+                    )
+                    _meta_label(
+                        "Verbinding vorige move",
+                        move.get("verbinding_vorige"),
+                    )
+                # Extra velden uit toekomstige schema-uitbreidingen — woord-
+                # tellers altijd skippen, overige als compacte meta tonen.
+                skip = {"move_nummer", "kernidee", "perspectief",
+                        "retorische_strategie", "verbinding_vorige",
+                        "uitgeschreven_tekst"}
                 for k, v in move.items():
-                    if k not in skip and v:
-                        _section(k.replace("_", " ").capitalize(), v)
+                    if k in skip or not v or _is_woordtelling_key(k):
+                        continue
+                    _meta_label(k.replace("_", " ").capitalize(), v)
 
     # Conclusie
     conclusie = result.get("conclusie", {})
