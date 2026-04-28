@@ -294,6 +294,10 @@ def valideer_tekstinvoer(
 # (sidebar-menu, paginatitel, afhankelijkheidslabels) krijgen dezelfde naam.
 _WEERGAVENAAM_OVERRIDE: dict[str, str] = {
     "Theologie": "Theologische inzichten",
+    # In de DB heet deze analyse `volledige_preek`; in de UI willen we
+    # 'Eigen preek' tonen — onder andere in afhankelijkheidslabels onder
+    # de Feedback-tab ("Vereist eerst: volledige_preek").
+    "volledige_preek": "Eigen preek",
 }
 
 
