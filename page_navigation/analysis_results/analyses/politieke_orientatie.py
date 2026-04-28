@@ -82,8 +82,6 @@ def politieke_orientatie(analysis: dict[str, Any]) -> None:
             if gr.get("datum"):
                 st.caption(gr["datum"])
 
-    st.divider()
-
     # ── Landelijk stemgedrag ────────────────────────────────────────────────
     # Standaard ingeklapt zodat alle blokken consistent dichtgevouwen openen
     # en de prediker zelf bepaalt welk blok hij uitvouwt.
@@ -118,8 +116,6 @@ def politieke_orientatie(analysis: dict[str, Any]) -> None:
             _render_list(verschuivingen)
         if landelijk.get("analyse"):
             st.markdown(f"**Analyse:** {clean_md(landelijk['analyse'])}")
-
-    st.divider()
 
     # ── Europees / Provinciaal / Gemeentelijk ───────────────────────────────
     c1, c2, c3 = st.columns(3)
@@ -163,8 +159,6 @@ def politieke_orientatie(analysis: dict[str, Any]) -> None:
                 st.markdown("*Lokale thema's:*")
                 _render_list(themas)
 
-    st.divider()
-
     # ── Politieke cultuur ───────────────────────────────────────────────────
     with st.expander("Politieke cultuur", expanded=False):
         if cultuur.get("progressief_conservatief"):
@@ -180,8 +174,6 @@ def politieke_orientatie(analysis: dict[str, Any]) -> None:
                 f"**Anti-establishment:** {clean_md(cultuur['anti_establishment'])}"
             )
 
-    st.divider()
-
     # ── Spanningsvelden ─────────────────────────────────────────────────────
     if spanningsvelden:
         with st.expander(
@@ -194,7 +186,6 @@ def politieke_orientatie(analysis: dict[str, Any]) -> None:
                     )
                     if sv.get("standpunten"):
                         st.markdown(clean_md(sv["standpunten"]))
-        st.divider()
 
     # ── Relevantie prediking ────────────────────────────────────────────────
     st.subheader("Relevantie voor prediking")
@@ -244,5 +235,3 @@ def _render_lokale_context(lokale_context: dict) -> None:
         st.info(clean_md(profiel))
     if waarom:
         st.caption(f"*Waarom dit niveau:* {clean_md(waarom)}")
-
-    st.divider()
