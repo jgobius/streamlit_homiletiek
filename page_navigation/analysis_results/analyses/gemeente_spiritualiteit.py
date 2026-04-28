@@ -1,14 +1,13 @@
 """Renderer voor de Tavily-gedreven gemeente-spiritualiteitsanalyse.
 
 Deze renderer toont hetzelfde soort velden als de basis-`geloofsorientatie`
-maar voegt twee verschillen toe: (1) een expliciete "Onderscheid van
-zustergemeenten"-regel in het gemeente-geloofsprofiel en (2) een
-"Bronnen"-expander met klikbare URL's + datum en citaten, plus een
-meta-sectie `bronnen_kwaliteit` die de prediker inzicht geeft in hoe
-betrouwbaar het profiel is. Reden voor een eigen module (en niet
-hergebruik van `geloofsorientatie.py`): de Verdieping-variant heeft
-extra schema-velden die de basis-renderer niet kent, en we willen
-die informatie niet in het basis-scherm laten lekken.
+maar voegt één onderscheidende sectie toe: een expliciete "Onderscheid van
+zustergemeenten"-regel in het gemeente-geloofsprofiel. Bronnen en
+de meta-sectie over bronkwaliteit worden bewust niet getoond aan de eindgebruiker;
+die data blijft wel in het analyse-resultaat staan voor latere inspectie.
+Reden voor een eigen module (en niet hergebruik van `geloofsorientatie.py`):
+de Verdieping-variant heeft extra schema-velden die de basis-renderer niet kent,
+en we willen die informatie niet in het basis-scherm laten lekken.
 """
 
 from typing import Any
@@ -28,47 +27,6 @@ _ERVARINGS_LABELS: dict[str, str] = {
     "wijsheid_volken": "Wijsheid van de volken",
     "humaniteit_gemeenschap": "Humaniteit en gemeenschap",
 }
-
-
-# Top-level secties uit het Tavily-schema → leesbare kopjes. Gebruikt om
-# dotpaths in `bronnen_kwaliteit.onderbouwing_ontbreekt` (bv.
-# "ervaringsgebieden.menselijk_tekort.taboes") om te zetten naar iets dat
-# de prediker begrijpt. De rest van het pad wordt generiek geformatteerd
-# via `_leesbaar_pad` zodat we geen mapping hoeven te onderhouden voor
-# élk blad-veld in het schema.
-_SECTIE_LABELS: dict[str, str] = {
-    "ervaringsgebieden": "Ervaringsgebieden",
-    "geloofstaal_analyse": "Geloofstaal",
-    "spirituele_trends_regio": "Spirituele trends regio",
-    "gemeente_geloofsprofiel": "Gemeente-geloofsprofiel",
-    "homiletische_implicaties": "Homiletische implicaties",
-    "bronnen": "Bronnen",
-    "bronnen_kwaliteit": "Bronnen-kwaliteit",
-}
-
-
-def _leesbaar_pad(dotpad: str) -> str:
-    """Zet een schema-dotpad om naar een leesbaar label.
-
-    Voorbeeld: "ervaringsgebieden.menselijk_tekort.taboes"
-    → "Ervaringsgebieden → Menselijk tekort → Taboes".
-
-    We gebruiken " → " als scheider i.p.v. een punt, omdat dat visueel
-    duidelijker de hiërarchie weergeeft. Onderstrepen worden vervangen
-    door spaties zodat de uiteindelijke tekst natuurlijk leesbaar is.
-    De eerste segment krijgt (indien aanwezig) een rijkere label uit
-    `_SECTIE_LABELS`; diepere segmenten worden generiek geformatteerd.
-    """
-    if not dotpad:
-        return ""
-    segments = dotpad.split(".")
-    delen: list[str] = []
-    for idx, seg in enumerate(segments):
-        if idx == 0 and seg in _SECTIE_LABELS:
-            delen.append(_SECTIE_LABELS[seg])
-        else:
-            delen.append(seg.replace("_", " ").capitalize())
-    return " → ".join(delen)
 
 
 def _render_list(values: list) -> None:
@@ -122,14 +80,10 @@ def gemeente_spiritualiteit(analysis: dict[str, Any]) -> None:
     spirituele_trends: dict = result.get("spirituele_trends_regio", {})
     gemeente_profiel: dict = result.get("gemeente_geloofsprofiel", {})
     homiletisch: dict = result.get("homiletische_implicaties", {})
-    bronnen: list = result.get("bronnen", []) or []
-    bronnen_kwaliteit: dict = result.get("bronnen_kwaliteit", {}) or {}
 
-    # --- Bronnen-kwaliteit meteen bovenaan: transparantie eerst. -----------
-    # De prediker moet weten hoe betrouwbaar het profiel is vóórdat hij de
-    # inhoud leest. Daarom staat deze sectie bovenaan, niet als een
-    # voetnoot onderaan.
-    _render_bronnen_kwaliteit(bronnen_kwaliteit, aantal_bronnen=len(bronnen))
+    # Bronnen en bronnen-kwaliteit worden bewust niet meer gerenderd: voor
+    # de prediker zijn ze ruis. Ze blijven wel in het analyse-resultaat
+    # aanwezig voor diagnose en eventuele latere weergave.
 
     # --- Ervaringsgebieden --------------------------------------------------
     # Subheader pas tonen als minstens één van de zes ervaringsgebieden inhoud
@@ -155,7 +109,6 @@ def gemeente_spiritualiteit(analysis: dict[str, Any]) -> None:
     # voor lege expanders/koppen en lege labels — een veel voorkomende klacht
     # bij Tavily-output die regelmatig met lege strings of lege arrays komt.
     if _has_content(geloofstaal):
-        st.divider()
         # --- Geloofstaal ----------------------------------------------------
         with st.expander("Geloofstaal analyse", expanded=False):
             c1, c2 = st.columns(2)
@@ -191,7 +144,6 @@ def gemeente_spiritualiteit(analysis: dict[str, Any]) -> None:
 
     # --- Regionale trends ---------------------------------------------------
     if _has_content(spirituele_trends):
-        st.divider()
         with st.expander("Spirituele trends regio", expanded=False):
             kerkbezoek: dict = spirituele_trends.get("kerkbezoek", {})
             # Pas de kolom-rij rendreren als minstens één van de drie kerkbezoek-velden
@@ -231,10 +183,9 @@ def gemeente_spiritualiteit(analysis: dict[str, Any]) -> None:
                 st.markdown("**Oecumenische initiatieven**")
                 _render_list(oecumenisch)
 
-    # --- Gemeente-profiel — standaard uitgeklapt, want dit is de kern. -----
+    # --- Gemeente-profiel — standaard ingeklapt voor consistente rust. -----
     if _has_content(gemeente_profiel):
-        st.divider()
-        with st.expander("Gemeente geloofsprofiel", expanded=True):
+        with st.expander("Gemeente geloofsprofiel", expanded=False):
             if gemeente_profiel.get("theologische_positie"):
                 st.info(clean_md(gemeente_profiel["theologische_positie"]))
             # Nieuwe sectie t.o.v. basis-renderer: expliciete differentiatie
@@ -254,7 +205,6 @@ def gemeente_spiritualiteit(analysis: dict[str, Any]) -> None:
 
     # --- Homiletische implicaties ------------------------------------------
     if _has_content(homiletisch):
-        st.divider()
         st.subheader("Homiletische implicaties")
         if homiletisch.get("geloofstaal_advies"):
             st.success(clean_md(homiletisch["geloofstaal_advies"]))
@@ -269,87 +219,3 @@ def gemeente_spiritualiteit(analysis: dict[str, Any]) -> None:
             if te_vermijden:
                 st.markdown("**Te vermijden aannames:**")
                 _render_list(te_vermijden)
-
-    # --- Bronnen — klikbaar, per claim. ------------------------------------
-    if bronnen:
-        st.divider()
-        _render_bronnen(bronnen)
-
-
-def _render_bronnen_kwaliteit(bronnen_kwaliteit: dict, *, aantal_bronnen: int) -> None:
-    """Toon een compacte meta-indicatie van bronbetrouwbaarheid bovenaan.
-
-    Argument `aantal_bronnen` komt uit de lengte van `result["bronnen"]`;
-    we vertrouwen niet blind op het `aantal_bronnen`-veld uit het schema
-    want een LLM kan dat veld vergeten bijwerken (daarom tellen we zelf).
-    """
-    if not bronnen_kwaliteit:
-        return
-
-    # Kort samenvattingsregel als caption: snel te scannen.
-    differentiatie = bronnen_kwaliteit.get("differentiatie_geslaagd", "")
-    website_ok = bronnen_kwaliteit.get("website_beschikbaar")
-    # Icoon voor website-beschikbaarheid — visueel direct duidelijk of
-    # de gemeente-website gebruikt kon worden als primaire bron.
-    website_label = "✓ website beschikbaar" if website_ok else "✗ geen website"
-    # Alleen "Bronnen" is een echte numerieke metric die `st.metric` verdient.
-    # "Differentiatie" bevat vrije tekst ("ja, zeer goed — …") en wordt in
-    # het grote metric-lettertype visueel onleesbaar; daarom als kop+tekst.
-    c1, c2, c3 = st.columns([1, 3, 2])
-    with c1:
-        st.metric("Bronnen", aantal_bronnen)
-    with c2:
-        st.markdown("**Differentiatie**")
-        st.markdown(clean_md(differentiatie) if differentiatie else "_onbekend_")
-    with c3:
-        st.caption(website_label)
-
-    ontbreekt: list = bronnen_kwaliteit.get("onderbouwing_ontbreekt", []) or []
-    if ontbreekt:
-        with st.expander(
-            f"⚠ Onderbouwing ontbreekt voor {len(ontbreekt)} veld(en)",
-            expanded=False,
-        ):
-            # Uitleg vóór de lijst: zonder deze context is het label "Onderbouwing
-            # ontbreekt" voor de prediker onduidelijk (moet ik actie ondernemen?
-            # is dit een fout?). Het antwoord is: geen actie vereist, maar wees
-            # voorzichtiger met deze specifieke claims in de preek.
-            st.caption(
-                "Voor deze onderdelen vond de analyse geen expliciete bron in het "
-                "web-onderzoek. De inhoud kan nog steeds bruikbaar zijn, maar is "
-                "speculatiever — gebruik deze claims niet als harde feiten."
-            )
-            for dotpad in ontbreekt:
-                st.markdown(f"- {clean_md(_leesbaar_pad(str(dotpad)))}")
-
-
-def _render_bronnen(bronnen: list) -> None:
-    """Toon klikbare bronnen met citaat en claim-verwijzing.
-
-    Sortering op claim_id zodat bronnen die hetzelfde veld onderbouwen
-    bij elkaar blijven staan — dat helpt de prediker snel te zien hoeveel
-    bronnen er voor een specifieke claim zijn.
-    """
-    if not bronnen:
-        st.caption("Geen bronnen geleverd door de analyse — inhoudelijke claims zijn dan speculatiever.")
-        return
-
-    with st.expander(f"Bronnen ({len(bronnen)})", expanded=False):
-        sorted_bronnen = sorted(bronnen, key=lambda b: b.get("claim_id", ""))
-        for bron in sorted_bronnen:
-            claim_id = bron.get("claim_id", "")
-            citaat = bron.get("uitspraak_citaat", "")
-            url = bron.get("url", "")
-            datum = bron.get("datum_bron")
-            with st.container(border=True):
-                if claim_id:
-                    st.caption(f"Onderbouwt: `{claim_id}`")
-                if citaat:
-                    st.markdown(f"> {clean_md(citaat)}")
-                footer_parts: list[str] = []
-                if url:
-                    footer_parts.append(f"[bron]({url})")
-                if datum:
-                    footer_parts.append(f"*{clean_md(datum)}*")
-                if footer_parts:
-                    st.markdown(" · ".join(footer_parts))
