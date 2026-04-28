@@ -1,6 +1,7 @@
 import json
 import re
 import time
+from datetime import datetime
 
 import requests
 import streamlit as st
@@ -1603,6 +1604,35 @@ st.segmented_control(
 )
 # Herlaad na de widget-render zodat de widget-waarde van deze render gebruikt wordt.
 current_tab = st.session_state.get("current_tab", "Basis")
+
+# Subtiele context-regel onder de tabbladen: plaats van de gemeente +
+# datum van viering, zodat de voorganger in één oogopslag ziet welke
+# kerkdienst hij/zij voor zich heeft. We bouwen de regel alleen op als
+# beide velden bekend zijn; ontbreekt er één, dan tonen we wat er wél is
+# (geen lege placeholder of streepje). Lichtgrijze, kleine tekst (#8a8a8a)
+# zodat de regel niet concurreert met titels of actieknoppen.
+_plaats = st.session_state.get("church_place", "")
+_sermon_date_iso = sermon_analysis.get("sermon_date") if sermon_analysis else None
+try:
+    _datum_str = (
+        datetime.strptime(_sermon_date_iso, "%Y-%m-%d").strftime("%d-%m-%Y")
+        if _sermon_date_iso
+        else ""
+    )
+except (ValueError, TypeError):
+    _datum_str = ""
+
+_context_delen: list[str] = []
+if _plaats:
+    _context_delen.append(_plaats)
+if _datum_str:
+    _context_delen.append(f"datum van viering: {_datum_str}")
+if _context_delen:
+    st.markdown(
+        f"<div style='color:#8a8a8a; font-size:0.85em; margin-top:-0.5rem; "
+        f"margin-bottom:0.75rem;'>{', '.join(_context_delen)}</div>",
+        unsafe_allow_html=True,
+    )
 
 # Als er nog geen resultaten zijn, komt dat bijna altijd door één van twee situaties:
 # (1) de analyse is net aangemaakt en de bijbelteksten worden op de achtergrond opgehaald,
