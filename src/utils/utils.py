@@ -744,11 +744,144 @@ def tokenlimiet_bereikt() -> bool:
 
 
 def render_analysis_results_sidebar(analysis_results: list[dict[str, Any]]) -> None:
-    
-    
-    
+
+
+
     with st.sidebar:
         st.switch_page(f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
-        
+
         st.page_link(label="Overzicht preekanalyses", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
         st.page_link(label="Analyse overzicht", page=f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py", query_params={"analysis_id": analysis_results[0]['id']})
+
+
+# Maximale looptijd (s) voordat we een tracker-entry stilletjes opruimen.
+# 10 minuten is ruim boven de gebruikelijke 1-2 minuten van een analyse en
+# vangt agent-fouten op zonder dat een verloren entry oneindig in
+# session_state blijft staan.
+_LOPENDE_ANALYSE_TIMEOUT_S = 600
+
+
+def _lees_baseline_id(
+    sermon_analysis_id: int, analyse_naam: str
+) -> int | None:
+    """Hoogste bestaande analysis-result-id voor (sermon, type) — of None.
+
+    Wordt vlak vóór de agent-POST gelezen zodat de poller kan detecteren of
+    er daarna een nieuwe rij verschijnt. Het lezen vlak vóór de POST sluit
+    een race uit met parallelle reanalyses: als we de baseline uit de
+    pagina-cache zouden halen, zou een tussentijds resultaat al de baseline
+    kunnen zijn voordat de eigen analyse start.
+
+    Geeft ``None`` terug als er nog geen resultaat van dit type bestaat,
+    of als de API onbereikbaar is. In beide gevallen interpreteert de
+    poller elke nieuwe rij voor dit type als 'klaar' — wat in praktijk
+    correct is omdat een net gestarte analyse pas een rij krijgt na
+    voltooiing.
+    """
+    handler = st.session_state.get("api_handler")
+    if handler is None:
+        return None
+    try:
+        resp = handler.get(
+            f"api/analysis-results?sermon_analysis_id={sermon_analysis_id}"
+        )
+        items = resp.json() or []
+    except Exception:
+        return None
+    relevante_ids = [
+        r["id"] for r in items
+        if r.get("analysis_type", {}).get("name") == analyse_naam
+    ]
+    return max(relevante_ids) if relevante_ids else None
+
+
+def registreer_lopende_analyse(
+    sermon_analysis_id: int,
+    analyse_naam: str,
+    front_end_name: str,
+) -> None:
+    """Markeer een net gestarte analyse zodat de poller hem oppakt.
+
+    De sleutel ``f"{sermon_analysis_id}__{analyse_naam}"`` zorgt dat een
+    dubbele trigger (bv. snel achter elkaar klikken) idempotent overschrijft
+    in plaats van twee aparte entries met twee voltooi-toasts oplevert.
+    """
+    baseline_id = _lees_baseline_id(sermon_analysis_id, analyse_naam)
+    sleutel = f"{sermon_analysis_id}__{analyse_naam}"
+    lopende = st.session_state.setdefault("lopende_analyses", {})
+    lopende[sleutel] = {
+        "gestart_op": time.time(),
+        "front_end_name": front_end_name,
+        "sermon_analysis_id": sermon_analysis_id,
+        "analyse_naam": analyse_naam,
+        "baseline_id": baseline_id,
+    }
+
+
+@st.fragment(run_every="30s")
+def render_analyse_voortgang_poller() -> None:
+    """Polt elke 30s of een gestarte analyse klaar is en toast bij detectie.
+
+    Het fragment her-runt zichzelf zonder de hele pagina te ververen — dat
+    maakt periodieke API-calls hier veilig. Toasts werken globaal vanuit
+    een fragment, maar navigatie-side-effects zoals ``st.switch_page``
+    NIET; daarom roepen we ``api_handler.get(...)`` rechtstreeks aan in
+    plaats van ``get_data()`` (die bij 401 redirect naar login).
+
+    We veroorzaken bewust geen ``st.rerun()``: de toast vermeldt 'Ververs
+    het menu' en de gebruiker beslist zelf wanneer hij dat doet — een
+    automatische rerun zou hem onderbreken tijdens lezen of typen.
+    """
+    lopende: dict[str, dict[str, Any]] = st.session_state.get(
+        "lopende_analyses", {}
+    )
+    if not lopende:
+        return
+    handler = st.session_state.get("api_handler")
+    if handler is None:
+        return
+
+    # Eén API-call per uniek sermon_analysis_id. Twee parallel gestarte
+    # analyses voor dezelfde preek delen zo dezelfde response.
+    unieke_sermons = {info["sermon_analysis_id"] for info in lopende.values()}
+    resultaten_per_sermon: dict[int, list[dict[str, Any]]] = {}
+    for sid in unieke_sermons:
+        try:
+            resp = handler.get(f"api/analysis-results?sermon_analysis_id={sid}")
+            resultaten_per_sermon[sid] = resp.json() or []
+        except Exception:
+            # Negeer en probeer in de volgende poll opnieuw — netwerkhiccups
+            # mogen geen toast missen of een entry per ongeluk droppen.
+            resultaten_per_sermon[sid] = []
+
+    nu = time.time()
+    iets_afgerond = False
+    for sleutel, info in list(lopende.items()):
+        sid = info["sermon_analysis_id"]
+        naam = info["analyse_naam"]
+        baseline = info.get("baseline_id")
+        # Hoogste id voor dit (sermon, type) op dit moment.
+        max_id: int | None = None
+        for r in resultaten_per_sermon.get(sid, []):
+            if r.get("analysis_type", {}).get("name") == naam:
+                rid = r.get("id")
+                if isinstance(rid, int) and (max_id is None or rid > max_id):
+                    max_id = rid
+        # Klaar = er bestaat een resultaat met hogere id dan de baseline
+        # (of überhaupt een resultaat als er geen baseline was).
+        if max_id is not None and (baseline is None or max_id > baseline):
+            # Pop vóór toast om dubbele meldingen te voorkomen als het
+            # fragment vlak na elkaar twee keer rendert.
+            lopende.pop(sleutel, None)
+            st.toast(
+                f"'{info['front_end_name']}' is klaar. Ververs het menu."
+            )
+            iets_afgerond = True
+        elif nu - info["gestart_op"] > _LOPENDE_ANALYSE_TIMEOUT_S:
+            # Stilletjes droppen na 10 min — vermoedelijk een agent-fout.
+            lopende.pop(sleutel, None)
+
+    # Markeer cache vervuild zodat de eerstvolgende manual rerun verse
+    # data toont. Geen st.rerun() — zie docstring.
+    if iets_afgerond:
+        st.session_state["analysis_data_dirty"] = True

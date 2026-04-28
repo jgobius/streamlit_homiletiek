@@ -15,6 +15,11 @@ from src.utils.utils import (
     valideer_tekstinvoer,
     tokenlimiet_bereikt,
     woord_meervoud,
+    # Notificatie-helpers: registreer een net gestarte analyse en rendert
+    # het polling-fragment dat een toast toont zodra het resultaat in de
+    # database verschijnt (zie src/utils/utils.py).
+    registreer_lopende_analyse,
+    render_analyse_voortgang_poller,
     EIGEN_PREEK_MIN_WOORDEN as _EIGEN_PREEK_MIN_WOORDEN,
     EIGEN_PREEK_MAX_WOORDEN as _EIGEN_PREEK_MAX_WOORDEN,
 )
@@ -213,12 +218,24 @@ def _trigger_analysis(analysis_id: int, at: dict, lock_key: str) -> None:
         # de nieuwe analyse ophaalt zodra de agent klaar is, zonder dat de
         # gebruiker hoeft te hard-refreshen.
         st.session_state["analysis_data_dirty"] = True
+        # Registreer de net gestarte analyse zodat de poller een tweede toast
+        # toont ('... is klaar. Ververs het menu.') zodra het resultaat in de
+        # DB verschijnt. Doen we direct na de succesvolle POST, zodat we
+        # zeker weten dat de agent bezig is.
+        registreer_lopende_analyse(analysis_id, at["name"], at["front_end_name"])
         st.toast(
             f"'{at['front_end_name']}' wordt uitgevoerd. Ververs de pagina over enkele minuten."
         )
     except requests.exceptions.HTTPError as e:
         if e.response is not None and e.response.status_code == 409:
             st.warning(e.response.json().get("detail", "Al gestart, wacht even."))
+            # Bij 409 ('al gestart') is er sowieso een lopende analyse —
+            # registreer ook dan zodat de gebruiker alsnog een voltooi-toast
+            # krijgt. Idempotent: dezelfde sleutel overschrijft een eventuele
+            # eerdere entry zonder dubbele toasts te genereren.
+            registreer_lopende_analyse(
+                analysis_id, at["name"], at["front_end_name"]
+            )
         else:
             _release_reanalysis_lock(lock_key)
             st.error(f"Fout: {e}")
@@ -263,12 +280,23 @@ def _trigger_preekschets(analysis_id: int, at: dict, lock_key: str) -> None:
         # de nieuwe preekschets ophaalt zodra de agent klaar is, zonder dat
         # de gebruiker hoeft te hard-refreshen.
         st.session_state["analysis_data_dirty"] = True
+        # Registreer de gestarte preekschets-run zodat de poller een
+        # voltooi-toast toont zodra het resultaat in de DB verschijnt
+        # (zelfde patroon als _trigger_analysis hierboven).
+        registreer_lopende_analyse(
+            int(analysis_id), at["name"], at["front_end_name"]
+        )
         st.toast(
             f"'{at['front_end_name']}' wordt uitgevoerd. Ververs de pagina over enkele minuten."
         )
     except requests.exceptions.HTTPError as e:
         if e.response is not None and e.response.status_code == 409:
             st.warning(e.response.json().get("detail", "Al gestart, wacht even."))
+            # Bij 409 ('al gestart') ook registreren — er loopt sowieso een
+            # analyse waarvan we de voltooiing willen melden.
+            registreer_lopende_analyse(
+                int(analysis_id), at["name"], at["front_end_name"]
+            )
         else:
             _release_reanalysis_lock(lock_key)
             st.error(f"Fout: {e}")
@@ -324,6 +352,12 @@ if not analysis_id:
     st.stop()
 
 st.session_state["current_analysis_id"] = analysis_id
+
+# Polling-fragment: rendert geen zichtbare UI, maar her-runt elke 30s en
+# toont een toast zodra een gestarte analyse klaar is in de database. Plek
+# is bewust hier gekozen — ná de redirect_to_login()/analysis_id-guard,
+# zodat we zeker weten dat api_handler en sessie geldig zijn.
+render_analyse_voortgang_poller()
 
 _data_cache_key = f"overview_data_{analysis_id}"
 _cached_entry = st.session_state.get(_data_cache_key)

@@ -12,6 +12,9 @@ from src.utils.utils import (
     haal_cumulatief_tokenverbruik_op,
     bereken_kosten_eur,
     formatteer_eur,
+    # Polling-fragment dat een toast toont zodra een gestarte analyse
+    # klaar is in de database (zie src/utils/utils.py).
+    render_analyse_voortgang_poller,
 )
 # Word-export helper: pure module die de .docx-bytes bouwt uit één
 # kerkdienstanalyse (zie src/utils/word_export.py voor de implementatie).
@@ -20,6 +23,12 @@ from src.utils.word_export import bouw_kerkdienstanalyse_docx
 redirect_to_login()
 
 render_sidebar()
+
+# Polling-fragment: rendert niets zichtbaars maar her-runt elke 30s en
+# toont een toast wanneer een eerder gestarte analyse afgerond is. Zo
+# krijgt de gebruiker ook een melding als hij ondertussen naar het
+# dashboard is genavigeerd om te wachten.
+render_analyse_voortgang_poller()
 
 # Django levert `created_at` in UTC (settings.USE_TZ=True, TIME_ZONE="UTC").
 # Voor weergave converteren we naar Nederlandse tijd (DST-aware via zoneinfo).
