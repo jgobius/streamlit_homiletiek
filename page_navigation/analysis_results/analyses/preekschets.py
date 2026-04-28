@@ -38,6 +38,13 @@ def _section(label: str, text: Any, *, callout: bool = False) -> None:
     st.markdown(f"**{label}**")
     if callout:
         st.info(_md(text))
+    elif isinstance(text, list):
+        # Lijstvelden (bv. 'verzamelde_beelden') als nette bullet list,
+        # niet als ruwe Python-repr — anders zou de gebruiker letterlijk
+        # ['item', 'item'] in de UI zien.
+        for item in text:
+            if item:
+                st.markdown(f"- {_md(item)}")
     else:
         st.markdown(_md(text))
 
@@ -56,13 +63,26 @@ def _meta_label(label: str, value: Any) -> None:
     # opacity i.p.v. een vaste grijstint, zodat het ook ten opzichte van de
     # dark-mode tekstkleur gedempt blijft (een vaste #8a8a8a was in dark mode
     # nauwelijks te onderscheiden van de achtergrond).
+    # Lijstvelden (bv. 'verzamelde_beelden') krijgen een echte <ul>; anders
+    # zou _md(value) een ruwe Python-repr zoals ['…', '…'] in de UI zetten.
+    if isinstance(value, list):
+        items = [item for item in value if item]
+        if not items:
+            return
+        body_html = (
+            "<ul style='margin:0.1rem 0 0; padding-left:1.1rem;'>"
+            + "".join(f"<li>{_md(item)}</li>" for item in items)
+            + "</ul>"
+        )
+    else:
+        body_html = _md(value)
     st.markdown(
         f"<div style='margin-bottom:0.75rem;'>"
         f"<div style='font-size:0.72rem; letter-spacing:0.08em; "
         f"text-transform:uppercase; font-weight:600; opacity:0.6; "
         f"margin-bottom:0.15rem;'>{label}</div>"
         f"<div style='font-size:0.92rem; line-height:1.45;'>"
-        f"{_md(value)}</div></div>",
+        f"{body_html}</div></div>",
         unsafe_allow_html=True,
     )
 
