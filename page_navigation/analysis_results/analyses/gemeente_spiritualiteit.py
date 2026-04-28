@@ -107,11 +107,8 @@ def gemeente_spiritualiteit(analysis: dict[str, Any]) -> None:
     # in mega-font hoeft te tonen.
     result: dict[str, Any] = _strip_typisch(analysis.get("result", {})) or {}
 
-    # Church-context bovenaan als geheugensteun voor de prediker: deze
-    # analyse draait om déze specifieke gemeente, niet om de plaats.
-    church_name: str = st.session_state.get("church_name", "")
-    if church_name:
-        st.caption(f"**Gemeente:** {church_name}")
+    # Gemeente-naam staat al in de context-regel onder de tabbladen, dus
+    # niet meer hier herhalen.
 
     ervaringsgebieden: dict = result.get("ervaringsgebieden", {})
     geloofstaal: dict = result.get("geloofstaal_analyse", {})

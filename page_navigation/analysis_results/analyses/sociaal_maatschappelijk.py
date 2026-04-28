@@ -31,9 +31,8 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
     """Render sociaal-maatschappelijk analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
 
-    place: str = st.session_state.get("church_place", "")
-    if place:
-        st.caption(f"**Plaats:** {place}")
+    # Plaatsnaam staat al in de context-regel onder de tabbladen, dus
+    # niet meer hier herhalen.
 
     demografisch: dict = result.get("demografisch", {})
     economisch: dict = result.get("economisch", {})
@@ -43,7 +42,7 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
     bronnen: list = result.get("bronnen_gebruikt", [])
 
     # ── Demografisch ─────────────────────────────────────────────────────────
-    with st.expander("Demografisch profiel", expanded=True):
+    with st.expander("Demografisch profiel", expanded=False):
         omvang = demografisch.get("bevolkingsomvang")
         dichtheid = demografisch.get("bevolkingsdichtheid", "")
         if omvang is not None:
@@ -118,8 +117,6 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
             if herkomst.get("toelichting"):
                 st.markdown(clean_md(herkomst["toelichting"]))
 
-    st.divider()
-
     # ── Economisch ───────────────────────────────────────────────────────────
     with st.expander("Economisch profiel", expanded=False):
         c1, c2, c3 = st.columns(3)
@@ -147,8 +144,6 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
         if economisch.get("recente_ontwikkelingen"):
             st.markdown("**Recente ontwikkelingen:**")
             _render_list(economisch["recente_ontwikkelingen"])
-
-    st.divider()
 
     # ── Sociale structuur ────────────────────────────────────────────────────
     with st.expander("Sociale structuur", expanded=False):
@@ -193,8 +188,6 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
                 if woning.get("beschikbaarheid"):
                     st.markdown(f"*Beschikbaarheid:* {clean_md(woning['beschikbaarheid'])}")
 
-    st.divider()
-
     # ── Recente gebeurtenissen ───────────────────────────────────────────────
     if recente_gebeurtenissen:
         with st.expander(f"Recente gebeurtenissen ({len(recente_gebeurtenissen)})", expanded=False):
@@ -209,10 +202,8 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
                         if geb.get("impact"):
                             st.markdown(clean_md(geb["impact"]))
 
-    st.divider()
-
     # ── Kerkelijke context ───────────────────────────────────────────────────
-    with st.expander("Kerkelijke context", expanded=True):
+    with st.expander("Kerkelijke context", expanded=False):
         positie: dict = kerkelijke_context.get("positie_gemeente", {})
         if positie:
             st.subheader(positie.get("naam", "Gemeente"))
@@ -255,5 +246,4 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
 
     # ── Bronnen ──────────────────────────────────────────────────────────────
     if bronnen:
-        st.divider()
         st.caption("**Bronnen gebruikt:** " + " · ".join(bronnen))
