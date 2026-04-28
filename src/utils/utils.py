@@ -298,6 +298,24 @@ _WEERGAVENAAM_OVERRIDE: dict[str, str] = {
     # 'Eigen preek' tonen — onder andere in afhankelijkheidslabels onder
     # de Feedback-tab ("Vereist eerst: volledige_preek").
     "volledige_preek": "Eigen preek",
+    # NL-spelling-overrides: in de DB staan een aantal namen in
+    # CamelCaption (Engelse stijl met hoofdletter per woord). Voor
+    # Nederlandse koppen geldt: alleen het eerste woord en eigennamen
+    # krijgen een hoofdletter. We laten Engelse vaktermen ("Homiletical
+    # Plot", "Moves and Structures", "Adversarial") en eigennamen
+    # (Lowry, Buttrick, Dumas, Brueggemann, Greimas, Kolb) ongemoeid.
+    "Focus en Functie": "Focus en functie",
+    "Homiletische Esthetiek": "Homiletische esthetiek",
+    "Homiletische Illustraties": "Homiletische illustraties",
+    "Kunst & Cultuur": "Kunst & cultuur",
+    "Moment van Bezinning": "Moment van bezinning",
+    "Politieke Speltheorie": "Politieke speltheorie",
+    "Transactionele Analyse": "Transactionele analyse",
+    "Dialogische Gebeden (Dumas)": "Dialogische gebeden (Dumas)",
+    "Profetische Gebeden (Brueggemann)": "Profetische gebeden (Brueggemann)",
+    "Narratieve Semiotiek (Greimas)": "Narratieve semiotiek (Greimas)",
+    "Literaire Transformatie (na Buttrick)": "Literaire transformatie (na Buttrick)",
+    "Kolb Leercyclus": "Kolb leercyclus",
 }
 
 
