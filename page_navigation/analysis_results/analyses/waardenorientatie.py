@@ -92,7 +92,11 @@ def waardenorientatie(analysis: dict[str, Any]) -> None:
     result: dict[str, Any] = analysis.get("result", {})
 
     # Gemeente + plaatsnaam staan al in de context-regel onder de tabbladen,
-    # dus niet meer hier herhalen.
+    # dus niet meer als caption tonen. We hebben de waardes zelf nog wel
+    # nodig: church_place dient als fallback voor de wijk-/kernnaam,
+    # church_name wordt in subkop-labels van de Vijf V's-secties gebruikt.
+    church_name: str = st.session_state.get("church_name", "")
+    church_place: str = st.session_state.get("church_place", "")
 
     lokale_context: dict = result.get("lokale_context", {}) or {}
     vijf_vs_wijk: dict = result.get("vijf_vs_wijk", {}) or {}
