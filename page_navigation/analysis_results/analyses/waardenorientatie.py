@@ -91,17 +91,8 @@ def waardenorientatie(analysis: dict[str, Any]) -> None:
     """Render waardenoriëntatie-analyse resultaat (Tavily Verdieping-versie)."""
     result: dict[str, Any] = analysis.get("result", {})
 
-    church_name: str = st.session_state.get("church_name", "")
-    church_place: str = st.session_state.get("church_place", "")
-    if church_place or church_name:
-        # Korte herinnering bovenaan: deze analyse draait om déze gemeente
-        # op dit adres, niet om een generiek plaatsprofiel.
-        delen: list[str] = []
-        if church_name:
-            delen.append(f"**Gemeente:** {church_name}")
-        if church_place:
-            delen.append(f"**Plaats:** {church_place}")
-        st.caption(" · ".join(delen))
+    # Gemeente + plaatsnaam staan al in de context-regel onder de tabbladen,
+    # dus niet meer hier herhalen.
 
     lokale_context: dict = result.get("lokale_context", {}) or {}
     vijf_vs_wijk: dict = result.get("vijf_vs_wijk", {}) or {}
