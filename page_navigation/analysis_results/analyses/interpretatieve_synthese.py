@@ -76,66 +76,6 @@ def _render_waarschuwingen(waarschuwingen: list) -> None:
                 st.markdown(f"*Advies:* {clean_md(advies)}")
 
 
-def _render_bronnen(bronnen: list, kwaliteit: dict[str, Any]) -> None:
-    # Bronnen en meta-reflectie onderaan — analoog aan de andere Verdieping-renderers
-    # (gemeente_spiritualiteit, waardenorientatie, politieke_orientatie). Ingeklapt zodat
-    # de synthese-inhoud de prediker niet verdringt.
-    if not (bronnen or kwaliteit):
-        return
-    with st.expander("Bronnen en bronkwaliteit", expanded=False):
-        if kwaliteit:
-            c1, c2 = st.columns(2)
-            with c1:
-                deps: list = kwaliteit.get("dependencies_gebruikt", []) or []
-                if deps:
-                    st.markdown("**Dependencies gebruikt:**")
-                    _render_list(deps)
-                web_aanvullingen = kwaliteit.get("tavily_aanvullingen")
-                if web_aanvullingen is not None:
-                    st.caption(f"Web-aanvullingen: {web_aanvullingen}")
-                aantal = kwaliteit.get("aantal_bronnen")
-                if aantal is not None:
-                    st.caption(f"Totaal bronnen: {aantal}")
-            with c2:
-                wijkdiff = kwaliteit.get("wijkdifferentiatie_geslaagd")
-                if wijkdiff:
-                    st.markdown(f"**Wijkdifferentiatie:** {clean_md(wijkdiff)}")
-                reikwijdte = kwaliteit.get("synthese_reikwijdte")
-                if reikwijdte:
-                    st.markdown(f"**Reikwijdte van deze synthese:** {clean_md(reikwijdte)}")
-            ontbreekt: list = kwaliteit.get("onderbouwing_ontbreekt", []) or []
-            if ontbreekt:
-                st.markdown("**Onderbouwing ontbreekt / zwak voor:**")
-                _render_list(ontbreekt)
-
-        if bronnen:
-            st.divider()
-            st.markdown("**Bronnen per claim**")
-            for bron in bronnen:
-                if not isinstance(bron, dict):
-                    continue
-                claim_id = bron.get("claim_id") or ""
-                citaat = bron.get("uitspraak_citaat") or ""
-                url = bron.get("url") or ""
-                datum = bron.get("datum_bron") or ""
-                with st.container(border=True):
-                    if claim_id:
-                        st.markdown(f"**{clean_md(claim_id)}**")
-                    if citaat:
-                        st.markdown(f"> {clean_md(citaat)}")
-                    meta_parts = []
-                    if url:
-                        # interne dependency-verwijzingen tonen we als caption zonder link
-                        if url.startswith("internal://"):
-                            meta_parts.append(f"bron: {url}")
-                        else:
-                            meta_parts.append(f"[bron]({url})")
-                    if datum:
-                        meta_parts.append(f"datum: {datum}")
-                    if meta_parts:
-                        st.caption(" · ".join(meta_parts))
-
-
 def interpretatieve_synthese(analysis: dict[str, Any]) -> None:
     """Render interpretatieve synthese analysis result."""
     result: dict[str, Any] = analysis.get("result", {})
@@ -147,8 +87,6 @@ def interpretatieve_synthese(analysis: dict[str, Any]) -> None:
     hoorders: dict = result.get("hoordersanalyse", {}) or {}
     specifiek: dict = result.get("specifiek_voor_datum", {}) or {}
     aanbevelingen: dict = result.get("homiletische_aanbevelingen", {}) or {}
-    bronnen: list = result.get("bronnen", []) or []
-    kwaliteit: dict = result.get("bronnen_kwaliteit", {}) or {}
 
     # Bovenaan: op welk geografisch niveau is er gesynthetiseerd en hoe verhoudt
     # de gemeente zich tot de wijk? Geeft de prediker direct duiding van de scope.
@@ -292,6 +230,3 @@ def interpretatieve_synthese(analysis: dict[str, Any]) -> None:
 
     waarschuwingen: list = aanbevelingen.get("waarschuwingen", []) or []
     _render_waarschuwingen(waarschuwingen)
-
-    # Bronverantwoording onderaan — analoog aan de andere Tavily-Verdieping-analyses.
-    _render_bronnen(bronnen, kwaliteit)
