@@ -198,37 +198,12 @@ def render_gebeden(analysis: dict) -> None:
             if isinstance(g, dict):
                 _render_gebed(naam, g)
 
-    # NBV21-psalm gebruik: verantwoording welke psalm als bron is gebruikt en
-    # hoe die in de gebeden is verwerkt (profetische variant, Brueggemann).
-    psalm = result.get("nbv21_psalm_gebruik")
-    if isinstance(psalm, dict) and psalm:
-        nr = psalm.get("psalm_nummer", "")
-        label = f"NBV21-psalm {nr}" if nr else "NBV21-psalm"
-        with st.expander(label, expanded=False):
-            gebruikt_in = psalm.get("gebruikt_in_gebeden", [])
-            if gebruikt_in:
-                st.markdown("**Verwerkt in:** " + ", ".join(str(x) for x in gebruikt_in))
-            voorbeelden = psalm.get("concrete_voorbeelden", [])
-            if voorbeelden:
-                st.markdown("**Concrete voorbeelden:**")
-                for v in voorbeelden:
-                    st.markdown(f"- {_md(str(v))}")
-
-    # Profetische elementen: door Brueggemann-prompt gevraagde stijlmiddelen.
-    prof = result.get("profetische_elementen")
-    if isinstance(prof, dict) and prof:
-        with st.expander("Profetische elementen", expanded=False):
-            _PROF_LABELS = {
-                "gevaarlijke_werkwoorden": "Gevaarlijke werkwoorden",
-                "moderne_metaforen": "Moderne metaforen",
-                "anti_status_quo": "Anti-status-quo zinnen",
-            }
-            for key, label in _PROF_LABELS.items():
-                items = prof.get(key, [])
-                if items:
-                    st.markdown(f"**{label}**")
-                    for item in items:
-                        st.markdown(f"- {_md(str(item))}")
+    # 'nbv21_psalm_gebruik' en 'profetische_elementen' worden bewust niet
+    # gerenderd: de gebruiker heeft aangegeven dat deze analyse-metadata
+    # (uitsluitend gevuld door de Brueggemann-prompt) geen meerwaarde
+    # heeft bij de liturgische weergave van de gebeden. De velden blijven
+    # in de DB en API beschikbaar zodat eventuele andere consumenten of
+    # toekomstige UI-onderdelen ze kunnen gebruiken.
 
     echo = result.get("echo_techniek", "")
     if echo:
