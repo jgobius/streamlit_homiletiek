@@ -34,9 +34,25 @@ _DARK_CSS = """<style>
 html, body {
     background-color: #0E1117 !important;
 }
-/* Zijbalk */
-[data-testid="stSidebar"] > div:first-child {
-    background-color: #262730;
+/* Zijbalk — selectoren breed gehouden zodat ook de buitenste container
+   en alle inner wrappers donker blijven tijdens het slepen van de
+   sidebar-resize-handle. De oude regel kleurde alleen de eerste inner
+   div, waardoor het buitenste <section data-testid="stSidebar">
+   tijdelijk zijn light-mode achtergrond (wit) toonde zodra Streamlit de
+   inner container tijdens drag een andere width gaf. */
+[data-testid="stSidebar"],
+[data-testid="stSidebar"] > div,
+[data-testid="stSidebar"] > div > div,
+[data-testid="stSidebarContent"],
+[data-testid="stSidebarUserContent"] {
+    background-color: #262730 !important;
+}
+/* Resize-handle zelf (de smalle drag-strip aan de rechterkant van de
+   sidebar) krijgt geen lichte fallback meer — anders flitst hij wit
+   bij hover/drag. */
+[data-testid="stSidebarResizeHandle"],
+[data-testid="stSidebarCollapseButton"] {
+    background-color: #262730 !important;
 }
 /* Bovenste balk */
 [data-testid="stHeader"] {
