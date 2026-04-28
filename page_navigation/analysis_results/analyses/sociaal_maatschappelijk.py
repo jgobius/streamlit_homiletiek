@@ -231,9 +231,13 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
             cols_header[2].caption("Omvang")
             for d in denominaties:
                 c1, c2, c3 = st.columns([2, 2, 2])
-                c1.markdown(d.get("naam", ""))
-                c2.markdown(d.get("type", ""))
-                c3.markdown(d.get("geschatte_omvang", ""))
+                # `dict.get(key, default)` valt alleen terug op de default als
+                # de sleutel ontbreekt; een aanwezige None-waarde wordt door
+                # st.markdown letterlijk als "None" gerenderd. Coerce daarom
+                # alle drie de velden naar een nette string (em-dash bij leeg).
+                c1.markdown(d.get("naam") or "—")
+                c2.markdown(d.get("type") or "—")
+                c3.markdown(d.get("geschatte_omvang") or "—")
 
         ontwikkelingen: list = kerkelijke_context.get("recente_kerkelijke_ontwikkelingen", [])
         if ontwikkelingen:
