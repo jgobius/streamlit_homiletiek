@@ -93,7 +93,9 @@ def _render_noordmans_schema(analysis: dict[str, Any]) -> None:
         toelichting = onderdeel.get("toelichting", "")
 
         header = f"{volgorde}. {titel} ({type_label})" if volgorde else f"{titel} ({type_label})"
-        with st.expander(header, expanded=True):
+        # Expanders dicht openen zodat de gebruiker zelf bepaalt wat hij uitklapt;
+        # consistent met Lowry/Buttrick en met volledige_preek.py.
+        with st.expander(header, expanded=False):
             st.markdown(clean_md(inhoud))
             if toelichting:
                 st.caption(toelichting)
@@ -129,7 +131,7 @@ def render_homiletische_lowry(analysis: dict) -> None:
     # Tekstkeuze
     tk = result.get("tekstkeuze", {})
     if tk:
-        with st.expander("Tekstkeuze", expanded=True):
+        with st.expander("Tekstkeuze", expanded=False):
             _section("Gekozen lezing", tk.get("gekozen_lezing"))
             _section("Onderbouwing", tk.get("onderbouwing"))
             _section("Omkerings-potentie", tk.get("omkerings_potentie"))
@@ -189,7 +191,7 @@ def render_homiletische_buttrick(analysis: dict) -> None:
     # Tekstkeuze
     tk = result.get("tekstkeuze", {})
     if tk:
-        with st.expander("Tekstkeuze", expanded=True):
+        with st.expander("Tekstkeuze", expanded=False):
             _section("Gekozen lezing", tk.get("gekozen_lezing"))
             _section("Onderbouwing", tk.get("onderbouwing"))
             _section("Aansluiting context", tk.get("aansluiting_context"))
@@ -200,7 +202,7 @@ def render_homiletische_buttrick(analysis: dict) -> None:
     # Introductie
     intro = result.get("introductie", {})
     if intro:
-        with st.expander("Introductie", expanded=True):
+        with st.expander("Introductie", expanded=False):
             _section("Focus-beeld", intro.get("focus_beeld"))
             _section("Hermeneutische oriëntatie", intro.get("hermeneutische_orientatie"))
             _section("Uitgeschreven tekst", intro.get("uitgeschreven_tekst"))
