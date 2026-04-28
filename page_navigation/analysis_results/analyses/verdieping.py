@@ -382,16 +382,10 @@ def render_kunst_cultuur(analysis: dict) -> None:
                     if v:
                         st.markdown(f"- **{k.replace('_', ' ').capitalize()}:** {_md(str(v))}")
 
-            rechten = ph.get("rechten", {})
-            if rechten:
-                with st.expander("Auteursrechten", expanded=False):
-                    for k, v in rechten.items():
-                        if v:
-                            label = k.replace("_", " ").capitalize()
-                            if isinstance(v, list):
-                                st.markdown(f"**{label}:** " + ", ".join(v))
-                            else:
-                                st.markdown(f"**{label}:** {_md(str(v))}")
+            # Auteursrechten worden bewust niet gerenderd: de informatie is
+            # niet relevant voor de voorganger en zorgt alleen voor visuele ruis
+            # onderaan de Kunst & Cultuur-sectie. Het veld wordt nog wel door
+            # het LLM-schema gevuld, dus we negeren het hier expliciet.
         elif isinstance(ph, list):
             for item in ph:
                 st.markdown(f"- {_md(str(item))}")
