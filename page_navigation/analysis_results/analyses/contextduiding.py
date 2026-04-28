@@ -55,12 +55,19 @@ def contextduiding(analysis: dict[str, Any]) -> None:
 
             # Compactere scheidingslijn dan st.divider(): die voegt aan
             # beide kanten ~1rem witruimte toe wat tussen de caption en
-            # 'Tekstueel vertrekpunt' onnodig groot voelt. We gebruiken
-            # een inline <hr> met dezelfde lichtgrijze lijn maar slechts
-            # 0.25rem marge boven en onder.
+            # 'Tekstueel vertrekpunt' onnodig groot voelt. We wikkelen de
+            # <hr> in een <div> met expliciete top- én bottom-margin op 0
+            # zodat browser-default-margins van zowel de <hr> zelf als de
+            # omliggende <p>-elementen (Streamlit wrapt markdown-output
+            # standaard in <p>) niet alsnog asymmetrische witruimte
+            # opleveren. De border-color gebruikt currentColor met opacity
+            # zodat de lijn in zowel light- als dark-mode subtiel mee-
+            # kleurt met de tekstkleur van het thema.
             st.markdown(
-                '<hr style="margin: 0.25rem 0; border: none; '
-                'border-top: 1px solid rgba(49,51,63,0.2);">',
+                '<div style="margin: 0; padding: 0; line-height: 0;">'
+                '<hr style="margin: 0.5rem 0; border: none; '
+                'border-top: 1px solid currentColor; opacity: 0.2;">'
+                '</div>',
                 unsafe_allow_html=True,
             )
 
