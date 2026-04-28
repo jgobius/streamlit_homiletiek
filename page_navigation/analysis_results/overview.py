@@ -353,11 +353,13 @@ if not analysis_id:
 
 st.session_state["current_analysis_id"] = analysis_id
 
-# Polling-fragment: rendert geen zichtbare UI, maar her-runt elke 30s en
-# toont een toast zodra een gestarte analyse klaar is in de database. Plek
-# is bewust hier gekozen — ná de redirect_to_login()/analysis_id-guard,
-# zodat we zeker weten dat api_handler en sessie geldig zijn.
-render_analyse_voortgang_poller()
+# Polling-fragment: rendert geen zichtbare UI, maar her-runt elke 15s en
+# toont een toast zodra een gestarte analyse klaar is in de database. We
+# plaatsen het in de sidebar omdat die DOM-positie stabiel blijft tussen
+# tab-wissels in de hoofdcontent — een fragment direct in de hoofdcontent
+# verloor na een tab-klik soms zijn run_every-cyclus.
+with st.sidebar:
+    render_analyse_voortgang_poller()
 
 _data_cache_key = f"overview_data_{analysis_id}"
 _cached_entry = st.session_state.get(_data_cache_key)

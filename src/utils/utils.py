@@ -820,9 +820,9 @@ def registreer_lopende_analyse(
     }
 
 
-@st.fragment(run_every="30s")
+@st.fragment(run_every="15s")
 def render_analyse_voortgang_poller() -> None:
-    """Polt elke 30s of een gestarte analyse klaar is en toast bij detectie.
+    """Polt elke 15s of een gestarte analyse klaar is en toast bij detectie.
 
     Het fragment her-runt zichzelf zonder de hele pagina te ververen — dat
     maakt periodieke API-calls hier veilig. Toasts werken globaal vanuit
@@ -830,10 +830,23 @@ def render_analyse_voortgang_poller() -> None:
     NIET; daarom roepen we ``api_handler.get(...)`` rechtstreeks aan in
     plaats van ``get_data()`` (die bij 401 redirect naar login).
 
+    Het fragment rendert ALTIJD een onzichtbare placeholder, ook als er
+    geen lopende analyses zijn. Streamlit pauzeert de scheduler-runs van
+    fragments die niets renderen — een fragment dat een early ``return``
+    deed zonder eerst iets uit te zenden, hervatte daardoor pas zijn
+    cyclus na een page-rerun, niet via run_every. Door een lege
+    placeholder uit te zenden blijven de 15s-tikken ook stabiel
+    plaatsvinden tussen tab-wissels door.
+
     We veroorzaken bewust geen ``st.rerun()``: de toast vermeldt 'Ververs
     het menu' en de gebruiker beslist zelf wanneer hij dat doet — een
     automatische rerun zou hem onderbreken tijdens lezen of typen.
     """
+    # Onzichtbare placeholder: geeft het fragment een DOM-anker zodat
+    # Streamlit het niet weg-optimaliseert. Lege string in markdown
+    # rendert visueel niets.
+    st.empty()
+
     lopende: dict[str, dict[str, Any]] = st.session_state.get(
         "lopende_analyses", {}
     )

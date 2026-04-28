@@ -24,11 +24,13 @@ redirect_to_login()
 
 render_sidebar()
 
-# Polling-fragment: rendert niets zichtbaars maar her-runt elke 30s en
-# toont een toast wanneer een eerder gestarte analyse afgerond is. Zo
-# krijgt de gebruiker ook een melding als hij ondertussen naar het
-# dashboard is genavigeerd om te wachten.
-render_analyse_voortgang_poller()
+# Polling-fragment: rendert niets zichtbaars maar her-runt elke 15s en
+# toont een toast wanneer een eerder gestarte analyse afgerond is. We
+# plaatsen het in de sidebar zodat de fragment-positie stabiel blijft
+# bij rerenders van de hoofdcontent (zoals na het verwijderen van een
+# analyse via de bevestigingsdialoog).
+with st.sidebar:
+    render_analyse_voortgang_poller()
 
 # Django levert `created_at` in UTC (settings.USE_TZ=True, TIME_ZONE="UTC").
 # Voor weergave converteren we naar Nederlandse tijd (DST-aware via zoneinfo).
