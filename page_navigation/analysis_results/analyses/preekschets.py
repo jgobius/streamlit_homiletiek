@@ -7,7 +7,7 @@ from typing import Any
 
 import streamlit as st
 
-from src.utils.utils import clean_md
+from src.utils.utils import clean_md, humanize_key
 
 
 # ---------------------------------------------------------------------------
@@ -165,7 +165,11 @@ def _render_noordmans_schema(analysis: dict[str, Any]) -> None:
         inhoud = onderdeel.get("inhoud", "")
         toelichting = onderdeel.get("toelichting", "")
 
-        header = f"{volgorde}. {titel} ({type_label})" if volgorde else f"{titel} ({type_label})"
+        # Het 'type'-veld komt rauw uit de DB als snake_case (bv.
+        # 'subversieve_wending'). Via humanize_key wordt dat
+        # 'Subversieve wending' — leesbaar in de expander-header.
+        type_label_leesbaar = humanize_key(type_label) if type_label else ""
+        header = f"{volgorde}. {titel} ({type_label_leesbaar})" if volgorde else f"{titel} ({type_label_leesbaar})"
         # Expanders dicht openen zodat de gebruiker zelf bepaalt wat hij uitklapt;
         # consistent met Lowry/Buttrick en met volledige_preek.py.
         with st.expander(header, expanded=False):

@@ -336,6 +336,24 @@ def toon_analysenaam(name: str) -> str:
     return _WEERGAVENAAM_OVERRIDE.get(schoon, schoon)
 
 
+_HUMANIZE_WORD_SEP_RE = re.compile(r"[_\W]+")
+
+
+def humanize_key(key: str) -> str:
+    """Maak een snake_case-sleutel leesbaar: 'subversieve_wending' →
+    'Subversieve wending', 'structuralistische_exegese' →
+    'Structuralistische exegese'. Vervangt onderstrepen en niet-
+    woordkarakters door spaties en kapitaliseert alleen de eerste letter
+    (capitalize() zou de rest in lowercase forceren — onwenselijk voor
+    eigennamen of afkortingen die toevallig in een sleutel zitten)."""
+    if not key:
+        return key
+    woorden = _HUMANIZE_WORD_SEP_RE.sub(" ", key).strip()
+    if not woorden:
+        return key
+    return woorden[0].upper() + woorden[1:]
+
+
 def clean_md(text: str) -> str:
     """Normaleer LLM-gegenereerde markdown voor robuuste Streamlit-weergave.
 

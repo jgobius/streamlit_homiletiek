@@ -27,6 +27,12 @@ from docx.shared import Pt
 
 from src.api.handler import APIHandler
 from src.utils.analyse_tabs import TAB_NAAR_ANALYSES, TAB_VOLGORDE
+# Hergebruik de centrale snake_case→leesbaar-helper; de lokale variant
+# stond hier eerder als _humanize_key + _WORD_SEP_RE en is verplaatst
+# naar utils.humanize_key zodat ook de Streamlit-renderers hem kunnen
+# gebruiken (Noordmans-preekschets toont 'type'-labels die voorheen als
+# bv. '(subversieve_wending)' rauw in de UI verschenen).
+from src.utils.utils import humanize_key as _humanize_key
 
 # Signature voor de optionele voortgangs-callback. De aanroeper ontvangt een
 # fractie (0.0 - 1.0) en een korte Nederlandse statusregel.
@@ -61,11 +67,6 @@ _INLINE_STRING_MAX = 120
 # Scheidingsteken voor paragraph-splitting binnen één string-waarde: elke
 # reeks van ≥ 1 blank line telt als nieuwe alinea.
 _BLANK_LINE_RE = re.compile(r"\n\s*\n")
-
-# Regex voor _humanize_key: vervangt snake_case-underscores en niet-
-# woordkarakters door een enkele spatie.
-_WORD_SEP_RE = re.compile(r"[_\W]+")
-
 
 def bouw_kerkdienstanalyse_docx(
     analysis_id: int,
@@ -540,14 +541,6 @@ def _is_block_tekst(tekst: str) -> bool:
     if "\n" in tekst:
         return True
     return len(tekst) > _INLINE_STRING_MAX
-
-
-def _humanize_key(key: str) -> str:
-    """Maakt 'structuralistische_exegese' → 'Structuralistische exegese'."""
-    woorden = _WORD_SEP_RE.sub(" ", key).strip()
-    if not woorden:
-        return key
-    return woorden[0].upper() + woorden[1:]
 
 
 # ---------------------------------------------------------------------------
