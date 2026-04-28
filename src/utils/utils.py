@@ -421,34 +421,32 @@ def _fetch_single_structured_scripture(
             endpoint="structured_scripture/",
             payload=data,
             timeout=_STRUCTURED_SCRIPTURE_TIMEOUT_SECONDS,
+            headers=auth_headers,
         )
         
         task_id = response.json().get("task_id")
         
         while True:
-            status_response = agent_request.post(
+            status_response = agent_request.get(
                 endpoint=f"structured_scripture/{task_id}/",
-                payload={},
+                params={},
                 timeout=_STRUCTURED_SCRIPTURE_TIMEOUT_SECONDS,
+                headers=auth_headers,
             )
             status_data = status_response.json()
-            if status_data.get("status") == "SUCCESS":
-                return status_data.get('result')
+            print(status_data)
+            if status_data.get("state") == "SUCCESS":
+                return scripture, status_data.get('result'), None
             
-            if status_data.get("status") == "FAILURE":
+            if status_data.get("state") == "FAILURE":
                 return scripture, None, f"Backend-fout: {status_data.get('result', 'Onbekende fout')}"
             time.sleep(5)  
         
-         
        
     except requests.exceptions.Timeout:
         return scripture, None, f"Timeout na {_STRUCTURED_SCRIPTURE_TIMEOUT_SECONDS}s"
     except requests.exceptions.RequestException as exc:
         return scripture, None, str(exc)
-
-    if response.status_code == 200:
-        return scripture, response.json(), None
-    return scripture, None, response.text
 
 
 def get_structured_scriptures(scriptures: list[str], bible_version: str, language: str) -> list[dict[str, Any]]:
@@ -500,6 +498,7 @@ def get_structured_scriptures(scriptures: list[str], bible_version: str, languag
         )
 
         for scripture, data, error in results:
+            print(data)
             if error is not None:
                 st.write(f"Fout bij ophalen van '{scripture}': {error}")
                 continue

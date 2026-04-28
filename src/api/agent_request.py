@@ -21,6 +21,7 @@ class AgentRequest:
         endpoint: str,
         payload: dict[str, Any],
         timeout: int = 30,
+        headers: dict[str, str] | None = None,
     ) -> Response:
         # Lstrip '/' zodat zowel "single_analysis/" als "/single_analysis/" werkt
         # voor de caller; de URL-samenstelling blijft zo idempotent.
@@ -29,9 +30,21 @@ class AgentRequest:
         agent_url = os.environ.get("API_AGENT_URL").rstrip("/")
         response = requests.post(
             url=f"{agent_url}/{endpoint_clean}",
-            headers=self.auth_header(),
+            headers=headers if headers is not None else self.auth_header(),
             json=payload,
             timeout=timeout,
+        )
+        response.raise_for_status()
+        return response
+    
+    def get(self, endpoint: str, timeout: int, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> Response:
+        endpoint_clean = endpoint.lstrip("/")
+        agent_url = os.environ.get("API_AGENT_URL").rstrip("/")
+        response = requests.get(
+            url=f"{agent_url}/{endpoint_clean}",
+            headers=headers if headers is not None else self.auth_header(),
+            params=params,
+            timeout=timeout
         )
         response.raise_for_status()
         return response

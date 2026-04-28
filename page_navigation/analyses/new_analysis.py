@@ -37,7 +37,6 @@ _ANALYSIS_LOCK_TIMEOUT_SECONDS = 120
 
 ########### HULPFUNCTIES ###########
 
-
 @st.dialog("Eigen lezingen toevoegen", width="large")
 def _show_own_readings_dialog() -> None:
     """Pop-up om eigen lezingen te configureren (bijbelboek + hoofdstuk/verzen per lezing)."""
@@ -388,8 +387,11 @@ if scriptures_choice == "Eigen lezingen":
 # die gegarandeerd faalt op de bijbeltekst-stap.
 _lege_lezingen: list[str] = []
 for scripture in st.session_state["structured_scriptures"]:
+    
+    scripture = scripture.get("scripture_json")
+
     _heeft_verzen = any(
-        (sc.get("verses") or []) for sc in (scripture.get("scriptures") or [])
+        (sc.get("verses") or []) for sc in (scripture.get('scriptures') or [])
     )
     _titel = scripture.get("original_scripture") or "(onbekende lezing)"
     with st.expander(f"**{_titel}**", expanded=not _heeft_verzen):
@@ -492,7 +494,6 @@ if submit:
             bible_version=bible_version.get("id", None),
             extra_context=extra_context
         )
-
         data = json.loads(sermon_analysis_model.model_dump_json())
         result = st.session_state["api_handler"].post(endpoint="api/sermon-analyses/", data=data)
         sermon_analysis_id = result.get("id")
