@@ -173,9 +173,17 @@ def waardenorientatie(analysis: dict[str, Any]) -> None:
                         if m.get("kenmerken_lokaal"):
                             st.markdown(clean_md(m["kenmerken_lokaal"]))
                     with c2:
+                        # Niet via st.metric: dat schaalt de waarde naar een
+                        # zeer groot lettertype, wat bij niet-numerieke
+                        # strings als "grootste groep" tot afgekapte ("grootste
+                        # gr…") en visueel dominante tekst leidt. Een gewoon
+                        # label leest hier rustiger en toont de volledige
+                        # waarde.
                         pct = m.get("geschat_percentage")
                         if pct:
-                            st.metric("Geschat %", pct)
+                            st.markdown(
+                                f"**Geschat %**  \n{clean_md(str(pct))}"
+                            )
                     taal: list = m.get("taal_die_resoneert", [])
                     beelden: list = m.get("beelden_die_werken", [])
                     if taal:
