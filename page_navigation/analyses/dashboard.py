@@ -335,11 +335,6 @@ else:
                     "%d-%m-%Y"
                 )
                 is_latest = item["id"] == latest_id
-                # Markeer analyses waar de agent in een fout is geëindigd. Single_analysis
-                # zet `status='error'` bij faal; we tonen dan een rode 'Mislukt'-badge in
-                # de tijd-kolom zodat de gebruiker direct ziet welke analyse opnieuw
-                # gestart moet worden. Andere statussen (`draft`) blijven onzichtbaar.
-                heeft_fout = item.get("status") == "error"
                 # Bepaal het label voor het grijze aanmaaktijdstip. Voorkeur:
                 # `created_at` uit de API (volledige datum+tijd); fallback: alleen
                 # de HH:MM-suffix uit de auto-gegenereerde titel voor oude records.
@@ -373,20 +368,10 @@ else:
                         on_click=lambda id=id: set_analysis_id(id)
                     )
                 with col_time:
-                    # Bij een mislukte analyse vervangt een rode 'Mislukt'-badge het
-                    # grijze aanmaaktijdstip. De timestamp is in dat geval minder
-                    # relevant dan het signaal dat de analyse opnieuw gestart moet
-                    # worden; ze in elkaar plakken zou de kolom te druk maken.
-                    if heeft_fout:
-                        st.markdown(
-                            "<span style='color: #c62828; font-size: 0.9em;'>"
-                            "⚠️ Mislukt</span>",
-                            unsafe_allow_html=True,
-                        )
                     # Alleen tonen als we een aanmaaktijdstip hebben (uit API of
                     # als fallback uit de titel). Voor custom titels zonder
                     # HH:MM-suffix én zonder `created_at` blijft de kolom leeg.
-                    elif aanmaak_label:
+                    if aanmaak_label:
                         st.markdown(
                             f"<span style='color: #888; font-size: 0.9em;'>{aanmaak_label}</span>",
                             unsafe_allow_html=True,
