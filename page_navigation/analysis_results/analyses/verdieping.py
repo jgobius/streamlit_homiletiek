@@ -455,7 +455,10 @@ def _render_moment_opties(
         header = f"Optie {i}: {titel}"
         if label_kleur is None and type_raw:
             header += f" ({type_raw})"
-        with st.expander(header, expanded=(i == 1)):
+        # Alle opties default ingeklapt — ook de eerste — zodat de gebruiker
+        # zelf kiest welke variant hij/zij wil bekijken in plaats van bij het
+        # openen van de pagina meteen tekst voor zich te krijgen.
+        with st.expander(header, expanded=False):
             # Gekleurde badge bovenaan zodat de aard van deze optie
             # (warm / actief / absurd / ingetogen / symbolisch / zintuiglijk / …)
             # direct leesbaar is.
