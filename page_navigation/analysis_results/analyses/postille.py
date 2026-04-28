@@ -80,15 +80,12 @@ def postille(analysis: dict[str, Any]) -> None:
     liturgische_aanwijzingen: dict[str, Any] = preekschets.get("liturgische_aanwijzingen", {})
 
     # ── Header ────────────────────────────────────────────────────────────────
-    col_left, col_right = st.columns([2, 1])
-    with col_left:
-        if metadata.get("perikoop"):
-            st.caption(f"**Perikoop:** {metadata['perikoop']}")
-        if metadata.get("liturgische_dag"):
-            st.caption(f"**Liturgische dag:** {metadata['liturgische_dag']}")
-    with col_right:
-        if sermon.get("sermon_date"):
-            st.caption(f"**Preekdatum:** {sermon['sermon_date']}")
+    # Preekdatum staat al in de context-regel onder de tabbladen, dus hier
+    # niet meer herhalen; we tonen alleen perikoop en liturgische dag.
+    if metadata.get("perikoop"):
+        st.caption(f"**Perikoop:** {metadata['perikoop']}")
+    if metadata.get("liturgische_dag"):
+        st.caption(f"**Liturgische dag:** {metadata['liturgische_dag']}")
 
     # ── Kerntekst ─────────────────────────────────────────────────────────────
     if metadata.get("kerntekst"):
