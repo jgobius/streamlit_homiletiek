@@ -154,7 +154,9 @@ def interpretatieve_synthese(analysis: dict[str, Any]) -> None:
     # de gemeente zich tot de wijk? Geeft de prediker direct duiding van de scope.
     _render_lokale_context(lokale)
 
-    with st.expander("Congruentie-analyse: norm vs. praktijk", expanded=True):
+    # Standaard ingeklapt zodat de prediker de synthese-onderdelen zelf openvouwt;
+    # dat sluit aan bij de andere expanders hieronder en houdt de pagina rustig.
+    with st.expander("Congruentie-analyse: norm vs. praktijk", expanded=False):
         c1, c2 = st.columns(2)
         with c1:
             if congruentie.get("officiele_geloofsopvatting"):
@@ -172,8 +174,6 @@ def interpretatieve_synthese(analysis: dict[str, Any]) -> None:
         if aannames:
             st.markdown("**Onbewuste aannames:**")
             _render_list(aannames)
-
-    st.divider()
 
     with st.expander("Verbindingspunten", expanded=False):
         aansluiting: list = verbindingspunten.get("aansluiting_geleefde_ervaring", []) or []
@@ -202,8 +202,6 @@ def interpretatieve_synthese(analysis: dict[str, Any]) -> None:
             st.markdown("**Brugverhalen uit de gemeenschap:**")
             _render_list(brugverhalen)
 
-    st.divider()
-
     with st.expander("Confrontatiepunten", expanded=False):
         c1, c2, c3 = st.columns(3)
         with c1:
@@ -221,8 +219,6 @@ def interpretatieve_synthese(analysis: dict[str, Any]) -> None:
             if blind:
                 st.markdown("**Blinde vlekken:**")
                 _render_list(blind)
-
-    st.divider()
 
     with st.expander("Hoordersanalyse", expanded=False):
         c1, c2, c3 = st.columns(3)
