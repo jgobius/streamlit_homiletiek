@@ -86,6 +86,22 @@ def _google_link(query: str) -> str:
     return f"[{query}]({url})"
 
 
+def _humaniseer_label(val: Any) -> str:
+    # LLM-output bevat soms enum-achtige waardes met underscores
+    # (bv. "essay_nederlands", "moderne_kunst"). Voor weergave als badge of
+    # tag-label zetten we die om naar leesbare tekst ("Essay Nederlands").
+    # Niet-strings of lege waardes geven we onveranderd terug zodat de
+    # aanroeper zelf kan beslissen of er wel/niet gerenderd wordt.
+    if not isinstance(val, str) or not val:
+        return val if isinstance(val, str) else ""
+    schoon = val.replace("_", " ").strip()
+    # str.title() zou "essay nederlands" → "Essay Nederlands" maken, maar
+    # ook losse letters in afkortingen breken (bv. "ai" → "Ai"). Voor onze
+    # gebruikssituatie is dat acceptabel; de waardes komen uit een vooraf
+    # gedefinieerde enum-set en bevatten geen apostrofen of afkortingen.
+    return schoon.title()
+
+
 # ---------------------------------------------------------------------------
 # Gebeden (36 / 37 / 38 / 39)
 # ---------------------------------------------------------------------------
@@ -273,8 +289,11 @@ def _render_kunst_items(items: list) -> None:
             # achter het genre getoond (of los als er geen genre is),
             # zodat het als tag-achtig label leest in plaats van een
             # volwaardige sectie.
-            genre = item.get("genre", "")
-            type_val = item.get("type", "")
+            # Genre en type kunnen uit de LLM enum-achtige waardes met
+            # underscores bevatten (bv. "essay_nederlands"); humaniseer ze
+            # voor leesbare weergave ("Essay Nederlands").
+            genre = _humaniseer_label(item.get("genre", ""))
+            type_val = _humaniseer_label(item.get("type", ""))
             if genre or type_val:
                 badge = f" :violet-background[{type_val}]" if type_val else ""
                 if genre:
