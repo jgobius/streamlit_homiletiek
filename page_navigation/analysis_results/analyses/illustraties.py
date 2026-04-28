@@ -7,17 +7,19 @@ _META_LABELS = {"type":"Type","bron":"Bron","toon":"Toon","lowry_stadium":"Lowry
 def illustraties(analysis: dict[str, Any]) -> None:
     result: dict[str, Any] = analysis.get("result", {})
     illustraties_lijst: list = result.get("illustraties", [])
-    totaal: float = result.get("totaal_aantal_illustraties", len(illustraties_lijst))
+    totaal: int = int(result.get("totaal_aantal_illustraties", len(illustraties_lijst)))
     diversiteit: dict = result.get("diversiteit_analyse", {})
 
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.metric("Totaal illustraties", int(totaal))
-
+    # Filter op type — zonder afzonderlijke metric of "X van Y"-caption bij "Alle":
+    # het totaal is af te leiden uit de zichtbare expanders, dus dat dubbel tonen
+    # gaf overbodige informatie.
     alle_typen = sorted({ill.get("metadata", {}).get("type", "") for ill in illustraties_lijst if ill.get("metadata", {}).get("type")})
     filter_type = st.selectbox("Filter op type", options=["Alle"] + alle_typen, index=0)
     gefilterd = illustraties_lijst if filter_type == "Alle" else [ill for ill in illustraties_lijst if ill.get("metadata", {}).get("type", "") == filter_type]
-    st.caption(f"{len(gefilterd)} van {int(totaal)} illustraties")
+    # Caption alleen tonen wanneer er daadwerkelijk gefilterd is — dan is "X van Y"
+    # wel informatief (bv. 5 van 20).
+    if filter_type != "Alle":
+        st.caption(f"{len(gefilterd)} van {totaal} illustraties")
     st.divider()
 
     for ill in gefilterd:
