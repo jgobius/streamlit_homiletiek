@@ -144,7 +144,11 @@ def _render_voorbeden(g: dict) -> None:
 
 def _render_gebed(naam: str, g: dict) -> None:
     label = _GEBED_LABELS.get(naam, naam.replace("_", " ").capitalize())
-    with st.expander(label, expanded=naam == "drempelgebed"):
+    # Alle gebed-expanders standaard dichtgeklapt; voorheen klapte het
+    # drempelgebed automatisch open, maar de gebruiker wil consistent dichte
+    # blokken zodat hij zelf bepaalt welk gebed hij uitvouwt — sluit aan op
+    # de stijl van de preekschets- en preek-blokken.
+    with st.expander(label, expanded=False):
         aanspraak = g.get("aanspraak", "")
         if aanspraak:
             st.caption(f"Aanspraak: *{_md(aanspraak)}*")
