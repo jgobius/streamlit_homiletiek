@@ -782,15 +782,17 @@ def _lees_baseline_id(
     if handler is None:
         return None
     try:
-        resp = handler.get(
+        # APIHandler.get() retourneert al de gedecodeerde JSON (geen Response-
+        # object), dus geen extra .json()-call nodig.
+        items = handler.get(
             f"api/analysis-results?sermon_analysis_id={sermon_analysis_id}"
-        )
-        items = resp.json() or []
+        ) or []
     except Exception:
         return None
     relevante_ids = [
         r["id"] for r in items
-        if r.get("analysis_type", {}).get("name") == analyse_naam
+        if isinstance(r, dict)
+        and r.get("analysis_type", {}).get("name") == analyse_naam
     ]
     return max(relevante_ids) if relevante_ids else None
 
@@ -847,8 +849,11 @@ def render_analyse_voortgang_poller() -> None:
     resultaten_per_sermon: dict[int, list[dict[str, Any]]] = {}
     for sid in unieke_sermons:
         try:
-            resp = handler.get(f"api/analysis-results?sermon_analysis_id={sid}")
-            resultaten_per_sermon[sid] = resp.json() or []
+            # APIHandler.get() geeft al de gedecodeerde JSON terug (zie
+            # src/api/handler.py); een extra .json()-call zou hier een
+            # AttributeError opleveren en de toast laten missen.
+            data = handler.get(f"api/analysis-results?sermon_analysis_id={sid}")
+            resultaten_per_sermon[sid] = data if isinstance(data, list) else []
         except Exception:
             # Negeer en probeer in de volgende poll opnieuw — netwerkhiccups
             # mogen geen toast missen of een entry per ongeluk droppen.
