@@ -510,11 +510,6 @@ def get_structured_scriptures(scriptures: list[str], bible_version: str, languag
         Mislukte lezingen worden zichtbaar als foutmelding in de UI en
         overgeslagen in de output.
     """
-    # Voortgangsregels in de omringende st.status-context — laten staan omdat
-    # de caller in new_analysis.py hier zijn status uit opbouwt.
-    st.write(scriptures)
-    st.write(bible_version)
-
     structured_scripture_data: list[dict[str, Any]] = []
 
     if not scriptures:
