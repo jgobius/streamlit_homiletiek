@@ -149,7 +149,11 @@ def _deps_ok(at: dict, latest: dict) -> tuple[bool, list[str]]:
         dep_name = dep.get("name") if isinstance(dep, dict) else dep
         dep_label = dep.get("front_end_name") if isinstance(dep, dict) else dep_name
         if dep_name and dep_name not in latest:
-            ontbrekend.append(dep_label or dep_name)
+            # Pas de weergavenaam-override defensief toe; bij sommige API-payloads
+            # ontbreekt `front_end_name` op de dep en valt het label terug op de
+            # snake_case `name` ('volledige_preek'). `toon_analysenaam` mapt die
+            # alsnog naar de gewenste UI-naam.
+            ontbrekend.append(toon_analysenaam(dep_label or dep_name))
     return (len(ontbrekend) == 0, ontbrekend)
 
 
@@ -175,7 +179,11 @@ def _deps_ok(at: dict, latest: dict) -> tuple[bool, list[str]]:
         dep_name = dep.get("name") if isinstance(dep, dict) else dep
         dep_label = dep.get("front_end_name") if isinstance(dep, dict) else dep_name
         if dep_name and dep_name not in latest:
-            missing.append(dep_label or dep_name)
+            # Pas de weergavenaam-override defensief toe; bij sommige API-payloads
+            # ontbreekt `front_end_name` op de dep en valt het label terug op de
+            # snake_case `name` ('volledige_preek'). `toon_analysenaam` mapt die
+            # alsnog naar de gewenste UI-naam.
+            missing.append(toon_analysenaam(dep_label or dep_name))
     return (len(missing) == 0, missing)
 
 
