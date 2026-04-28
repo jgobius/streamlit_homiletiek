@@ -50,15 +50,18 @@ def _meta_label(label: str, value: Any) -> None:
     omkering) niet meer onder de hoofdtekst gestapeld staat."""
     if not value:
         return
-    # Inline HTML omdat Streamlit geen native 'kleinkapitaal'-component heeft;
-    # kleuren bewust neutraal grijs zodat het oranje thema (zie
-    # _hero_lezing en st.success-accenten) de hoofdaccenten blijft dragen.
+    # Inline HTML omdat Streamlit geen native 'kleinkapitaal'-component heeft.
+    # Geen hardcoded tekstkleur op de waarde: die erft de themakleur en blijft
+    # daardoor in zowel light als dark mode goed leesbaar. Het label gebruikt
+    # opacity i.p.v. een vaste grijstint, zodat het ook ten opzichte van de
+    # dark-mode tekstkleur gedempt blijft (een vaste #8a8a8a was in dark mode
+    # nauwelijks te onderscheiden van de achtergrond).
     st.markdown(
         f"<div style='margin-bottom:0.75rem;'>"
         f"<div style='font-size:0.72rem; letter-spacing:0.08em; "
-        f"text-transform:uppercase; color:#8a8a8a; font-weight:600; "
+        f"text-transform:uppercase; font-weight:600; opacity:0.6; "
         f"margin-bottom:0.15rem;'>{label}</div>"
-        f"<div style='font-size:0.92rem; line-height:1.45; color:#333;'>"
+        f"<div style='font-size:0.92rem; line-height:1.45;'>"
         f"{_md(value)}</div></div>",
         unsafe_allow_html=True,
     )
@@ -71,9 +74,12 @@ def _hero_lezing(text: Any) -> None:
     elkaar te duwen."""
     if not text:
         return
+    # Expliciete donkere tekstkleur (#1f2937) omdat de cream achtergrond
+    # in dark mode anders de standaard lichte themakleur zou erven, wat
+    # licht-op-licht en dus onleesbaar zou zijn.
     st.markdown(
         f"<div style='display:inline-block; padding:0.35rem 0.85rem; "
-        f"margin-bottom:0.8rem; background:#fff4e6; "
+        f"margin-bottom:0.8rem; background:#fff4e6; color:#1f2937; "
         f"border-left:3px solid #f97316; border-radius:2px; "
         f"font-weight:500;'>📖 {_md(text)}</div>",
         unsafe_allow_html=True,
