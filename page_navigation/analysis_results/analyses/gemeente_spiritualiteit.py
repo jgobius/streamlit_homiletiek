@@ -10,11 +10,45 @@ de Verdieping-variant heeft extra schema-velden die de basis-renderer niet kent,
 en we willen die informatie niet in het basis-scherm laten lekken.
 """
 
+import re
 from typing import Any
 
 import streamlit as st
 
 from src.utils.utils import clean_md
+
+
+# Regex voor de niveau-2-markers die het prompt toevoegt wanneer een veld
+# op denominatie-/modaliteits-redenering rust in plaats van op een bron
+# (zie homiletiek_data/prompt_examples/gemeente_spiritualiteit.md, "drie-
+# niveau-hiërarchie"). Visueel waren die markers lelijk en st.metric
+# blies "[Typisch PK..." op tot een mega-font-Trend-blok. We strippen ze
+# hier voor weergave; de structurele informatie blijft in
+# bronnen_kwaliteit.onderbouwing_ontbreekt aanwezig in het analyse-
+# resultaat (niet getoond, wel beschikbaar voor diagnose).
+_PREFIX_TYPISCH = re.compile(r"^\s*\[\s*Typisch[^\]]*\]\s*", re.IGNORECASE)
+_SUFFIX_TYPISCH = re.compile(
+    r"\s*\(\s*typische verwachting[^)]*?(?:geen kerkspecifieke bron[^)]*)?\)\.?\s*$",
+    re.IGNORECASE,
+)
+
+
+def _strip_typisch(value: Any) -> Any:
+    """Verwijder de niveau-2-prompt-markers uit een tekstuele waarde.
+
+    Werkt op losse strings; lijsten/dicts worden recursief afgewikkeld
+    zodat we hem aan de rand van de renderer kunnen aanroepen zonder
+    elke caller te wijzigen. Niet-string-waarden gaan ongewijzigd terug.
+    """
+    if isinstance(value, str):
+        s = _PREFIX_TYPISCH.sub("", value)
+        s = _SUFFIX_TYPISCH.sub("", s)
+        return s.strip()
+    if isinstance(value, list):
+        return [_strip_typisch(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _strip_typisch(v) for k, v in value.items()}
+    return value
 
 
 # Labels voor de zes ervaringsgebieden — identiek aan de basis-renderer,
@@ -67,7 +101,11 @@ def gemeente_spiritualiteit(analysis: dict[str, Any]) -> None:
     dus alle velden kunnen in principe ontbreken — we renderen alleen wat
     daadwerkelijk aanwezig is.
     """
-    result: dict[str, Any] = analysis.get("result", {})
+    # Strip de niveau-2-markers ("[Typisch PKN-hervormd] …" en de "(typische
+    # verwachting …)"-suffix) bij binnenkomst, zodat de hele renderer met
+    # schone tekst werkt en st.metric niet opeens een 30-character-prefix
+    # in mega-font hoeft te tonen.
+    result: dict[str, Any] = _strip_typisch(analysis.get("result", {})) or {}
 
     # Church-context bovenaan als geheugensteun voor de prediker: deze
     # analyse draait om déze specifieke gemeente, niet om de plaats.
@@ -156,14 +194,20 @@ def gemeente_spiritualiteit(analysis: dict[str, Any]) -> None:
                 kerkbezoek: dict = spirituele_trends.get("kerkbezoek", {})
                 # Pas de kolom-rij renderen als minstens één van de drie kerkbezoek-velden
                 # inhoud heeft; anders ontstaat er een lege drie-kolomsstrook.
+                # Geen st.metric voor `trend` en `percentage` — dat zijn vrije
+                # strings (bv. "[Typisch PKN-hervormd] dalend"); st.metric
+                # blaast ze op tot een mega-font-blok en kapt af. Markdown-
+                # label houdt het leesbaar.
                 if _has_content(kerkbezoek):
                     c1, c2, c3 = st.columns(3)
                     with c1:
                         if kerkbezoek.get("trend"):
-                            st.metric("Trend", kerkbezoek["trend"])
+                            st.markdown(f"**Trend:** {clean_md(kerkbezoek['trend'])}")
                     with c2:
                         if kerkbezoek.get("percentage"):
-                            st.metric("Percentage", kerkbezoek["percentage"])
+                            st.markdown(
+                                f"**Percentage:** {clean_md(str(kerkbezoek['percentage']))}"
+                            )
                     with c3:
                         if kerkbezoek.get("toelichting"):
                             st.markdown(clean_md(kerkbezoek["toelichting"]))
