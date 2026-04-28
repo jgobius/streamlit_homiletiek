@@ -53,7 +53,16 @@ def contextduiding(analysis: dict[str, Any]) -> None:
             if meta_parts:
                 st.caption(" · ".join(meta_parts))
 
-            st.divider()
+            # Compactere scheidingslijn dan st.divider(): die voegt aan
+            # beide kanten ~1rem witruimte toe wat tussen de caption en
+            # 'Tekstueel vertrekpunt' onnodig groot voelt. We gebruiken
+            # een inline <hr> met dezelfde lichtgrijze lijn maar slechts
+            # 0.25rem marge boven en onder.
+            st.markdown(
+                '<hr style="margin: 0.25rem 0; border: none; '
+                'border-top: 1px solid rgba(49,51,63,0.2);">',
+                unsafe_allow_html=True,
+            )
 
             # Tekstueel vertrekpunt
             vertrekpunt = item.get("tekstueel_vertrekpunt", "")
