@@ -540,6 +540,21 @@ def render_wetslezing(analysis: dict) -> None:
 # Kalender (42)
 # ---------------------------------------------------------------------------
 
+def _maanfase_zonder_percentage(maan: str) -> str:
+    """Strip percentage- en fractie-toevoegingen aan de maanfase-tekst.
+
+    De agent levert maanfase als bv. "wassende maan, ~70%" of "bijna
+    onzichtbaar, ~2%". Het percentage staat voor "verlichtingsfractie" maar
+    is zonder uitleg verwarrend voor de predikant. We tonen alleen de
+    benoemde fase ("wassende maan", "bijna onzichtbaar") en knippen alles
+    achter de eerste komma of openingshaakje af.
+    """
+    for sep in (",", "("):
+        if sep in maan:
+            maan = maan.split(sep, 1)[0]
+    return maan.strip()
+
+
 def render_kalender(analysis: dict) -> None:
     result = _result(analysis)
     if not result:
@@ -550,10 +565,10 @@ def render_kalender(analysis: dict) -> None:
     if week_van:
         st.subheader(f"Week van {week_van}")
 
-    # Aandachtspunten voor de predikant — bovenaan
+    # Aandachtspunten voor de predikant — bovenaan, expander dicht voor rust.
     punten = result.get("aandachtspunten_predikant", [])
     if punten:
-        with st.expander("Aandachtspunten voor de predikant", expanded=True):
+        with st.expander("Aandachtspunten voor de predikant", expanded=False):
             for punt in punten:
                 st.markdown(f"- {_md(punt)}")
 
@@ -563,10 +578,12 @@ def render_kalender(analysis: dict) -> None:
     for dag in dagen:
         datum = dag.get("datum", dag.get("dag", ""))
         is_preek = dag.get("is_preekzondag", False)
+        # ⛪ markeert visueel de preekzondag, maar de expander zelf staat
+        # standaard dicht — gebruiker bepaalt wat hij opent.
         label = f"{'⛪ ' if is_preek else ''}{datum}"
 
-        with st.expander(label, expanded=is_preek):
-            # Kerkelijk
+        with st.expander(label, expanded=False):
+            # Kerkelijk — bold heading, bullets met "**naam** (type) — toelichting".
             kerkelijk = dag.get("kerkelijk", [])
             if kerkelijk:
                 st.markdown("**Kerkelijk**")
@@ -574,28 +591,33 @@ def render_kalender(analysis: dict) -> None:
                     naam = item.get("naam", "")
                     toelichting = item.get("toelichting", "")
                     type_k = item.get("type", "")
-                    st.markdown(f"*{_md(naam)}*" + (f" ({type_k})" if type_k else ""))
+                    regel = f"- **{_md(naam)}**"
+                    if type_k:
+                        regel += f" ({type_k})"
                     if toelichting:
-                        st.markdown(_md(toelichting))
+                        regel += f" — {_md(toelichting)}"
+                    st.markdown(regel)
 
-            # Joods
+            # Joods — zelfde patroon: bold heading, bullets met inline meta.
             joods = dag.get("joods", {})
             if joods:
                 heb = joods.get("hebreeuwse_datum", "")
                 parasja = joods.get("parasja")
                 feestdag = joods.get("feestdag")
                 toelichting = joods.get("toelichting", "")
-                parts = []
-                if heb:
-                    parts.append(heb)
-                if parasja:
-                    parts.append(f"Parasja: {parasja}")
-                if feestdag:
-                    parts.append(f"Feestdag: {feestdag}")
-                if parts:
-                    st.markdown("**Joods:** " + " · ".join(parts))
-                if toelichting:
-                    st.markdown(_md(toelichting))
+                if heb or parasja or feestdag or toelichting:
+                    st.markdown("**Joods**")
+                    if heb:
+                        st.markdown(f"- {_md(heb)}")
+                    if parasja:
+                        st.markdown(f"- Parasja: **{_md(parasja)}**")
+                    if feestdag:
+                        regel = f"- Feestdag: **{_md(feestdag)}**"
+                        if toelichting:
+                            regel += f" — {_md(toelichting)}"
+                        st.markdown(regel)
+                    elif toelichting:
+                        st.markdown(f"- {_md(toelichting)}")
 
             # Internationaal
             intern = dag.get("internationaal", [])
@@ -604,7 +626,10 @@ def render_kalender(analysis: dict) -> None:
                 for item in intern:
                     naam = item.get("naam", "")
                     relevantie = item.get("relevantie", "")
-                    st.markdown(f"- **{_md(naam)}**" + (f" — {_md(relevantie)}" if relevantie else ""))
+                    regel = f"- **{_md(naam)}**"
+                    if relevantie:
+                        regel += f" — {_md(relevantie)}"
+                    st.markdown(regel)
 
             # Overig
             overig = dag.get("overig", [])
@@ -614,10 +639,14 @@ def render_kalender(analysis: dict) -> None:
                     naam = item.get("naam", "")
                     toelichting = item.get("toelichting", "")
                     cat = item.get("categorie", "")
-                    st.markdown(f"- **{_md(naam)}**" + (f" ({cat})" if cat else "") +
-                                (f" — {_md(toelichting)}" if toelichting else ""))
+                    regel = f"- **{_md(naam)}**"
+                    if cat:
+                        regel += f" ({cat})"
+                    if toelichting:
+                        regel += f" — {_md(toelichting)}"
+                    st.markdown(regel)
 
-            # Astronomie
+            # Astronomie — caption-stijl voor rust; één scheidingsteken (·).
             astro = dag.get("astronomie", {})
             if astro:
                 opgang = astro.get("zonsopgang", "")
@@ -630,13 +659,13 @@ def render_kalender(analysis: dict) -> None:
                 if ondergang:
                     astro_parts.append(f"🌇 {ondergang}")
                 if maan:
-                    astro_parts.append(f"🌙 {maan}")
+                    astro_parts.append(f"🌙 {_maanfase_zonder_percentage(maan)}")
                 if astro_parts:
-                    st.caption("  ".join(astro_parts))
+                    st.caption(" · ".join(astro_parts))
                 if bijz:
                     st.caption(_md(bijz))
 
-            # Vakantie
+            # Vakantie — eveneens caption, zelfde · scheidingsteken-stijl.
             vakantie = dag.get("vakantie", {})
             if vakantie:
                 schoolvakantie = vakantie.get("schoolvakantie")
