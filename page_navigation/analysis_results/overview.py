@@ -513,7 +513,7 @@ analyse_missing = sorted(
 verdiep_missing = [at for at in missing_types if at["name"] in _VERDIEPING_NAMEN]
 perspect_missing = [at for at in missing_types if at["name"] in _PERSPECTIEVEN_NAMEN]
 # preek_missing gebruikt de uitgebreide tab-set zodat ook focus_en_functie en
-# illustraties via de 'Preekschets toevoegen'-expander aangeboden worden.
+# illustraties via de 'Preekonderdeel toevoegen'-expander aangeboden worden.
 preek_missing = [at for at in missing_types if at["name"] in _PREEKSCHETSEN_TAB]
 gebed_missing = [at for at in missing_types if at["name"] in _GEBEDEN_NAMEN]
 feedback_missing = [at for at in missing_types if at["name"] in _FEEDBACK_NAMEN]
@@ -706,7 +706,12 @@ with st.sidebar:
         # paginascoped CSS deze expander subtiel oranje kleurt. Bij
         # overschreden tokenlimiet verbergen we de expander in zijn geheel.
         if preek_missing and not _limiet_overschreden:
-            with st.container(key="sidebar_toevoegen_preekschetsen"), st.expander("Preekschets toevoegen"):
+            # Label "Preekonderdeel toevoegen" i.p.v. "Preekschets toevoegen":
+            # de expander biedt naast preekschetsen ook hulpstukken (focus &
+            # functie, homiletische illustraties) aan, die geen preekschets
+            # in strikte zin zijn. "Preekonderdeel" is dekkender voor de hele
+            # set zonder de afzonderlijke types onnodig op te splitsen.
+            with st.container(key="sidebar_toevoegen_preekschetsen"), st.expander("Preekonderdeel toevoegen"):
                 _preek_ready = st.session_state.get(
                     f"preek_selectie_{analysis_id}", {}
                 ).get("opgeslagen", False)
