@@ -510,10 +510,16 @@ def render_wetslezing(analysis: dict) -> None:
     psalm = result.get("psalm_gezang", {})
     if psalm:
         ref = psalm.get("referentie", "")
+        titel = psalm.get("titel", "")
         verzen = psalm.get("verzen", "")
         cat = psalm.get("categorie", "")
         motivering = psalm.get("motivering", "")
+        # Titel als secundair element in de header tonen — referentie blijft
+        # leidend (dat is wat de liturg in de orde van dienst opneemt), titel
+        # erachter zodat snel zichtbaar is welk lied het concreet betreft.
         header = f"Antwoordpsalm / Gezang — {ref}"
+        if titel:
+            header += f": {titel}"
         if verzen:
             header += f", vers {verzen}"
         st.subheader(header)
