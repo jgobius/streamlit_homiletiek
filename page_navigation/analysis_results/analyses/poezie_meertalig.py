@@ -100,23 +100,13 @@ def _render_gedicht_kaart(gedicht: dict[str, Any], nummer: int) -> None:
             st.markdown(f"*{_format_origineel(origineel)}*")
 
         # Vertaling of parafrase. Voor NL-gedichten labelen we het als
-        # 'Parafrase' (kort, snel scanbaar voor de prediker) en zetten we
-        # de expander default open. Voor anderstaligen labelen we het als
-        # 'Nederlandse vertaling'. Voor verder weg gelegen talen
-        # (FR/PT/ES) ook default open omdat de prediker daar vaker
-        # afhankelijk is van de vertaling om de tekst snel te kunnen
-        # plaatsen; voor EN/DE laat de prediker het zelf openen.
+        # 'Parafrase' (kort, snel scanbaar voor de prediker), voor
+        # anderstaligen als 'Nederlandse vertaling'. Alle expanders
+        # default dicht — de gebruiker bepaalt zelf welke kaartjes hij
+        # uitklapt; dat houdt het overzicht rustig en consistent.
         if vertaling:
-            if taal == "nl":
-                label = "Parafrase"
-                default_open = True
-            elif taal in ("en", "de"):
-                label = "Nederlandse vertaling"
-                default_open = False
-            else:
-                label = "Nederlandse vertaling"
-                default_open = True
-            with st.expander(label, expanded=default_open):
+            label = "Parafrase" if taal == "nl" else "Nederlandse vertaling"
+            with st.expander(label, expanded=False):
                 st.markdown(clean_md(vertaling))
 
         # Motivatie als caption — bewust niet als st.info, om het rustige
@@ -156,15 +146,15 @@ def poezie_meertalig(analysis: dict[str, Any]) -> None:
         st.info("Geen gedichten beschikbaar.")
         return
 
-    # Selectie-overwegingen bovenaan in een dichte expander — laat de
-    # gedichten zelf de aandacht trekken; de prediker kan de strategie
-    # zelf openvouwen.
-    if overwegingen:
-        with st.expander("Selectie-overwegingen", expanded=False):
-            st.markdown(clean_md(overwegingen))
-
     tab_klassiek, tab_modern = st.tabs(["Klassiek", "Modern"])
     with tab_klassiek:
         _render_categorie(gedichten, "klassiek")
     with tab_modern:
         _render_categorie(gedichten, "modern")
+
+    # Selectie-overwegingen onderaan in een dichte expander — eerst de
+    # gedichten zelf, en pas daarna de strategie/uitkomstkader voor
+    # wie er bewust naar wil kijken.
+    if overwegingen:
+        with st.expander("Selectie-overwegingen", expanded=False):
+            st.markdown(clean_md(overwegingen))
