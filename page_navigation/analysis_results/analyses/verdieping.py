@@ -492,6 +492,33 @@ def _render_lied_header(ref: str, titel: str, verzen: str) -> str:
     return regel
 
 
+# Badge-kleuren voor de wetslezing-velden. Functie en categorie zijn enums met
+# underscores; in plaats van die rauw te tonen ('lofpsalm_op_de_wet') maken we
+# er een gehumaniseerde gekleurde badge van — zelfde stijl als de
+# moment-renderers hierboven gebruiken voor hun type-labels.
+_WETSLEZING_FUNCTIE_BADGES: dict[str, tuple[str, str]] = {
+    "spiegel":   ("Spiegel",   "orange"),
+    "wegwijzer": ("Wegwijzer", "blue"),
+}
+
+_WETSLEZING_CATEGORIE_BADGES: dict[str, tuple[str, str]] = {
+    "boetepsalm":          ("Boetepsalm",         "violet"),
+    "lofpsalm_op_de_wet":  ("Lofpsalm op de wet", "green"),
+    "gezang":              ("Gezang",             "blue"),
+}
+
+
+def _badge(waarde: str, mapping: dict[str, tuple[str, str]]) -> str:
+    # Geef een Streamlit-markdown-badge terug voor een enum-waarde. Onbekende
+    # waarden vallen terug op een gehumaniseerde grijze badge zodat de UI
+    # niet leeg blijft als er ooit een nieuwe enum-waarde bijkomt.
+    label_kleur = mapping.get(waarde)
+    if label_kleur is None:
+        return f":gray-background[{_humaniseer_label(waarde)}]"
+    label, kleur = label_kleur
+    return f":{kleur}-background[{label}]"
+
+
 def render_wetslezing(analysis: dict) -> None:
     result = _result(analysis)
     if not result:
@@ -516,7 +543,10 @@ def render_wetslezing(analysis: dict) -> None:
         motivering = wets.get("motivering", "")
         st.markdown(f"#### Wetslezing — {ref}")
         if functie:
-            st.caption(f"Functie: {_md(functie)}")
+            # Functie als gekleurde badge (spiegel=oranje, wegwijzer=blauw)
+            # i.p.v. losse caption-tekst; sluit aan op het type-badge-patroon
+            # van kindermoment/bezinningsmoment.
+            st.markdown(_badge(functie, _WETSLEZING_FUNCTIE_BADGES))
         if motivering:
             st.markdown(_md(motivering))
 
@@ -533,7 +563,9 @@ def render_wetslezing(analysis: dict) -> None:
             f"#### Antwoordpsalm — {_render_lied_header(ref, titel, verzen)}"
         )
         if cat:
-            st.caption(f"Categorie: {_md(cat)}")
+            # Categorie als gekleurde badge i.p.v. ruwe enum-string met
+            # underscores ('lofpsalm_op_de_wet' → 'Lofpsalm op de wet').
+            st.markdown(_badge(cat, _WETSLEZING_CATEGORIE_BADGES))
         if motivering:
             st.markdown(_md(motivering))
 
@@ -552,9 +584,9 @@ def render_wetslezing(analysis: dict) -> None:
                 e_cat = extra.get("categorie", "")
                 e_mot = extra.get("motivering", "")
                 regel = _render_lied_header(e_ref, e_titel, e_verzen)
-                if e_cat:
-                    regel += f" · {_humaniseer_label(e_cat)}"
                 st.markdown(f"- {_md(regel)}")
+                if e_cat:
+                    st.markdown(_badge(e_cat, _WETSLEZING_CATEGORIE_BADGES))
                 if e_mot:
                     st.caption(_md(e_mot))
 
