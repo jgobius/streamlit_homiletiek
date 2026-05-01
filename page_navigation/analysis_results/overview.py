@@ -2,6 +2,7 @@ import json
 import re
 import time
 from datetime import datetime
+from typing import Any
 
 import requests
 import streamlit as st
@@ -23,7 +24,8 @@ from src.utils.utils import (
     # Voor de Opnieuw-knop op Bijbelteksten — deze hergebruikt dezelfde
     # gestructureerde-scraper-flow als 'Aanpassen' om scripture_json te
     # verversen vóór /original_scriptures/ wordt getriggerd.
-    get_structured_scriptures,
+    fetch_structured_scriptures_per_ref,
+    find_empty_scripture_refs,
     EIGEN_PREEK_MIN_WOORDEN as _EIGEN_PREEK_MIN_WOORDEN,
     EIGEN_PREEK_MAX_WOORDEN as _EIGEN_PREEK_MAX_WOORDEN,
 )
@@ -268,12 +270,14 @@ def _trigger_bijbelteksten_refresh(analysis_id: int, at: dict, lock_key: str) ->
             for entry in scripture_json
             if isinstance(entry, dict) and (entry.get("original_scripture") or "").strip()
         ]
-        if not scripture_refs:
-            # Geen lezingen om te verversen — niets te doen, gewoon
-            # door naar /original_scriptures/ zodat de bestaande
-            # scripture_json (mogelijk leeg) opnieuw verwerkt wordt.
-            pass
-        else:
+        if scripture_refs:
+            # Verschil met de Aanpassen-flow: daar wordt alleen het
+            # *delta* (`te_fetchen`) door de pipeline gehaald om tokens
+            # te besparen op ongewijzigde lezingen. De Opnieuw-knop heeft
+            # die optimalisatie níet — het hele doel van de knop is een
+            # verse fetch van álle lezingen, daarom geven we hier de
+            # volledige refs-lijst door en bouwen we scripture_json
+            # opnieuw uit de gefetchte entries (geen hergebruik).
             bible_version_obj = sermon_analysis.get("bible_version") or {}
             bible_version_str = (
                 bible_version_obj.get("version")
@@ -281,34 +285,38 @@ def _trigger_bijbelteksten_refresh(analysis_id: int, at: dict, lock_key: str) ->
                 else None
             )
 
-            with st.status("Bijbelteksten opnieuw structureren (kan even duren)..."):
-                try:
-                    nieuwe_scripture_json = get_structured_scriptures(
-                        scriptures=scripture_refs,
-                        bible_version=bible_version_str,
-                        language="nl",
-                    )
-                except Exception as exc:
-                    _release_reanalysis_lock(lock_key)
-                    st.error(f"Lezingen structureren mislukte: {exc}")
-                    return
+            try:
+                gefetcht_per_lezing = fetch_structured_scriptures_per_ref(
+                    refs=scripture_refs,
+                    bible_version=bible_version_str,
+                    status_label="Bijbelteksten opnieuw structureren (kan even duren)...",
+                )
+            except Exception as exc:
+                _release_reanalysis_lock(lock_key)
+                st.error(f"Lezingen structureren mislukte: {exc}")
+                return
+
+            # Volg de oorspronkelijke volgorde van scripture_json en pak
+            # voor elke ref de verse entry uit de mapping. Mismatches
+            # (een ref die niet terugkwam) vallen door naar de empty-
+            # defense hieronder.
+            nieuwe_scripture_json: list[dict[str, Any]] = [
+                gefetcht_per_lezing[ref]
+                for ref in scripture_refs if ref in gefetcht_per_lezing
+            ]
 
             # Lege output blokkeren — anders zou de Bijbelteksten-tab
-            # daarna stilletjes leeg blijven. Zelfde defensie als in
-            # selectie_instellen_dialog.py:456.
-            lege = [
-                entry.get("original_scripture") or "(onbekende lezing)"
-                for entry in nieuwe_scripture_json
-                if not any(
-                    (s.get("verses") or [])
-                    for s in (entry.get("scriptures") or [])
-                )
-            ]
-            if lege:
+            # daarna stilletjes leeg blijven. Zelfde helper als in
+            # selectie_instellen_dialog.py.
+            lege = find_empty_scripture_refs(nieuwe_scripture_json)
+            if lege or len(nieuwe_scripture_json) < len(scripture_refs):
                 _release_reanalysis_lock(lock_key)
+                ontbrekend = lege or [
+                    ref for ref in scripture_refs if ref not in gefetcht_per_lezing
+                ]
                 st.error(
                     "Geen bijbeltekst gevonden voor: "
-                    + ", ".join(f"'{t}'" for t in lege)
+                    + ", ".join(f"'{t}'" for t in ontbrekend)
                     + ". Probeer het later nog eens."
                 )
                 return

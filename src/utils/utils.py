@@ -68,6 +68,26 @@ def sanitize_cv(key: str) -> None:
         st.session_state[key] = cleaned
 
 
+def strip_trailing_dot(s: str) -> str:
+    """Verwijder achterliggende punten en spaties uit een leesstring.
+
+    De structured-scripture-agent (homiletiek_agent/src/scripture_agent/
+    graph_nodes.py) heeft in zijn prompt een literal punt direct ná de
+    interpolatie van de scripture_data. Het LLM neemt die punt over in het
+    `original_scripture`-veld van de output, waardoor "Genesis 1" telkens
+    een extra punt kreeg ("Genesis 1.", "Genesis 1..", …) bij elke save+
+    reopen-cyclus van de selectie-dialog. We strippen daarom centraal vóór
+    opslag én bij het terugparsen, zodat dezelfde lezing idempotent blijft
+    ongeacht of de gebruiker iets wijzigt.
+
+    Centraal in utils omdat zowel selectie_instellen_dialog.py als
+    overview.py (de Opnieuw-knop op Bijbelteksten) dezelfde normalisatie
+    nodig hebben — anders matchen de canonieke ref-sleutels niet en
+    krijgt de gebruiker dubbele entries in scripture_json.
+    """
+    return s.rstrip(". ").strip()
+
+
 def parse_original_scripture(s: str) -> tuple[str, str]:
     """Splits "Genesis 1:1-3" naar ("Genesis", "1:1-3").
 
@@ -552,6 +572,89 @@ def get_structured_scriptures(scriptures: list[str], bible_version: str, languag
                 structured_scripture_data.append(data)
 
     return structured_scripture_data
+
+
+def fetch_structured_scriptures_per_ref(
+    refs: list[str],
+    bible_version: str | None,
+    *,
+    status_label: str = "Lezingen structureren (kan even duren)...",
+    language: str = "nl",
+) -> dict[str, dict[str, Any]]:
+    """Roep `get_structured_scriptures` aan voor `refs` en geef een
+    `original_scripture` → entry-mapping terug.
+
+    Gemeenschappelijk gebruikt door:
+    - `selectie_instellen_dialog.py` (Aanpassen-flow): geeft hier alleen
+      de *gewijzigde* lezingen door zodat ongewijzigde entries
+      hergebruikt worden zonder extra agent-tokens te kosten.
+    - `overview.py:_trigger_bijbelteksten_refresh` (Opnieuw-knop op
+      Bijbelteksten): geeft *alle* huidige refs door om scripture_json
+      vers op te halen, los van of er iets gewijzigd is.
+
+    De delta-strategie hoort bij de aanroeper (Aanpassen vs. Opnieuw
+    hebben verschillende intenties), maar het mechanische "lijst refs
+    door de pipeline halen + per-lezing dict bouwen + trailing-dot
+    strippen" is identiek en daarom hier centraal.
+
+    Args:
+        refs: Originele lezing-strings. Lege lijst → lege dict zonder
+            netwerkverkeer of UI-spinner.
+        bible_version: Bijbelvertaling-aanduiding voor de agent.
+        status_label: Tekst in de st.status-spinner; kies een label dat
+            past bij de aanroep-context (Aanpassen vs. Opnieuw).
+        language: Taalcode (default 'nl'), doorgegeven aan de agent.
+
+    Returns:
+        Mapping van *gestripte* original_scripture → volledige
+        gestructureerde entry. De mapping kan minder entries bevatten
+        dan `refs` als een lezing geen verzen oplevert; de aanroeper
+        moet daar zelf op anticiperen (zie `find_empty_scripture_refs`).
+    """
+    if not refs:
+        return {}
+
+    with st.status(status_label):
+        entries = get_structured_scriptures(
+            scriptures=refs,
+            bible_version=bible_version,
+            language=language,
+        )
+
+    out: dict[str, dict[str, Any]] = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        original = strip_trailing_dot(entry.get("original_scripture") or "")
+        if not original:
+            continue
+        # In-place strippen zodat downstream consumenten (PATCH-payload,
+        # nieuwe_scripture_json-build) ook de schone versie zien.
+        entry["original_scripture"] = original
+        out[original] = entry
+    return out
+
+
+def find_empty_scripture_refs(entries: list[dict[str, Any]]) -> list[str]:
+    """Geef de original_scripture-strings terug van entries zonder verzen.
+
+    Gebruikt door beide scripture_json-mutators (Aanpassen en Opnieuw)
+    om vóór de PATCH te detecteren dat de pipeline geen verzen heeft
+    geleverd voor één of meer lezingen — anders zou de Bijbelteksten-tab
+    daarna stilletjes leeg blijven en moest de voorganger zelf raden
+    waarom.
+
+    Een entry is "leeg" als geen van zijn `scriptures`-records
+    überhaupt verzen bevat.
+    """
+    return [
+        entry.get("original_scripture") or "(onbekende lezing)"
+        for entry in entries
+        if not any(
+            (scripture.get("verses") or [])
+            for scripture in (entry.get("scriptures") or [])
+        )
+    ]
 
 
 def save_scriptures(scriptures: list[dict[str, Any]]) -> None:
