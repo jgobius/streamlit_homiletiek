@@ -20,6 +20,10 @@ from src.utils.utils import (
     # database verschijnt (zie src/utils/utils.py).
     registreer_lopende_analyse,
     render_analyse_voortgang_poller,
+    # Voor de Opnieuw-knop op Bijbelteksten — deze hergebruikt dezelfde
+    # gestructureerde-scraper-flow als 'Aanpassen' om scripture_json te
+    # verversen vóór /original_scriptures/ wordt getriggerd.
+    get_structured_scriptures,
     EIGEN_PREEK_MIN_WOORDEN as _EIGEN_PREEK_MIN_WOORDEN,
     EIGEN_PREEK_MAX_WOORDEN as _EIGEN_PREEK_MAX_WOORDEN,
 )
@@ -193,8 +197,163 @@ def _deps_ok(at: dict, latest: dict) -> tuple[bool, list[str]]:
     return (len(missing) == 0, missing)
 
 
+def _trigger_bijbelteksten_refresh(analysis_id: int, at: dict, lock_key: str) -> None:
+    """Re-run de bijbelteksten-renderer mét frisse scripture_json.
+
+    Bijbelteksten is geen LLM-analyse maar een mechanische verzen-match
+    (zie homiletiek_agent/src/original_scriptures/tools.py): het leest de
+    eerder gegenereerde scripture_json en koppelt verzen tegen de DB.
+    Routeren via /single_analysis/ is daarom dubbel fout — dat endpoint
+    laadt de Dummy-AgentInstruction die aan AnalysisType 'bijbelteksten'
+    hangt en stuurt 'dummy text' als prompt naar het LLM, wat onzin
+    oplevert. Bovendien zou het de gehallucineerde scripture_json laten
+    staan, dus zelfs een correct routered single_analysis-call zou de
+    oude fout hergebruiken.
+
+    Deze helper repliceert de relevante stappen uit de 'Aanpassen'-dialog
+    (page_navigation/analysis_results/selectie_instellen_dialog.py:419-545)
+    voor het geval waarin niets aan de lezingen wijzigt:
+
+    1) Voor `use_calendar=False` halen we de huidige
+       `original_scripture`-strings uit scripture_json en draaien voor
+       elk daarvan de `structured_scripture/`-pijplijn opnieuw. Sinds de
+       deterministische NBV21/HSV-scraper (homiletiek_agent feature
+       branch) levert dat voor die vertalingen schone tekst zonder
+       hallucinaties; voor andere vertalingen blijft het oude Tavily-pad.
+    2) Patch het nieuwe scripture_json terug op de SermonAnalysis.
+    3) Trigger /original_scriptures/ zodat de bijbelteksten-AnalysisResult
+       opnieuw geschreven wordt op basis van de verse scripture_json.
+
+    Voor `use_calendar=True` slaan we stap 1+2 over: scripture_json wordt
+    in dat geval niet gebruikt (de agent leest dan uit `liturgy`), dus
+    enkel /original_scriptures/ triggeren is voldoende.
+    """
+    st.session_state[lock_key] = time.time()
+
+    handler = st.session_state.get("api_handler")
+    if handler is None:
+        _release_reanalysis_lock(lock_key)
+        st.error("API-verbinding niet beschikbaar; log opnieuw in.")
+        return
+
+    try:
+        sermon_analysis = handler.get(f"api/sermon-analyses/{analysis_id}/") or {}
+    except requests.exceptions.RequestException as exc:
+        _release_reanalysis_lock(lock_key)
+        st.error(f"Kon de analyse-gegevens niet ophalen: {exc}")
+        return
+
+    use_calendar = bool(sermon_analysis.get("use_calendar"))
+
+    # Stap 1+2: alleen bij eigen lezingen. Bij kalender-lezingen laat
+    # de agent de inhoud uit `liturgy` lopen; scripture_json mag dan leeg
+    # of verouderd blijven.
+    if not use_calendar:
+        # Tokenlimiet-check: get_structured_scriptures() doet één
+        # agent-call per lezing (Tavily + LLM-parse, eventueel met
+        # deterministische scraper als voorhoede). Dit is dezelfde
+        # check als in selectie_instellen_dialog.py vlak vóór de
+        # vergelijkbare aanroep.
+        if tokenlimiet_bereikt():
+            _release_reanalysis_lock(lock_key)
+            st.error(
+                "Je tokenlimiet is bereikt. Het herladen van bijbelteksten "
+                "vereist een AI-aanroep en is daarom geblokkeerd."
+            )
+            return
+
+        scripture_json = sermon_analysis.get("scripture_json") or []
+        scripture_refs: list[str] = [
+            (entry.get("original_scripture") or "").strip()
+            for entry in scripture_json
+            if isinstance(entry, dict) and (entry.get("original_scripture") or "").strip()
+        ]
+        if not scripture_refs:
+            # Geen lezingen om te verversen — niets te doen, gewoon
+            # door naar /original_scriptures/ zodat de bestaande
+            # scripture_json (mogelijk leeg) opnieuw verwerkt wordt.
+            pass
+        else:
+            bible_version_obj = sermon_analysis.get("bible_version") or {}
+            bible_version_str = (
+                bible_version_obj.get("version")
+                if isinstance(bible_version_obj, dict)
+                else None
+            )
+
+            with st.status("Bijbelteksten opnieuw structureren (kan even duren)..."):
+                try:
+                    nieuwe_scripture_json = get_structured_scriptures(
+                        scriptures=scripture_refs,
+                        bible_version=bible_version_str,
+                        language="nl",
+                    )
+                except Exception as exc:
+                    _release_reanalysis_lock(lock_key)
+                    st.error(f"Lezingen structureren mislukte: {exc}")
+                    return
+
+            # Lege output blokkeren — anders zou de Bijbelteksten-tab
+            # daarna stilletjes leeg blijven. Zelfde defensie als in
+            # selectie_instellen_dialog.py:456.
+            lege = [
+                entry.get("original_scripture") or "(onbekende lezing)"
+                for entry in nieuwe_scripture_json
+                if not any(
+                    (s.get("verses") or [])
+                    for s in (entry.get("scriptures") or [])
+                )
+            ]
+            if lege:
+                _release_reanalysis_lock(lock_key)
+                st.error(
+                    "Geen bijbeltekst gevonden voor: "
+                    + ", ".join(f"'{t}'" for t in lege)
+                    + ". Probeer het later nog eens."
+                )
+                return
+
+            try:
+                handler.patch(
+                    f"api/sermon-analyses/{analysis_id}/",
+                    data={"scripture_json": nieuwe_scripture_json},
+                )
+            except requests.exceptions.HTTPError as exc:
+                _release_reanalysis_lock(lock_key)
+                st.error(f"Opslaan van scripture_json mislukt: {exc}")
+                return
+
+    # Stap 3: trigger /original_scriptures/ — de mechanische verse-match
+    # die als AnalysisResult van type 'bijbelteksten' weggeschreven wordt.
+    try:
+        agent_request.post(
+            endpoint="original_scriptures/",
+            payload={"sermon_analysis_id": analysis_id},
+            timeout=120,
+        )
+        st.session_state["analysis_data_dirty"] = True
+        registreer_lopende_analyse(analysis_id, at["name"], at["front_end_name"])
+        st.toast(
+            f"'{at['front_end_name']}' wordt opnieuw opgehaald. "
+            "Ververs de pagina over enkele seconden."
+        )
+    except requests.exceptions.HTTPError as exc:
+        _release_reanalysis_lock(lock_key)
+        st.error(f"Fout bij het triggeren van bijbelteksten: {exc}")
+    except Exception as exc:
+        _release_reanalysis_lock(lock_key)
+        st.error(f"Fout: {exc}")
+
+
 def _trigger_analysis(analysis_id: int, at: dict, lock_key: str) -> None:
     """Stuur een verzoek naar de agent om een analyse uit te voeren."""
+    # Bijbelteksten is geen LLM-analyse: routeer naar de speciale helper
+    # die scripture_json ververst en /original_scriptures/ aanroept i.p.v.
+    # /single_analysis/. Zie _trigger_bijbelteksten_refresh voor de reden.
+    if at.get("name") == "bijbelteksten":
+        _trigger_bijbelteksten_refresh(analysis_id, at, lock_key)
+        return
+
     st.session_state[lock_key] = time.time()
     try:
         # AgentRequest.post injecteert de Bearer-header en voert raise_for_status
