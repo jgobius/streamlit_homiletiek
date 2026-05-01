@@ -480,6 +480,18 @@ def render_bezinningsmoment(analysis: dict) -> None:
 # Wetslezing (41)
 # ---------------------------------------------------------------------------
 
+def _render_lied_header(ref: str, titel: str, verzen: str) -> str:
+    # Bouw de één-regel-header voor een lied: "<ref>: <titel>, vers <verzen>".
+    # Centraal omdat zowel de primaire psalm als elk alternatief uit
+    # extra_opties dezelfde compositie gebruiken; voorkomt drift tussen beide.
+    regel = ref or ""
+    if titel:
+        regel = f"{regel}: {titel}" if regel else titel
+    if verzen:
+        regel = f"{regel}, vers {verzen}" if regel else f"vers {verzen}"
+    return regel
+
+
 def render_wetslezing(analysis: dict) -> None:
     result = _result(analysis)
     if not result:
@@ -494,12 +506,15 @@ def render_wetslezing(analysis: dict) -> None:
 
     st.divider()
 
+    # Headers staan op niveau h4 (`####`) i.p.v. st.subheader (= h3) zodat de
+    # blok-kop visueel rust uitstraalt — zelfde lichte hierarchie als de
+    # **Object:**-labels in kindermoment/bezinningsmoment.
     wets = result.get("wetslezing", {})
     if wets:
         ref = wets.get("referentie", "")
         functie = wets.get("functie", "")
         motivering = wets.get("motivering", "")
-        st.subheader(f"Wetslezing — {ref}")
+        st.markdown(f"#### Wetslezing — {ref}")
         if functie:
             st.caption(f"Functie: {_md(functie)}")
         if motivering:
@@ -514,19 +529,34 @@ def render_wetslezing(analysis: dict) -> None:
         verzen = psalm.get("verzen", "")
         cat = psalm.get("categorie", "")
         motivering = psalm.get("motivering", "")
-        # Titel als secundair element in de header tonen — referentie blijft
-        # leidend (dat is wat de liturg in de orde van dienst opneemt), titel
-        # erachter zodat snel zichtbaar is welk lied het concreet betreft.
-        header = f"Antwoordpsalm / Gezang — {ref}"
-        if titel:
-            header += f": {titel}"
-        if verzen:
-            header += f", vers {verzen}"
-        st.subheader(header)
+        st.markdown(
+            f"#### Antwoordpsalm — {_render_lied_header(ref, titel, verzen)}"
+        )
         if cat:
             st.caption(f"Categorie: {_md(cat)}")
         if motivering:
             st.markdown(_md(motivering))
+
+        # Alternatieven (twee extra liederen uit andere bundels) compact
+        # weergeven onder de primaire psalm. Elk alternatief in een eigen
+        # caption-regel met motivering eronder, zodat de liturg in één
+        # blik ziet welke uitwijkmogelijkheden er zijn zonder dat de
+        # primaire keuze visueel verdrongen wordt.
+        extras = psalm.get("extra_opties", []) or []
+        if extras:
+            st.markdown("**Alternatieven**")
+            for extra in extras:
+                e_ref = extra.get("referentie", "")
+                e_titel = extra.get("titel", "")
+                e_verzen = extra.get("verzen", "")
+                e_cat = extra.get("categorie", "")
+                e_mot = extra.get("motivering", "")
+                regel = _render_lied_header(e_ref, e_titel, e_verzen)
+                if e_cat:
+                    regel += f" · {_humaniseer_label(e_cat)}"
+                st.markdown(f"- {_md(regel)}")
+                if e_mot:
+                    st.caption(_md(e_mot))
 
     st.divider()
 
@@ -535,7 +565,7 @@ def render_wetslezing(analysis: dict) -> None:
         ref = genade.get("referentie", "")
         kern = genade.get("kernboodschap", "")
         motivering = genade.get("motivering", "")
-        st.subheader(f"Genadeverkondiging — {ref}")
+        st.markdown(f"#### Genadeverkondiging — {ref}")
         if kern:
             st.success(_md(kern))
         if motivering:
