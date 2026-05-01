@@ -569,11 +569,13 @@ def render_wetslezing(analysis: dict) -> None:
         if motivering:
             st.markdown(_md(motivering))
 
-        # Alternatieven (twee extra liederen uit andere bundels) compact
-        # weergeven onder de primaire psalm. Elk alternatief in een eigen
-        # caption-regel met motivering eronder, zodat de liturg in één
-        # blik ziet welke uitwijkmogelijkheden er zijn zonder dat de
-        # primaire keuze visueel verdrongen wordt.
+        # Alternatieven (twee extra liederen uit andere bundels) onder de
+        # primaire psalm. Elk alternatief krijgt dezelfde drie-elementen-
+        # opbouw als de primaire keuze (regel → badge → motivering) zodat
+        # de visuele volgorde consistent blijft. Eerder werden bullets +
+        # caption-stijl gebruikt, maar het mengen van bullet-listregels met
+        # blok-elementen (badge-markdown) kon Streamlit de volgorde laten
+        # opbreken; daarom nu per alternatief een bold one-liner ipv bullet.
         extras = psalm.get("extra_opties", []) or []
         if extras:
             st.markdown("**Alternatieven**")
@@ -584,11 +586,11 @@ def render_wetslezing(analysis: dict) -> None:
                 e_cat = extra.get("categorie", "")
                 e_mot = extra.get("motivering", "")
                 regel = _render_lied_header(e_ref, e_titel, e_verzen)
-                st.markdown(f"- {_md(regel)}")
+                st.markdown(f"**{_md(regel)}**")
                 if e_cat:
                     st.markdown(_badge(e_cat, _WETSLEZING_CATEGORIE_BADGES))
                 if e_mot:
-                    st.caption(_md(e_mot))
+                    st.markdown(_md(e_mot))
 
     st.divider()
 
