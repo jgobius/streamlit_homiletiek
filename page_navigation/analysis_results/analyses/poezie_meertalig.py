@@ -9,6 +9,7 @@ ingetogen — vergelijkbaar met de Kunst & Cultuur-renderer in
 `verdieping.py` — om de gedichten zelf te laten ademen.
 """
 
+import html
 from typing import Any
 
 import streamlit as st
@@ -49,17 +50,18 @@ def _taal_badge(taal: str) -> str:
     return f":{kleur}-background[{naam}]"
 
 
-def _format_origineel(tekst: str) -> str:
-    # Behoud de regelafbreking van het gedicht bij rendering. Het LLM
-    # levert regelafbrekingen als '\n'; voor markdown moeten dat twee
-    # spaties + nieuwe regel worden om als zachte regelafbreking te
-    # renderen i.p.v. samengevoegd tot een lopende paragraaf. Cursief
-    # markeren we via één laag asterisken rond de tekst.
+def _format_origineel_html(tekst: str) -> str:
+    # Render het gedicht als één cursief HTML-blok. We gebruiken bewust
+    # geen Markdown-italic ('*...*'): die markers overspannen geen lege
+    # regel, dus bij gedichten met strofen breken de asterisken op de
+    # witregel en verschijnt er een losse '*' in beeld. HTML-escapen
+    # voorkomt XSS bij agent-output; '\n' wordt '<br>' zodat zowel
+    # regel- als strofescheiding behouden blijven binnen één <em>-blok.
     if not tekst:
         return ""
-    regels = clean_md(tekst).split("\n")
-    # Lege regels tussen strofen behouden we als visuele witregel.
-    return "  \n".join(regels)
+    schoon = clean_md(tekst)
+    veilig = html.escape(schoon).replace("\n", "<br>")
+    return f"<em>{veilig}</em>"
 
 
 def _render_gedicht_kaart(gedicht: dict[str, Any], nummer: int) -> None:
@@ -94,10 +96,13 @@ def _render_gedicht_kaart(gedicht: dict[str, Any], nummer: int) -> None:
             if taal:
                 st.markdown(_taal_badge(taal))
 
-        # Originele tekst in cursief markdown, met regelafbreking behouden.
-        # Voor een NL-gedicht is de "originele tekst" gewoon de tekst zelf.
+        # Originele tekst in cursief, met regelafbreking en strofe-witregels
+        # behouden. Voor een NL-gedicht is de "originele tekst" gewoon de
+        # tekst zelf. unsafe_allow_html=True is hier nodig om het <em>-blok
+        # over strofegrenzen heen te laten doorlopen — Markdown-italic
+        # ('*...*') breekt op een lege regel.
         if origineel:
-            st.markdown(f"*{_format_origineel(origineel)}*")
+            st.markdown(_format_origineel_html(origineel), unsafe_allow_html=True)
 
         # Vertaling of parafrase. Voor NL-gedichten labelen we het als
         # 'Parafrase' (kort, snel scanbaar voor de prediker), voor
