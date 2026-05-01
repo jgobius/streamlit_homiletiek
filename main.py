@@ -655,6 +655,32 @@ def _inject_theme_css() -> None:
     st.markdown(_DARK_CSS if dark else _LIGHT_CSS, unsafe_allow_html=True)
 
 
+def _inject_compact_bullets_css() -> None:
+    """Maak de verticale ruimte tussen blokken binnen expanders compacter.
+
+    De analyse-renderers roepen `st.markdown` vaak per bullet apart aan
+    (bv. `for item in values: st.markdown(f"- {item}")`). Streamlit zet
+    elk blok in een verticaal-blok-flex met een standaard `gap: 1rem`,
+    waardoor bullet-lijsten in de expanders ('Verlangens', 'Vreugden',
+    'Onvervulde behoeften', ...) er breed en slordig uitzien. Door de
+    gap binnen expanders structureel te verkleinen, sluiten bullets
+    onderling en t.o.v. omringende tekst (intro-zin, kop-italic) veel
+    netter aan — zonder dat we elke renderer hoeven aan te raken en
+    zonder dat toekomstige analyses dit per ongeluk vergeten.
+
+    Selectoren `data-testid='stExpander'` en `data-testid='stVerticalBlock'`
+    zijn stabiele Streamlit-test-ids, gebruikt op meerdere plekken in deze
+    codebase (zie `_inject_main_menu_visibility_css`).
+    """
+    css = (
+        "<style>"
+        "[data-testid='stExpander'] [data-testid='stVerticalBlock']"
+        "{gap:0.25rem;}"
+        "</style>"
+    )
+    st.markdown(css, unsafe_allow_html=True)
+
+
 def _inject_main_menu_visibility_css() -> None:
     """Regel de zichtbaarheid van het Streamlit-hoofdmenu (de drie puntjes
     rechtsboven met o.a. 'Record a screencast' en 'Clear cache').
@@ -849,6 +875,10 @@ def main():
     # standaard lichte thema, wat acceptabel is voor de kortstondige login-flash.
     _inject_theme_css()
     _inject_main_menu_visibility_css()
+    # Compactere bullet-spatie binnen analyse-expanders. Eén keer per render
+    # injecteren is genoeg; de stijl blijft geldig voor elke component die
+    # later in dezelfde render wordt opgebouwd.
+    _inject_compact_bullets_css()
 
     # Schrijf een pending refresh token naar de cookie zodra de controller gereed is.
     # Dit token wordt door login.py klaargezet na een succesvolle login.
@@ -887,6 +917,9 @@ def main():
             # toepassen: voor superusers betekent dit dat het hoofdmenu
             # alsnog zichtbaar wordt op deze eerste post-login render.
             _inject_main_menu_visibility_css()
+            # Re-inject de bullet-spacing-CSS samen met de andere stijlen,
+            # consistent met de patronen hierboven.
+            _inject_compact_bullets_css()
 
     welcome_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/welcome.py", title='Welcome')
     login_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/login.py", title='Inloggen')
