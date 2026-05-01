@@ -44,6 +44,7 @@ _VERDIEPING_NAMEN: set[str] = {
     "politieke_orientatie",
     "waardenorientatie",
     "interpretatieve_synthese",
+    "poezie_meertalig",
 }
 
 # Gebeden: vier varianten (klassiek, profetisch, dialogisch, eenvoudig) die

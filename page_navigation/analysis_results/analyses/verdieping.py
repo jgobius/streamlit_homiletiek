@@ -40,6 +40,12 @@ from page_navigation.analysis_results.analyses.interpretatieve_synthese import (
 from page_navigation.analysis_results.analyses.sociaal_maatschappelijk import (
     sociaal_maatschappelijk as render_sociaal_maatschappelijk,
 )
+# Meertalige poëzie: zes gedichten (3 klassiek + 3 modern) over NL/EN/DE/FR
+# en optioneel PT/ES. Eigen renderer met twee sub-tabs Klassiek/Modern en
+# rustige kaartjes per gedicht — stijl vergelijkbaar met Kunst & Cultuur.
+from page_navigation.analysis_results.analyses.poezie_meertalig import (
+    poezie_meertalig as render_poezie_meertalig,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -763,6 +769,7 @@ _RENDERERS = {
     "waardenorientatie":        render_waardenorientatie,
     "interpretatieve_synthese": render_interpretatieve_synthese,
     "sociaal_maatschappelijk":  render_sociaal_maatschappelijk,
+    "poezie_meertalig":         render_poezie_meertalig,
 }
 
 
