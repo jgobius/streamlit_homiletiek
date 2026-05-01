@@ -13,11 +13,24 @@ import streamlit as st
 from src.utils.utils import clean_md
 
 
+def _zacht_breekbaar(text: str) -> str:
+    # Voeg een zero-width space (U+200B) toe na elke `/` zodat lange
+    # samengestelde namen (bv. "Alblasserwaard/Vijfheerenlanden") in smalle
+    # kolommen afbreken in plaats van door de rechterrand te lopen. De
+    # browser breekt standaard niet op `/`, en in de drie-kolomslayout
+    # van Europees/Provinciaal/Gemeentelijk is de kolom te smal voor
+    # zulke woorden. Het zero-width space is onzichtbaar maar geldt als
+    # een legitieme wikkelplek.
+    return text.replace("/", "/​")
+
+
 def _render_list(values: list) -> None:
     # Bullet-helper met clean_md; de caller is verantwoordelijk voor
-    # leeg-checks zodat we geen lege bullet-blokken renderen.
+    # leeg-checks zodat we geen lege bullet-blokken renderen. Slashes
+    # krijgen via _zacht_breekbaar een onzichtbaar breekpunt zodat
+    # samengestelde namen in smalle kolommen netjes wikkelen.
     for item in values:
-        st.markdown(f"- {clean_md(str(item))}")
+        st.markdown(f"- {_zacht_breekbaar(clean_md(str(item)))}")
 
 
 def _as_dict(value: Any) -> dict:
