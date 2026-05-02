@@ -2,6 +2,8 @@ from typing import Any
 
 import streamlit as st
 
+from src.utils.utils import render_verse_layout
+
 
 def _is_hebrew(text: str) -> bool:
     return any("\u0590" <= ch <= "\u05FF" for ch in text)
@@ -34,12 +36,15 @@ def bijbelteksten(analysis: dict[str, Any]) -> None:
 
         for verse in verses:
             number = verse.get("number", "")
-            modern_text = (verse.get("modern_text") or "").strip()
+            # rstrip ipv strip: leading whitespace bij de Naardense Bijbel
+            # is een poëtische inspringing en moet bewaard blijven; alleen
+            # de trailing whitespace is bruisig en weg te halen.
+            modern_text = (verse.get("modern_text") or "").rstrip()
             source_text = (verse.get("source_text") or "").strip()
 
             st.markdown(
                 f"<span style='color:grey;font-size:0.85em;font-weight:bold;'>{number}</span>"
-                f"&nbsp;&nbsp;{modern_text}",
+                f"&nbsp;&nbsp;{render_verse_layout(modern_text)}",
                 unsafe_allow_html=True,
             )
             if source_text:

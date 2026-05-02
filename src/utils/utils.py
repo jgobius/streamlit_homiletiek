@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import requests
 import os
+import html
 import json
 import re
 import time
@@ -372,6 +373,29 @@ def humanize_key(key: str) -> str:
     if not woorden:
         return key
     return woorden[0].upper() + woorden[1:]
+
+
+def render_verse_layout(text: str) -> str:
+    """Maak een HTML-fragment dat regelovergangen en inspringingen in een
+    bijbelvers behoudt.
+
+    Bedoeld voor verzen die uit een layout-rijke bron komen (bv. de
+    Naardense Bijbel). HTML zou de newlines collapsen en meervoudige
+    leading spaces inkorten, dus we vervangen newlines door `<br>` en
+    leading spaces door `&nbsp;`-sequenties. De inhoud wordt eerst
+    `html.escape`'d zodat externe scrape-bronnen geen onbedoelde HTML
+    kunnen injecteren — voor flat tekst (één regel, geen leading
+    whitespace) levert deze helper hetzelfde resultaat als rauwe
+    interpolatie.
+    """
+    if not text:
+        return ""
+    rendered: list[str] = []
+    for line in text.split("\n"):
+        stripped = line.lstrip(" ")
+        indent = len(line) - len(stripped)
+        rendered.append("&nbsp;" * indent + html.escape(stripped))
+    return "<br>".join(rendered)
 
 
 def clean_md(text: str) -> str:
