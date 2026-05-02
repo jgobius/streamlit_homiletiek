@@ -375,6 +375,127 @@ def humanize_key(key: str) -> str:
     return woorden[0].upper() + woorden[1:]
 
 
+def _verse_int(number: Any) -> int | None:
+    """Geef het versnummer als int, of None bij iets niet-numerieks.
+
+    Versnummers zijn meestal int of decimaal-string ("13"). Sommige
+    bronnen leveren een letter-suffix ("5a") of een range ("13-14");
+    voor groepering moeten die als 'niet-vergelijkbaar' gezien worden
+    omdat we anders 5a en 5b ten onrechte zouden samenvouwen.
+    """
+    if isinstance(number, int):
+        return number
+    if isinstance(number, str) and number.isdigit():
+        return int(number)
+    return None
+
+
+def format_verse_range(numbers: list[Any]) -> str:
+    """Formatteer een groep versnummers als enkel nummer of bereik.
+
+    Eén nummer → "13". Twee of meer opeenvolgende ints → "13-14".
+    Niet-opeenvolgende of niet-numerieke nummers → komma-gescheiden
+    ("13, 14, 15"). De groepering-logica garandeert in praktijk altijd
+    een opeenvolgend bereik (we breken bij een gat), maar de format-
+    helper blijft defensief zodat een toekomstige bron met afwijkende
+    nummering niet een misleidende range "13-99" oplevert.
+    """
+    if len(numbers) == 1:
+        return str(numbers[0])
+    ints = [_verse_int(n) for n in numbers]
+    if all(i is not None for i in ints) and ints == list(range(ints[0], ints[-1] + 1)):
+        return f"{numbers[0]}-{numbers[-1]}"
+    return ", ".join(str(n) for n in numbers)
+
+
+def groepeer_samengevoegde_verzen(
+    verses: list[dict[str, Any]],
+    *,
+    text_fields: tuple[str, ...] = ("modern_text", "source_text"),
+) -> list[dict[str, Any]]:
+    """Vouw opeenvolgende verzen met identieke tekst samen tot één entry.
+
+    Sommige vertalingen (BGT, en bij brontekst-zijde ook Hebreeuws/
+    Grieks) presenteren twee opeenvolgende verzen als één samengevoegd
+    tekstblok. De agent levert in dat geval voor elk versnummer dezelfde
+    tekst, omdat downstream-filteren op vers-bereik ("13-14") anders één
+    van de twee zou missen. In de UI is dat cosmetisch fout: dezelfde
+    regel zou twee keer onder elkaar staan.
+
+    `text_fields` bepaalt welke veldnamen moeten matchen voor samenvouwing.
+    Standaard zijn dat de twee velden van de bijbelteksten-renderer
+    (`modern_text` + `source_text`); de selectie-preview in
+    `new_analysis.py` gebruikt slechts `("text",)`. Alle opgegeven velden
+    moeten gelijk zijn — anders zou een verschil in brontekst stilletjes
+    wegmoffelen.
+
+    Het terugresultaat is een lijst van groep-entries met:
+    - `numbers`: lijst van betrokken versnummers
+    - één key per element van `text_fields`, met de (genormaliseerde)
+      tekstwaarde die in de groep gemeenschappelijk is.
+
+    Lege tekst breekt de groep — anders zouden meerdere verzen zonder
+    inhoud tot één 'leeg' blok worden weergegeven, wat verwarrender is
+    dan ze los te laten.
+    """
+    if not text_fields:
+        # Zonder vergelijkingsvelden zou élk vers met élk vorige vers
+        # 'matchen' en zou álles in één groep belanden — dat is nooit de
+        # bedoeling. Liever een duidelijke fout dan stille onzin.
+        raise ValueError("text_fields mag niet leeg zijn.")
+
+    def _origineel(value: Any) -> str:
+        # Behoud de waarde zoals de bron hem oplevert: leading whitespace
+        # bij de Naardense Bijbel is een poëtische inspringing en moet
+        # bewaard blijven voor de render-laag. None → lege string.
+        return value if isinstance(value, str) else ""
+
+    def _vergelijk(value: str) -> str:
+        # Voor de gelijkheids-check normaliseren we trim-whitespace zodat
+        # twee verzen die alleen in trailing whitespace verschillen toch
+        # als 'identiek' herkend worden — dat is het patroon waarmee de
+        # agent samengevoegde verzen oplevert.
+        return value.strip()
+
+    groepen: list[dict[str, Any]] = []
+    for verse in verses:
+        if not isinstance(verse, dict):
+            continue
+        number = verse.get("number", "")
+        # Bewaar twee versies per veld: het origineel (voor display) en
+        # de genormaliseerde (alleen voor identiteits-vergelijking).
+        originelen = {field: _origineel(verse.get(field)) for field in text_fields}
+        vergelijkers = {field: _vergelijk(originelen[field]) for field in text_fields}
+
+        if groepen:
+            laatste = groepen[-1]
+            laatste_int = _verse_int(laatste["numbers"][-1])
+            huidige_int = _verse_int(number)
+            consecutief = (
+                laatste_int is not None
+                and huidige_int is not None
+                and huidige_int == laatste_int + 1
+            )
+            zelfde_tekst = all(
+                vergelijkers[field] == laatste["_compare"][field]
+                for field in text_fields
+            )
+            niet_leeg = any(vergelijkers[field] for field in text_fields)
+            if consecutief and zelfde_tekst and niet_leeg:
+                laatste["numbers"].append(number)
+                continue
+
+        groep: dict[str, Any] = {"numbers": [number], "_compare": vergelijkers}
+        groep.update(originelen)
+        groepen.append(groep)
+
+    # Strip de interne `_compare`-key voordat we de groepen teruggeven —
+    # die is een implementatiedetail, niet bedoeld voor de aanroeper.
+    for groep in groepen:
+        groep.pop("_compare", None)
+    return groepen
+
+
 def render_verse_layout(text: str) -> str:
     """Maak een HTML-fragment dat regelovergangen en inspringingen in een
     bijbelvers behoudt.

@@ -21,6 +21,8 @@ from src.utils.utils import (
     load_scriptures,
     sanitize_cv,
     valideer_tekstinvoer,
+    format_verse_range,
+    groepeer_samengevoegde_verzen,
 )
 
 # Woorden-limiet voor het vrije 'Extra context'-veld. 500 woorden is ruim
@@ -433,9 +435,16 @@ for scripture in st.session_state["structured_scriptures"]:
             continue
         for sc in scripture.get("scriptures", []):
             st.markdown(f"Hoofdstuk **{sc.get('chapter')}**")
-            for verse in sc.get("verses", []):
-                st.markdown(f"**{verse.get('number')}**")
-                st.markdown(f"{verse.get('text')}")
+            # Vouw opeenvolgende verzen met identieke tekst samen — bij
+            # vertalingen als BGT komen samengevoegde verzen (bv. v13-14
+            # in Psalmen 65) anders dubbel onder elkaar te staan. De
+            # preview gebruikt veld `text`; de definitieve render in
+            # bijbelteksten.py gebruikt `modern_text` + `source_text`.
+            for groep in groepeer_samengevoegde_verzen(
+                sc.get("verses", []), text_fields=("text",)
+            ):
+                st.markdown(f"**{format_verse_range(groep['numbers'])}**")
+                st.markdown(f"{groep['text']}")
             st.write("---")
 
 if st.session_state.get("structured_scriptures"):
