@@ -423,6 +423,20 @@ section[data-baseweb="card"] *:not(svg):not(path):not(img) {
     color: #FF8000 !important;
     border-color: #4A4A5A !important;
 }
+/* Decoratie-balk bovenaan de app (de smalle horizontale strip onder de
+   header die Streamlit standaard licht/wit kleurt tijdens een rerun).
+   In donker thema flitst die fel wit; vandaar overschrijven naar de
+   donkere accent-kleur zodat hij niet meer opvalt. Geldt zowel voor de
+   stDecoration als de progress-/loading-balk binnen de status-widget. */
+[data-testid="stDecoration"],
+[data-testid="stStatusWidget"] progress,
+[data-testid="stStatusWidget"] [role="progressbar"],
+[data-testid="stStatusWidget"] [role="progressbar"] > div {
+    background: #1A1C24 !important;
+    background-color: #1A1C24 !important;
+    background-image: none !important;
+    color: #FAFAFA !important;
+}
 [data-testid="stNumberInputStepDown"],
 [data-testid="stNumberInputStepUp"] {
     background-color: #262730 !important;
