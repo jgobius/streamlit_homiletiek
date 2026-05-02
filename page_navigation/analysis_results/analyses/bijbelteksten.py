@@ -13,6 +13,79 @@ def _is_hebrew(text: str) -> bool:
     return any("֐" <= ch <= "׿" for ch in text)
 
 
+def _cluster_op_source_ref(
+    groepen: list[dict[str, Any]],
+    verses: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Voeg opeenvolgende groepen met dezelfde BHS-`source_ref_id` samen tot
+    één super-cluster.
+
+    Achtergrond: voor psalmen met opschrift kan een mapping in
+    `modern_verse_reference` meerdere Dutch-verzen aan dezelfde BHS-rij
+    koppelen (bv. BGT v1 = "opschrift" + BGT v2 = eerste content-regel,
+    beide naar BHS v1 dat opschrift+v2 fuseert). De agent levert dan voor
+    élk Dutch-vers dezelfde `source_text` aan, maar verschillende
+    `modern_text` — `groepeer_samengevoegde_verzen` voegt dat terecht
+    *niet* samen, omdat alleen-source-gelijk niet betekent dat de
+    Dutch-tekst identiek is.
+
+    Hier doen we de tweede pas: bij gelijke `source_ref_id` plaatsen we
+    de Dutch-fragmenten als sub-groep onder één Hebreeuws blok.
+    Defensief: clustering gebeurt alleen wanneer alle betrokken Dutch-
+    verzen dezelfde niet-lege `source_ref_id` hebben — anders blijft
+    elke groep een eigen super-cluster (oude weergave).
+
+    Output-shape per super-cluster:
+        {
+            "sub_groepen": [groep, ...],   # 1 of meer originele groepen
+            "source_text": str,            # gedeelde brontekst
+            "source_ref_id": int | None,   # gedeelde BHS-rij-id
+        }
+    """
+    # Per Dutch-versnummer de source_ref_id ophalen — `groepeer_samen-
+    # gevoegde_verzen` strip die info weg. De `_match_verses`-stap in de
+    # agent zet hem op elke vers; oude `scripture_json`-records hebben
+    # deze key niet en krijgen None, zodat de cluster-stap zich gewoon
+    # gedraagt als no-op.
+    ref_per_nummer: dict[Any, Any] = {}
+    bron_per_nummer: dict[Any, str] = {}
+    for v in verses:
+        if not isinstance(v, dict):
+            continue
+        ref_per_nummer[v.get("number")] = v.get("source_ref_id")
+        bron_per_nummer[v.get("number")] = (v.get("source_text") or "").strip()
+
+    super_clusters: list[dict[str, Any]] = []
+    for groep in groepen:
+        nummers = groep.get("numbers") or []
+        ref_ids = {ref_per_nummer.get(n) for n in nummers}
+        # Een groep zelf kan al meerdere versnummers omvatten (BGT 13-14);
+        # we accepteren alleen één gedeelde ref_id, anders is het géén
+        # cluster maar een onverwachte mengvorm en behandelen we hem als
+        # eigen super-cluster.
+        gedeelde_ref = ref_ids.pop() if len(ref_ids) == 1 else None
+        bron_text = (groep.get("source_text") or "").strip()
+
+        if (
+            super_clusters
+            and gedeelde_ref is not None
+            and super_clusters[-1]["source_ref_id"] == gedeelde_ref
+            and super_clusters[-1]["source_text"] == bron_text
+            and bron_text
+        ):
+            super_clusters[-1]["sub_groepen"].append(groep)
+            continue
+
+        super_clusters.append(
+            {
+                "sub_groepen": [groep],
+                "source_text": bron_text,
+                "source_ref_id": gedeelde_ref,
+            }
+        )
+    return super_clusters
+
+
 def _spreid_source_text(verses: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Geef lege source_text-verzen de brontekst van een buur met identieke
     modern_text. Bedoeld als UI-vangnet voor samengevoegde verzen.
@@ -104,20 +177,38 @@ def bijbelteksten(analysis: dict[str, Any]) -> None:
         groepen = groepeer_samengevoegde_verzen(
             verses, text_fields=("modern_text", "source_text")
         )
-        for groep in groepen:
-            label = format_verse_range(groep["numbers"])
-            # `modern_text` voor weergave: rstrip houdt leading whitespace
-            # intact — de Naardense Bijbel gebruikt dat als poëtische
-            # inspringing. De helper deed hierboven `.strip()` alleen voor
-            # de identiteits-vergelijking, niet voor de waarde zelf.
-            modern_text = (groep["modern_text"] or "").rstrip()
-            source_text = (groep["source_text"] or "").strip()
+        # Tweede pas: cluster opeenvolgende groepen die naar dezelfde
+        # BHS-`verse_reference` wijzen (zelfde `source_ref_id`). Dit
+        # voorkomt dat — wanneer een toekomstige Dutch-versie (BGT/HSV)
+        # een opschrift-vers en een content-vers naar dezelfde BHS-rij
+        # mapt — de prediker dezelfde lange Hebreeuwse regel twee keer
+        # achter elkaar ziet. Voor NBV21 (waar het opschrift al is
+        # weggelaten) is dit een no-op; voor oude `scripture_json`-records
+        # zonder `source_ref_id` ook.
+        super_clusters = _cluster_op_source_ref(groepen, verses)
 
-            st.markdown(
-                f"<span style='color:grey;font-size:0.85em;font-weight:bold;'>{label}</span>"
-                f"&nbsp;&nbsp;{render_verse_layout(modern_text)}",
-                unsafe_allow_html=True,
-            )
+        for cluster in super_clusters:
+            sub_groepen = cluster["sub_groepen"]
+            for groep in sub_groepen:
+                label = format_verse_range(groep["numbers"])
+                # `modern_text` voor weergave: rstrip houdt leading whitespace
+                # intact — de Naardense Bijbel gebruikt dat als poëtische
+                # inspringing. De helper deed hierboven `.strip()` alleen voor
+                # de identiteits-vergelijking, niet voor de waarde zelf.
+                modern_text = (groep["modern_text"] or "").rstrip()
+
+                st.markdown(
+                    f"<span style='color:grey;font-size:0.85em;font-weight:bold;'>{label}</span>"
+                    f"&nbsp;&nbsp;{render_verse_layout(modern_text)}",
+                    unsafe_allow_html=True,
+                )
+
+            # Eén Hebreeuws/bron-blok per super-cluster, ná álle Dutch-
+            # fragmenten. Dat geeft visueel rust bij gedeelde BHS-rijen
+            # en blijft identiek aan het oude gedrag wanneer een cluster
+            # uit precies één sub-groep bestaat (huidige flow voor de
+            # meeste teksten).
+            source_text = cluster["source_text"]
             if source_text:
                 is_heb = _is_hebrew(source_text)
                 direction = "rtl" if is_heb else "ltr"
