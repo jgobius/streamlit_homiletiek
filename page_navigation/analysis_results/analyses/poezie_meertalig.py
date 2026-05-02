@@ -64,6 +64,20 @@ def _format_origineel_html(tekst: str) -> str:
     return f"<em>{veilig}</em>"
 
 
+def _format_vertaling_html(tekst: str) -> str:
+    # Render een anderstalige vertaling regel-voor-regel: elke '\n' wordt
+    # een zichtbare regelafbreking. Geen cursief — de vertaling moet
+    # visueel onderscheiden zijn van het cursieve origineel; rechte tekst
+    # leest bovendien rustiger als langere regels meermaals voorkomen.
+    # HTML-escape + <br>-substitutie zoals bij _format_origineel_html, om
+    # strofewitregels te behouden binnen één blok.
+    if not tekst:
+        return ""
+    schoon = clean_md(tekst)
+    veilig = html.escape(schoon).replace("\n", "<br>")
+    return veilig
+
+
 def _render_gedicht_kaart(gedicht: dict[str, Any], nummer: int) -> None:
     # Eén kaartje per gedicht. Lay-out:
     #   header  : titel — dichter (jaar)  · taal-badge
@@ -109,10 +123,20 @@ def _render_gedicht_kaart(gedicht: dict[str, Any], nummer: int) -> None:
         # anderstaligen als 'Nederlandse vertaling'. Alle expanders
         # default dicht — de gebruiker bepaalt zelf welke kaartjes hij
         # uitklapt; dat houdt het overzicht rustig en consistent.
+        # Voor anderstalige gedichten honoreren we de regelafbreking
+        # uit `vertaling_of_parafrase` (regel-voor-regel parallel aan
+        # het origineel). Voor NL-parafrase blijft de tekst een korte
+        # lopende paragraaf — Markdown-rendering volstaat daar.
         if vertaling:
-            label = "Parafrase" if taal == "nl" else "Nederlandse vertaling"
-            with st.expander(label, expanded=False):
-                st.markdown(clean_md(vertaling))
+            if taal == "nl":
+                with st.expander("Parafrase", expanded=False):
+                    st.markdown(clean_md(vertaling))
+            else:
+                with st.expander("Nederlandse vertaling", expanded=False):
+                    st.markdown(
+                        _format_vertaling_html(vertaling),
+                        unsafe_allow_html=True,
+                    )
 
         # Motivatie als caption — bewust niet als st.info, om het rustige
         # ritme van de kaart niet te doorbreken met een gekleurd blok.
@@ -140,12 +164,14 @@ def _render_categorie(gedichten: list[dict[str, Any]], categorie: str) -> None:
 def poezie_meertalig(analysis: dict[str, Any]) -> None:
     """Renderer voor `poezie_meertalig` — twee tabs Klassiek / Modern.
 
-    Verwacht in `analysis['result']` een dict met sleutels `gedichten`
-    (lijst van zes items) en `selectie_overwegingen` (paragraaf).
+    Verwacht in `analysis['result']` een dict met sleutel `gedichten`
+    (lijst van tien items). Het veld `selectie_overwegingen` zit nog wel
+    in het schema (zodat het model intern verantwoording aflegt over de
+    keuzes), maar wordt niet getoond in de UI — de prediker hoeft de
+    interne strategie van het model niet te lezen.
     """
     result: dict[str, Any] = analysis.get("result", {}) or {}
     gedichten: list[dict[str, Any]] = result.get("gedichten", []) or []
-    overwegingen: str = result.get("selectie_overwegingen", "") or ""
 
     if not gedichten:
         st.info("Geen gedichten beschikbaar.")
@@ -156,10 +182,3 @@ def poezie_meertalig(analysis: dict[str, Any]) -> None:
         _render_categorie(gedichten, "klassiek")
     with tab_modern:
         _render_categorie(gedichten, "modern")
-
-    # Selectie-overwegingen onderaan in een dichte expander — eerst de
-    # gedichten zelf, en pas daarna de strategie/uitkomstkader voor
-    # wie er bewust naar wil kijken.
-    if overwegingen:
-        with st.expander("Selectie-overwegingen", expanded=False):
-            st.markdown(clean_md(overwegingen))
