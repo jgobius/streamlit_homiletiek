@@ -320,8 +320,22 @@ bible_version = st.selectbox(
     format_func=lambda version: version["version"],
 )
 
+# format_func voegt alleen aan het zichtbare label de NBV21-toelichting toe;
+# de option-waarde blijft "Kerkelijk rooster volgen" zodat downstream-checks
+# (zie if scriptures_choice == "Kerkelijk rooster volgen" + use_calendar)
+# ongewijzigd blijven werken. De roosterlezingen worden bij gebruik van het
+# kerkelijk rooster vast in NBV21 opgehaald, ongeacht de hierboven gekozen
+# vertaling — dit label maakt dat expliciet voor de prediker.
+def _label_schriftlezingen(optie: str) -> str:
+    if optie == "Kerkelijk rooster volgen":
+        return "Kerkelijk rooster volgen (kiest automatisch NBV21)"
+    return optie
+
+
 scriptures_choice = st.radio(
-    "Schriftlezingen", options=["Kerkelijk rooster volgen", "Eigen lezingen"]
+    "Schriftlezingen",
+    options=["Kerkelijk rooster volgen", "Eigen lezingen"],
+    format_func=_label_schriftlezingen,
 )
 
 # ── Kerkelijk rooster ──────────────────────────────────────────────────────────
