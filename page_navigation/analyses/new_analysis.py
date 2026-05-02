@@ -308,35 +308,46 @@ song_books = st.multiselect(
     format_func=lambda book: book["name"],
 )
 
-# Bijbelvertaling: NBV21 als standaard indien beschikbaar
+scriptures_choice = st.radio(
+    "Schriftlezingen", options=["Kerkelijk rooster volgen", "Eigen lezingen"]
+)
+
+# Bijbelvertaling staat onder de Schriftlezingen-keuze omdat de keuze daar
+# de set bruikbare opties bepaalt: bij 'Kerkelijk rooster volgen' worden de
+# roosterlezingen vast in NBV21 opgehaald (de roosterbron levert geen andere
+# vertaling), dus de selectbox wordt dan op NBV21 vergrendeld. Bij 'Eigen
+# lezingen' is de keuze vrij. NBV21-default wordt sowieso aangehouden.
 _nbv21_index = next(
     (i for i, v in enumerate(bible_versions) if "NBV21" in v.get("version", "")), 0
 )
-bible_version = st.selectbox(
-    "Selecteer de bijbelvertaling die in deze kerkdienst gebruikt wordt (optioneel):",
-    placeholder="Geen bijbelvertaling geselecteerd",
-    options=bible_versions,
-    index=_nbv21_index,
-    format_func=lambda version: version["version"],
-)
-
-# format_func voegt alleen aan het zichtbare label de NBV21-toelichting toe;
-# de option-waarde blijft "Kerkelijk rooster volgen" zodat downstream-checks
-# (zie if scriptures_choice == "Kerkelijk rooster volgen" + use_calendar)
-# ongewijzigd blijven werken. De roosterlezingen worden bij gebruik van het
-# kerkelijk rooster vast in NBV21 opgehaald, ongeacht de hierboven gekozen
-# vertaling — dit label maakt dat expliciet voor de prediker.
-def _label_schriftlezingen(optie: str) -> str:
-    if optie == "Kerkelijk rooster volgen":
-        return "Kerkelijk rooster volgen (kiest automatisch NBV21)"
-    return optie
-
-
-scriptures_choice = st.radio(
-    "Schriftlezingen",
-    options=["Kerkelijk rooster volgen", "Eigen lezingen"],
-    format_func=_label_schriftlezingen,
-)
+if scriptures_choice == "Kerkelijk rooster volgen":
+    # Disabled selectbox met NBV21 als enige optie, zodat de prediker ziet
+    # welke vertaling gebruikt wordt en waarom hij niet kan kiezen. We
+    # selecteren expliciet de NBV21-rij uit de DB-lijst (i.p.v. een platte
+    # string) zodat downstream-code dezelfde dict-shape blijft krijgen
+    # (`.get('version')`, `.get('id')`).
+    _nbv21_versions = [
+        v for v in bible_versions if "NBV21" in v.get("version", "")
+    ]
+    bible_version = st.selectbox(
+        "Bijbelvertaling die in deze kerkdienst gebruikt wordt:",
+        options=_nbv21_versions or bible_versions,
+        index=0 if _nbv21_versions else _nbv21_index,
+        format_func=lambda version: version["version"],
+        disabled=True,
+        help=(
+            "De roosterlezingen worden automatisch in NBV21 opgehaald. "
+            "Kies 'Eigen lezingen' om een andere vertaling te gebruiken."
+        ),
+    )
+else:
+    bible_version = st.selectbox(
+        "Selecteer de bijbelvertaling die in deze kerkdienst gebruikt wordt (optioneel):",
+        placeholder="Geen bijbelvertaling geselecteerd",
+        options=bible_versions,
+        index=_nbv21_index,
+        format_func=lambda version: version["version"],
+    )
 
 # ── Kerkelijk rooster ──────────────────────────────────────────────────────────
 if scriptures_choice == "Kerkelijk rooster volgen":
