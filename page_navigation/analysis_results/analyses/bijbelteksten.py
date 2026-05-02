@@ -13,6 +13,40 @@ def _is_hebrew(text: str) -> bool:
     return any("֐" <= ch <= "׿" for ch in text)
 
 
+def _verzamel_bron_paren(
+    nummers: list[Any], verses: list[dict[str, Any]]
+) -> list[tuple[str, Any]]:
+    """Verzamel unieke (source_text, source_ref_id)-paren voor de gegeven
+    Dutch-versnummers, in voorkomvolgorde.
+
+    Wanneer meerdere Dutch-verzen samen in één groep zitten (bv. BGT v13-14
+    met identieke modern_text maar verschillende Hebreeuws — MT v13 +
+    MT v14 — sinds we via `modern_verse_reference` correct mappen),
+    levert dit alle bronregels die onder de gedeelde Dutch-tekst horen.
+    Lege source_texts worden gefilterd. Dedup vindt plaats op de
+    combinatie (text, ref_id) zodat een gedeelde BHS-rij die in
+    opeenvolgende verzen voorkomt slechts één keer wordt teruggegeven.
+    """
+    paren: list[tuple[str, Any]] = []
+    gezien: set[tuple[str, Any]] = set()
+    for n in nummers:
+        v = next(
+            (v for v in verses if isinstance(v, dict) and v.get("number") == n),
+            None,
+        )
+        if v is None:
+            continue
+        src = (v.get("source_text") or "").strip()
+        if not src:
+            continue
+        sleutel = (src, v.get("source_ref_id"))
+        if sleutel in gezien:
+            continue
+        gezien.add(sleutel)
+        paren.append(sleutel)
+    return paren
+
+
 def _cluster_op_source_ref(
     groepen: list[dict[str, Any]],
     verses: list[dict[str, Any]],
@@ -25,9 +59,7 @@ def _cluster_op_source_ref(
     koppelen (bv. BGT v1 = "opschrift" + BGT v2 = eerste content-regel,
     beide naar BHS v1 dat opschrift+v2 fuseert). De agent levert dan voor
     élk Dutch-vers dezelfde `source_text` aan, maar verschillende
-    `modern_text` — `groepeer_samengevoegde_verzen` voegt dat terecht
-    *niet* samen, omdat alleen-source-gelijk niet betekent dat de
-    Dutch-tekst identiek is.
+    `modern_text`.
 
     Hier doen we de tweede pas: bij gelijke `source_ref_id` plaatsen we
     de Dutch-fragmenten als sub-groep onder één Hebreeuws blok.
@@ -37,41 +69,40 @@ def _cluster_op_source_ref(
 
     Output-shape per super-cluster:
         {
-            "sub_groepen": [groep, ...],   # 1 of meer originele groepen
-            "source_text": str,            # gedeelde brontekst
-            "source_ref_id": int | None,   # gedeelde BHS-rij-id
+            "sub_groepen": [groep, ...],
+            "bron_paren": [(source_text, source_ref_id), ...],
         }
+
+    `bron_paren` kan meer dan één item bevatten wanneer een groep zelf
+    meerdere versnummers met *verschillende* bron-rijen omvat (BGT v13-14
+    in Ps 65: identieke Dutch-tekst, twee aparte BHS-rijen voor MT v13
+    en MT v14). De renderer toont die regels onder elkaar onder de
+    gedeelde Dutch-tekst.
     """
-    # Per Dutch-versnummer de source_ref_id ophalen — `groepeer_samen-
-    # gevoegde_verzen` strip die info weg. De `_match_verses`-stap in de
-    # agent zet hem op elke vers; oude `scripture_json`-records hebben
-    # deze key niet en krijgen None, zodat de cluster-stap zich gewoon
-    # gedraagt als no-op.
     ref_per_nummer: dict[Any, Any] = {}
-    bron_per_nummer: dict[Any, str] = {}
     for v in verses:
         if not isinstance(v, dict):
             continue
         ref_per_nummer[v.get("number")] = v.get("source_ref_id")
-        bron_per_nummer[v.get("number")] = (v.get("source_text") or "").strip()
 
     super_clusters: list[dict[str, Any]] = []
     for groep in groepen:
         nummers = groep.get("numbers") or []
         ref_ids = {ref_per_nummer.get(n) for n in nummers}
-        # Een groep zelf kan al meerdere versnummers omvatten (BGT 13-14);
-        # we accepteren alleen één gedeelde ref_id, anders is het géén
-        # cluster maar een onverwachte mengvorm en behandelen we hem als
-        # eigen super-cluster.
+        # Een groep met identieke modern_text kan ofwel één gedeelde
+        # bron-rij hebben (Case A: opschrift+content fusie) of meerdere
+        # (Case B: BGT v13-14 met verschillende MT-bronrijen). Alleen
+        # Case A komt in aanmerking voor super-cluster-merging met de
+        # voorgaande groep.
         gedeelde_ref = ref_ids.pop() if len(ref_ids) == 1 else None
-        bron_text = (groep.get("source_text") or "").strip()
+        bron_paren = _verzamel_bron_paren(nummers, verses)
 
         if (
             super_clusters
             and gedeelde_ref is not None
-            and super_clusters[-1]["source_ref_id"] == gedeelde_ref
-            and super_clusters[-1]["source_text"] == bron_text
-            and bron_text
+            and len(super_clusters[-1]["bron_paren"]) == 1
+            and super_clusters[-1]["bron_paren"][0][1] == gedeelde_ref
+            and super_clusters[-1]["bron_paren"][0][1] is not None
         ):
             super_clusters[-1]["sub_groepen"].append(groep)
             continue
@@ -79,8 +110,7 @@ def _cluster_op_source_ref(
         super_clusters.append(
             {
                 "sub_groepen": [groep],
-                "source_text": bron_text,
-                "source_ref_id": gedeelde_ref,
+                "bron_paren": bron_paren,
             }
         )
     return super_clusters
@@ -167,24 +197,26 @@ def bijbelteksten(analysis: dict[str, Any]) -> None:
         # vs. gevulde source_text als 'verschillend' zien.
         verses = _spreid_source_text(verses)
 
-        # Vouw opeenvolgende verzen met identieke tekst samen vóór het
-        # renderen — voorkomt dubbele regels bij samengevoegde verzen
-        # (BGT v13-14, Hebreeuws/Grieks dat over twee versnummers loopt).
-        # text_fields=("modern_text", "source_text") eist dat *beide*
-        # velden gelijk zijn; alleen-NL-gelijk maar verschillende brontekst
-        # blijft dan apart staan zodat de Hebreeuws/Grieks-nuances
-        # zichtbaar blijven.
+        # Groepeer alleen op modern_text. Verzen met identieke Dutch-tekst
+        # maar verschillende brontekst (BGT v13-14 in Ps 65: één Dutch-
+        # blok, maar MT v13 én MT v14 als aparte Hebreeuwse regels via
+        # de modern_verse_reference-mapping) horen visueel onder één
+        # Dutch-regel met de twee bronregels onder elkaar — niet als
+        # twee aparte blokken met dezelfde Dutch eronder. De voorganger
+        # van deze code gebruikte text_fields=("modern_text", "source_text")
+        # waardoor zo'n geval splitste; nu loopt het via
+        # `_cluster_op_source_ref` + `bron_paren`.
         groepen = groepeer_samengevoegde_verzen(
-            verses, text_fields=("modern_text", "source_text")
+            verses, text_fields=("modern_text",)
         )
         # Tweede pas: cluster opeenvolgende groepen die naar dezelfde
         # BHS-`verse_reference` wijzen (zelfde `source_ref_id`). Dit
-        # voorkomt dat — wanneer een toekomstige Dutch-versie (BGT/HSV)
-        # een opschrift-vers en een content-vers naar dezelfde BHS-rij
-        # mapt — de prediker dezelfde lange Hebreeuwse regel twee keer
-        # achter elkaar ziet. Voor NBV21 (waar het opschrift al is
-        # weggelaten) is dit een no-op; voor oude `scripture_json`-records
-        # zonder `source_ref_id` ook.
+        # voorkomt dat — wanneer Dutch-versie (BGT/HSV) een opschrift-
+        # vers en een content-vers naar dezelfde BHS-rij mapt — de
+        # prediker dezelfde lange Hebreeuwse regel twee keer achter
+        # elkaar ziet. Voor NBV21 (waar het opschrift al is weggelaten)
+        # is dit een no-op; voor oude `scripture_json`-records zonder
+        # `source_ref_id` ook.
         super_clusters = _cluster_op_source_ref(groepen, verses)
 
         for cluster in super_clusters:
@@ -203,13 +235,11 @@ def bijbelteksten(analysis: dict[str, Any]) -> None:
                     unsafe_allow_html=True,
                 )
 
-            # Eén Hebreeuws/bron-blok per super-cluster, ná álle Dutch-
-            # fragmenten. Dat geeft visueel rust bij gedeelde BHS-rijen
-            # en blijft identiek aan het oude gedrag wanneer een cluster
-            # uit precies één sub-groep bestaat (huidige flow voor de
-            # meeste teksten).
-            source_text = cluster["source_text"]
-            if source_text:
+            # Eén Hebreeuws/bron-blok per unieke bron-regel in het
+            # cluster. Bij Case A (opschrift+content delen één BHS-rij)
+            # is dat één regel; bij Case B (BGT v13-14 met aparte
+            # MT v13 + MT v14 mappings) zijn het er twee onder elkaar.
+            for source_text, _ in cluster["bron_paren"]:
                 is_heb = _is_hebrew(source_text)
                 direction = "rtl" if is_heb else "ltr"
                 align = "right" if is_heb else "left"
