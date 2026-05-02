@@ -638,6 +638,56 @@ div[data-baseweb="toast"] button svg {
     fill: #FAFAFA !important;
     stroke: #FAFAFA !important;
 }
+/* Material-icons (span[data-testid="stIconMaterial"]) — Streamlit zet
+   de kleur via een inline style="color: rgba(49,51,63,.6)" op de span
+   zelf. Die inline-stijl wint normaal van class- of attribute-selectors.
+   Daarom gebruiken we een hoge-specificiteit selector + !important
+   (inline + !important wordt overruled door extern + !important mits
+   de selector specifiek genoeg is). Voor de zekerheid zetten we ook
+   fill (sommige Material-icon varianten gebruiken een SVG met currentColor). */
+html body [data-testid="stIconMaterial"],
+html body span[data-testid="stIconMaterial"] {
+    color: #FAFAFA !important;
+    fill: #FAFAFA !important;
+    opacity: 0.85 !important;
+}
+html body [data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"],
+html body [data-testid="stSidebarCollapsedControl"] [data-testid="stIconMaterial"],
+html body [data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"],
+html body button[kind="headerNoPadding"] [data-testid="stIconMaterial"] {
+    color: #FAFAFA !important;
+    fill: #FAFAFA !important;
+    opacity: 0.85 !important;
+}
+html body [data-testid="stSidebarCollapseButton"]:hover [data-testid="stIconMaterial"],
+html body [data-testid="stSidebarCollapsedControl"]:hover [data-testid="stIconMaterial"],
+html body [data-testid="stExpandSidebarButton"]:hover [data-testid="stIconMaterial"] {
+    color: #FF8000 !important;
+    fill: #FF8000 !important;
+    opacity: 1 !important;
+}
+/* Resize-handle (driehoekje rechtsonder in een <textarea>) — de
+   native ::-webkit-resizer wordt door de browser donkergrijs gerenderd
+   en is dus bijna onzichtbaar tegen #262730. We tekenen een eigen
+   diagonaal lijntjes-patroon in een lichte tint zodat de gebruiker
+   ziet dát het veld vergroot kan worden. */
+[data-testid="stTextArea"] textarea::-webkit-resizer {
+    background-image:
+        linear-gradient(
+            135deg,
+            transparent 0%,
+            transparent 45%,
+            #B0B0C0 45%,
+            #B0B0C0 55%,
+            transparent 55%,
+            transparent 75%,
+            #B0B0C0 75%,
+            #B0B0C0 85%,
+            transparent 85%
+        );
+    background-color: #262730;
+    border-bottom-right-radius: 4px;
+}
 </style>"""
 
 # CSS voor licht thema (oranje accent, witte achtergronden).
