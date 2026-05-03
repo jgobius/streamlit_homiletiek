@@ -86,6 +86,39 @@ _USER_CHOICE_NAMES: frozenset[str] = frozenset(
 # gedaan — in deze CLI dus nooit zelf triggeren.
 _BIJBELTEKSTEN_NAAM: str = "bijbelteksten"
 
+# Standaard aangevinkte analyses bij start van het menu — de "core
+# productie-set" die voor zo goed als elke preekvoorbereiding nuttig is.
+# Perspectieven (14 stuks) blijven default uit omdat ze duur en extra
+# zijn; gebeden_dialogisch/profetisch/eenvoudig zijn varianten naast het
+# standaard 'gebeden'. brueggemann_methode_selector is een interne hulp-
+# analyse die alleen zin heeft als opstap naar preek_brueggemann_poet
+# (die uit de batch is geweerd) en blijft daarom default uit.
+_DEFAULT_CHECKED_NAMES: frozenset[str] = frozenset(
+    {
+        # Basis
+        "base_analysis_creatief",
+        "base_analysis_perspectief_creatief",
+        "structuralistische_exegese",
+        # Verdieping (alle 10)
+        "kunst_cultuur",
+        "gemeente_spiritualiteit",
+        "politieke_orientatie",
+        "waardenorientatie",
+        "interpretatieve_synthese",
+        "kindermoment",
+        "wetslezing",
+        "kalender",
+        "bezinningsmoment",
+        "poezie_meertalig",
+        # SermonOutline-subset zonder kerntekst-selectie
+        "representatieve_aanwezigen",
+        "illustraties",
+        "focus_en_functie",
+        # Standaard gebed
+        "gebeden",
+    }
+)
+
 
 def _is_user_choice_required(at: dict[str, Any]) -> bool:
     """Geeft True als de analyse user-input vereist en uit de batch moet."""
@@ -362,10 +395,18 @@ def _build_menu_choices(
         for at in by_group[grp_name]:
             label = at.get("front_end_name") or at["name"]
             suffix = "  (✓ al gedaan, wordt geskipt)" if int(at["id"]) in completed_ids else ""
+            # Default-aanvinken voor de core productie-set, maar nooit voor
+            # analyses die al voltooid zijn (zou alleen visueel verwarren —
+            # ze worden in de runner-loop toch geskipt).
+            checked: bool = (
+                at["name"] in _DEFAULT_CHECKED_NAMES
+                and int(at["id"]) not in completed_ids
+            )
             choices.append(
                 questionary.Choice(
                     title=f"{label}  ·  {at['name']}{suffix}",
                     value=int(at["id"]),
+                    checked=checked,
                 )
             )
     return choices
