@@ -453,6 +453,24 @@ section[data-baseweb="card"] *:not(svg):not(path):not(img) {
     background-image: none !important;
     color: #FAFAFA !important;
 }
+/* Skeleton-loaders (stAppSkeleton bij initial app-load, stSkeleton tijdens
+   cache-fetches zoals get_cached_data). Streamlit rendert deze als rijen
+   van Title/TextLine/Square-divs met theme.colors.darkenedBgMix15 als
+   achtergrond. Omdat we het dark-thema via CSS-injectie afdwingen i.p.v.
+   via .streamlit/config.toml, blijft Streamlit's theme-detectie op "light"
+   staan en lost darkenedBgMix15 op als een lichte grijs-witte kleur — de
+   witte balken die zichtbaar zijn tijdens "Running get_cached_data(...)".
+   Beide containers en hun children krijgen daarom een donkere bg-override;
+   de pulse-opacity-animatie van Streamlit blijft werken (alleen de kleur
+   verandert). */
+[data-testid="stAppSkeleton"] > div,
+[data-testid="stAppSkeleton"] > div > div,
+[data-testid="stSkeleton"],
+[data-testid="stSkeleton"] > div {
+    background: #1A1C24 !important;
+    background-color: #1A1C24 !important;
+    background-image: none !important;
+}
 [data-testid="stNumberInputStepDown"],
 [data-testid="stNumberInputStepUp"] {
     background-color: #262730 !important;
