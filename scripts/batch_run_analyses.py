@@ -459,62 +459,66 @@ _GROUP_ORDER: tuple[str, ...] = (
     "SermonOutlineAnalysis",  # bevat de niet-preek subset (illustraties, focus_en_functie, ...)
 )
 
+# Vriendelijke namen per groep voor het tabblad-label boven elke prompt.
+# Onbekende groepen vallen terug op de DRF-naam.
+_GROUP_DISPLAY_NAMES: dict[str, str] = {
+    "BaseAnalysis": "Basis",
+    "DeepeningAnalysis": "Verdieping",
+    "PerspectiveAnalysis": "Perspectieven",
+    "PrayerAnalysis": "Gebeden",
+    "SermonOutlineAnalysis": "Preekschets-onderdelen",
+}
 
-def _build_menu_choices(
+
+def _group_items_in_display_order(
     selectable: list[dict[str, Any]],
-    completed_ids: set[int],
-) -> list[Any]:
-    """Bouw de questionary.Choice-lijst gegroepeerd per AnalysisTypeGroup."""
+) -> list[tuple[str, list[dict[str, Any]]]]:
+    """Groepeer en sorteer voor het tabblad-overzicht; lege groepen vervallen.
+
+    Terug-tuple is (DRF-groepnaam, gesorteerde items). De aanroeper kan met
+    `_GROUP_DISPLAY_NAMES.get(name, name)` een vriendelijk label tonen.
+    """
     by_group: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for at in selectable:
         by_group[_group_label(at)].append(at)
-
-    # Sortering binnen een groep op `order`-veld zodat het menu dezelfde
-    # volgorde gebruikt als Streamlit's tabbladen.
     for grp in by_group.values():
         grp.sort(key=lambda a: (a.get("order", 0), a["name"]))
 
-    geordende_groepen: list[str] = [g for g in _GROUP_ORDER if g in by_group]
-    voor_overige: list[str] = sorted(g for g in by_group if g not in _GROUP_ORDER)
+    geordend = [g for g in _GROUP_ORDER if g in by_group]
+    overig = sorted(g for g in by_group if g not in _GROUP_ORDER)
+    return [(g, by_group[g]) for g in (geordend + overig) if by_group[g]]
 
-    choices: list[Any] = []
-    for grp_name in geordende_groepen + voor_overige:
-        # Disabled separator-regel als visuele groephoofd; questionary slaat
-        # die over bij selectie. Het bullet-teken zorgt dat de regel duidelijk
-        # van een echte keuze afwijkt.
-        choices.append(
-            questionary.Separator(f"── {grp_name} ──")
+
+def _choices_for_items(
+    items: list[dict[str, Any]],
+    completed_ids: set[int],
+) -> list[questionary.Choice]:
+    """Bouw questionary.Choice-objecten voor één tabblad (groep)."""
+    out: list[questionary.Choice] = []
+    for at in items:
+        label: str = at.get("front_end_name") or at["name"]
+        is_done: bool = int(at["id"]) in completed_ids
+        # Lijst van (style, text)-tuples i.p.v. HTML(), omdat questionary
+        # 2.1.1 een HTML-object via str() rendert (waardoor de gebruiker
+        # de Python-repr ziet i.p.v. opgemaakte tekst). Tuples worden door
+        # prompt_toolkit direct als FormattedText opgepikt.
+        if is_done:
+            title: Any = [
+                ("", f"{label} "),
+                ("ansibrightgreen bold", "✓"),
+                ("", " "),
+                ("ansibrightblack italic", "al gedaan, wordt geskipt"),
+            ]
+        else:
+            title = label
+        # Default-aanvinken voor de core productie-set, maar nooit voor
+        # reeds voltooide analyses (zou alleen visueel verwarren — ze
+        # worden in de runner-loop toch geskipt).
+        checked: bool = at["name"] in _DEFAULT_CHECKED_NAMES and not is_done
+        out.append(
+            questionary.Choice(title=title, value=int(at["id"]), checked=checked)
         )
-        for at in by_group[grp_name]:
-            label: str = at.get("front_end_name") or at["name"]
-            is_done: bool = int(at["id"]) in completed_ids
-            # Lijst van (style, text)-tuples i.p.v. HTML(), omdat questionary
-            # 2.1.1 een HTML-object via str() rendert (waardoor de gebruiker
-            # de Python-repr ziet i.p.v. opgemaakte tekst). Tuples worden
-            # door prompt_toolkit direct als FormattedText opgepikt.
-            if is_done:
-                title: Any = [
-                    ("", f"{label} "),
-                    ("ansibrightgreen bold", "✓"),
-                    ("", " "),
-                    ("ansibrightblack italic", "al gedaan, wordt geskipt"),
-                ]
-            else:
-                title = label
-            # Default-aanvinken voor de core productie-set, maar nooit voor
-            # analyses die al voltooid zijn (zou alleen visueel verwarren —
-            # ze worden in de runner-loop toch geskipt).
-            checked: bool = (
-                at["name"] in _DEFAULT_CHECKED_NAMES and not is_done
-            )
-            choices.append(
-                questionary.Choice(
-                    title=title,
-                    value=int(at["id"]),
-                    checked=checked,
-                )
-            )
-    return choices
+    return out
 
 
 def _print_run_plan(
@@ -731,44 +735,55 @@ def main(argv: list[str] | None = None) -> int:
         print("Geen selecteerbare analysetypes gevonden.")
         return 1
 
-    choices = _build_menu_choices(selectable, completed_ids)
+    grouped = _group_items_in_display_order(selectable)
 
     print(
-        "\nKies analyses om te draaien:\n"
-        "  spatie = aan/uit  ·  enter = bevestig  ·  ctrl-c = afbreken\n"
+        "\nKies analyses per tabblad:\n"
+        "  spatie = aan/uit  ·  enter = volgende tabblad  ·  ctrl-c = afbreken\n"
         "  [X] = wordt gedraaid  ·  [ ] = wordt overgeslagen\n"
         "Dependencies worden automatisch toegevoegd."
     )
     # Custom style. Reden per klasse:
-    # - separator    : groep-titel ('── BaseAnalysis ──') in cyaan-vet zodat
-    #                  de tabbladen-indeling visueel uit de keuzes springt.
-    # - question     : de vraag bovenaan ('Welke analyses?') vet.
-    # - selected     : de ●-indicator van een aangevinkte keuze in helder
-    #                  groen+vet — defaultkleur was nauwelijks zichtbaar.
-    # - pointer      : de »-cursor in helder cyaan+vet zodat duidelijk is
-    #                  welke regel de focus heeft.
-    # - highlighted  : de hele regel waar de cursor op staat, inclusief de
-    #                  ○/●-indicator voor die regel; bright-yellow+vet geeft
-    #                  unmistakable contrast met niet-gefocuste rijen.
+    # - question     : de vraag bovenaan ('[1/5] Basis') vet zodat het
+    #                  tabblad-label duidelijk afsteekt tegen de keuzes.
+    # - selected     : ●-indicator (of '[X]' na monkey-patch) van een
+    #                  aangevinkte keuze in helder groen+vet.
+    # - pointer      : »-cursor in helder cyaan+vet.
+    # - highlighted  : de hele regel waar de cursor op staat in
+    #                  bright-yellow+vet voor unmistakable contrast.
     menu_style = questionary.Style(
         [
-            ("separator", "fg:#5fafff bold"),
             ("question", "bold"),
             ("selected", "fg:ansibrightgreen bold"),
             ("pointer", "fg:ansibrightcyan bold"),
             ("highlighted", "fg:ansibrightyellow bold"),
         ]
     )
-    selectie = questionary.checkbox(
-        "Welke analyses?",
-        choices=choices,
-        style=menu_style,
-    ).ask()
-    if not selectie:
-        print("Geen selectie. Afgebroken.")
-        return 0
 
-    selected_ids: set[int] = {int(s) for s in selectie}
+    # Per tabblad een aparte checkbox-prompt; de selectie hoopt zich op
+    # in `selected_ids`. Voordeel t.o.v. één lange lijst: per tabblad ~10
+    # zichtbare regels, minder scrollen, en de groep waar je nu kiest is
+    # bovenaan duidelijk gelabeld.
+    selected_ids: set[int] = set()
+    totaal = len(grouped)
+    for idx, (groep_naam, items) in enumerate(grouped, start=1):
+        pretty = _GROUP_DISPLAY_NAMES.get(groep_naam, groep_naam)
+        choices = _choices_for_items(items, completed_ids)
+        selectie = questionary.checkbox(
+            f"[{idx}/{totaal}] {pretty}",
+            choices=choices,
+            style=menu_style,
+        ).ask()
+        # Ctrl-C / Esc geeft None terug; lege selectie [] is ook prima
+        # (gebruiker wilt niets uit dit tabblad).
+        if selectie is None:
+            print("Afgebroken.")
+            return 0
+        selected_ids.update(int(s) for s in selectie)
+
+    if not selected_ids:
+        print("Geen selectie over alle tabbladen. Afgebroken.")
+        return 0
     expanded = _expand_with_deps(selected_ids, by_id)
 
     # Interne auxiliary types kunnen via een dep-keten in `expanded` zitten —
