@@ -589,8 +589,17 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+class _LoginFailed(Exception):
+    """Marker-exception voor login-mislukkingen met een eindgebruiker-melding."""
+
+
 def _login(api_url: str, username: str | None) -> JwtHandler:
-    """Vraag credentials zo nodig en log in tegen de Django-backend."""
+    """Vraag credentials zo nodig en log in tegen de Django-backend.
+
+    Bij verkeerde credentials of een onjuiste backend-URL gooien we een
+    `_LoginFailed` met een korte, nette melding — zonder de volledige
+    requests-stacktrace die voor de gebruiker geen extra info bevat.
+    """
     user: str = (
         username
         or os.environ.get("HOMILETIEK_USERNAME")
@@ -608,7 +617,24 @@ def _login(api_url: str, username: str | None) -> JwtHandler:
     )
     # Trigger token-fetch direct zodat fout-credentials meteen falen i.p.v. pas
     # bij de eerste echte request.
-    _ = handler.token
+    try:
+        _ = handler.token
+    except requests.HTTPError as exc:
+        status = exc.response.status_code if exc.response is not None else "?"
+        if status == 401:
+            raise _LoginFailed(
+                "Login mislukt (HTTP 401): gebruikersnaam of wachtwoord onjuist.\n"
+                f"  Backend: {api_url}\n"
+                "  Controleer of je tegen de juiste backend praat (lokaal vs Heroku) "
+                "via --api-url of API_BASE_URL."
+            ) from exc
+        raise _LoginFailed(
+            f"Login mislukt (HTTP {status}) tegen {api_url}: {exc}"
+        ) from exc
+    except requests.RequestException as exc:
+        raise _LoginFailed(
+            f"Login mislukt — kon backend niet bereiken op {api_url}: {exc}"
+        ) from exc
     return handler
 
 
@@ -620,7 +646,13 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Agent-runtime : {agent_url}")
     print(f"SermonAnalysis: {args.sermon_id}")
 
-    jwt = _login(api_url, args.username)
+    try:
+        jwt = _login(api_url, args.username)
+    except _LoginFailed as exc:
+        # Schoon afsluiten met exit-code 1 i.p.v. een rauwe stacktrace; de
+        # melding van _login bevat alle relevante hints (status + backend-URL).
+        print(f"\n✗ {exc}")
+        return 1
 
     # Initiële status — als deze al 'error' is, willen we niet dat de
     # poll-logica elke nieuwe analyse direct als 'failed' rapporteert.
