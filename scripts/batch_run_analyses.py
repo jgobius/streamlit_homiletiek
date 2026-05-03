@@ -44,6 +44,17 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from dotenv import load_dotenv  # noqa: E402
+
+# Laad streamlit_homiletiek/.env (project-conventie) zodat API_BASE_URL,
+# API_USERNAME, API_PASSWORD én de prod-varianten HEROKU_API_BASE_URL /
+# HEROKU_API_AGENT_URL via dezelfde plek beschikbaar zijn als waar de
+# rest van het project ze leest. `override=False` zodat een expliciete
+# shell-export voorrang houdt boven het bestand.
+_DOTENV_PATH = _REPO_ROOT / ".env"
+if _DOTENV_PATH.exists():
+    load_dotenv(_DOTENV_PATH, override=False)
+
 from src.api.jwthandler import JwtHandler  # noqa: E402
 
 # Endpoints op de Django-backend voor het ophalen van analysetypes,
@@ -213,21 +224,46 @@ def _load_secrets_toml(path: Path) -> dict[str, str]:
 
 
 def _resolve_urls(args: argparse.Namespace) -> tuple[str, str]:
-    """Resolveer de Django- en agent-URL met voorrang CLI > env > secrets > default."""
+    """Resolveer de Django- en agent-URL.
+
+    Voorrangsvolgorde:
+    1. Expliciete CLI-flag (--api-url / --agent-url) wint altijd.
+    2. Met --prod lezen we HEROKU_API_BASE_URL en HEROKU_API_AGENT_URL.
+       Als die niet gezet zijn (in env of .env), abort met een instructie
+       hoe ze toe te voegen — beter dan stilletjes terugvallen op localhost.
+    3. Anders: env API_BASE_URL > secrets.toml > localhost-default.
+    """
     secrets = _load_secrets_toml(_REPO_ROOT / ".streamlit" / "secrets.toml")
 
-    api_url: str = (
-        args.api_url
-        or os.environ.get("API_BASE_URL")
-        or secrets.get("API_BASE_URL")
-        or _DEFAULT_API_BASE_URL
-    )
-    agent_url: str = (
-        args.agent_url
-        or os.environ.get("API_AGENT_URL")
-        or secrets.get("API_AGENT_URL")
-        or _DEFAULT_AGENT_URL
-    )
+    if args.prod:
+        api_url = args.api_url or os.environ.get("HEROKU_API_BASE_URL")
+        agent_url = args.agent_url or os.environ.get("HEROKU_API_AGENT_URL")
+        if not api_url or not agent_url:
+            ontbrekend = []
+            if not api_url:
+                ontbrekend.append("HEROKU_API_BASE_URL")
+            if not agent_url:
+                ontbrekend.append("HEROKU_API_AGENT_URL")
+            raise SystemExit(
+                "✗ --prod gevraagd, maar de volgende variabelen ontbreken: "
+                f"{', '.join(ontbrekend)}.\n"
+                f"  Voeg deze toe aan {_DOTENV_PATH}:\n"
+                "    HEROKU_API_BASE_URL=https://<homiletiek>.herokuapp.com\n"
+                "    HEROKU_API_AGENT_URL=https://<homiletiek-agent>.herokuapp.com"
+            )
+    else:
+        api_url = (
+            args.api_url
+            or os.environ.get("API_BASE_URL")
+            or secrets.get("API_BASE_URL")
+            or _DEFAULT_API_BASE_URL
+        )
+        agent_url = (
+            args.agent_url
+            or os.environ.get("API_AGENT_URL")
+            or secrets.get("API_AGENT_URL")
+            or _DEFAULT_AGENT_URL
+        )
     return api_url.rstrip("/"), agent_url.rstrip("/")
 
 
@@ -569,17 +605,29 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--username",
         default=None,
-        help="Username voor login. Default: $HOMILETIEK_USERNAME of prompt.",
+        help=(
+            "Username voor login. Default: $HOMILETIEK_USERNAME, "
+            "$API_USERNAME (.env) of prompt."
+        ),
     )
     parser.add_argument(
         "--api-url",
         default=None,
-        help="Base-URL van de Django-backend (default uit secrets/env).",
+        help="Base-URL van de Django-backend (default uit secrets/env/.env).",
     )
     parser.add_argument(
         "--agent-url",
         default=None,
-        help="Base-URL van homiletiek_agent (default uit secrets/env).",
+        help="Base-URL van homiletiek_agent (default uit secrets/env/.env).",
+    )
+    parser.add_argument(
+        "--prod",
+        action="store_true",
+        help=(
+            "Praat met de Heroku-backends i.p.v. lokaal. Leest "
+            "HEROKU_API_BASE_URL en HEROKU_API_AGENT_URL uit .env "
+            "(of shell-env)."
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -603,10 +651,16 @@ def _login(api_url: str, username: str | None) -> JwtHandler:
     user: str = (
         username
         or os.environ.get("HOMILETIEK_USERNAME")
+        # API_USERNAME / API_PASSWORD zijn de project-conventies in .env;
+        # door ze hier ook te lezen kan het script zonder credential-prompt
+        # draaien als de gebruiker ze al voor agent/Streamlit heeft gezet.
+        or os.environ.get("API_USERNAME")
         or input("Username: ").strip()
     )
     wachtwoord: str = (
-        os.environ.get("HOMILETIEK_PASSWORD") or getpass.getpass("Password: ")
+        os.environ.get("HOMILETIEK_PASSWORD")
+        or os.environ.get("API_PASSWORD")
+        or getpass.getpass("Password: ")
     )
     handler = JwtHandler(
         username=user,
