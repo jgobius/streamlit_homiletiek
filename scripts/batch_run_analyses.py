@@ -18,12 +18,14 @@ import getpass
 import os
 import sys
 from collections import defaultdict, deque
+from html import escape as _html_escape
 from pathlib import Path
 from time import sleep, time
 from typing import Any
 
 import questionary
 import requests
+from prompt_toolkit.formatted_text import HTML
 
 # Maak imports vanuit de streamlit_homiletiek-repo werkend wanneer dit script
 # wordt gedraaid als `python -m scripts.batch_run_analyses` (dan zit de repo
@@ -90,10 +92,28 @@ _USER_CHOICE_NAMES: frozenset[str] = frozenset(
     }
 )
 
-# 'bijbelteksten' wordt door /original_scriptures/ gevuld, niet door
-# /single_analysis/. Voor een verse SermonAnalysis is dit altijd al
-# gedaan — in deze CLI dus nooit zelf triggeren.
-_BIJBELTEKSTEN_NAAM: str = "bijbelteksten"
+# Interne types die automatisch worden gevuld bij het aanmaken van een
+# SermonAnalysis (of door de base-analysis-flow) en niet via /single_analysis/
+# moeten worden getriggerd. Worden uit het menu gefilterd; als ze als
+# dependency opduiken en nog niet gevuld zijn, aborteert het script met
+# een melding.
+# - bijbelteksten / bible_book / chapter_text / scripture: gevuld door
+#   /original_scriptures/ en /structured_scripture/ tijdens het aanmaken
+#   van de SermonAnalysis.
+# - base_analysis / base_analysis_creatief / base_analysis_perspectief_creatief:
+#   ondersteunende analyses die door andere modules worden geactiveerd en
+#   niet zelfstandig in de UI worden aangeboden.
+_INTERNAL_AUXILIARY_NAMES: frozenset[str] = frozenset(
+    {
+        "bijbelteksten",
+        "bible_book",
+        "chapter_text",
+        "scripture",
+        "base_analysis",
+        "base_analysis_creatief",
+        "base_analysis_perspectief_creatief",
+    }
+)
 
 # Standaard aangevinkte analyses bij start van het menu — de "core
 # productie-set" die voor zo goed als elke preekvoorbereiding nuttig is.
@@ -105,8 +125,6 @@ _BIJBELTEKSTEN_NAAM: str = "bijbelteksten"
 _DEFAULT_CHECKED_NAMES: frozenset[str] = frozenset(
     {
         # Basis
-        "base_analysis_creatief",
-        "base_analysis_perspectief_creatief",
         "structuralistische_exegese",
         # Postille gebruikt in substitute.py een minimale substitutietak
         # zonder kerntekst-selectie (alleen $voorbeeld_preken) en is dus
@@ -363,7 +381,7 @@ def _filter_selectable(types: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for at in types:
         if _is_user_choice_required(at):
             continue
-        if at["name"] == _BIJBELTEKSTEN_NAAM:
+        if at["name"] in _INTERNAL_AUXILIARY_NAMES:
             continue
         out.append(at)
     return out
@@ -416,18 +434,29 @@ def _build_menu_choices(
             questionary.Separator(f"── {grp_name} ──")
         )
         for at in by_group[grp_name]:
-            label = at.get("front_end_name") or at["name"]
-            suffix = "  (✓ al gedaan, wordt geskipt)" if int(at["id"]) in completed_ids else ""
+            label: str = at.get("front_end_name") or at["name"]
+            is_done: bool = int(at["id"]) in completed_ids
+            # HTML-tekst i.p.v. plain string zodat questionary (via
+            # prompt_toolkit) het ✓-vinkje groen en de uitleg gedimd kan
+            # renderen. Het label zelf wordt HTML-escaped omdat front-end-
+            # namen "&" of "<" kunnen bevatten ("Kerk & gemeente" e.d.).
+            if is_done:
+                title: Any = HTML(
+                    f"{_html_escape(label)} "
+                    f"<ansigreen>✓</ansigreen> "
+                    f"<ansibrightblack>al gedaan, wordt geskipt</ansibrightblack>"
+                )
+            else:
+                title = HTML(_html_escape(label))
             # Default-aanvinken voor de core productie-set, maar nooit voor
             # analyses die al voltooid zijn (zou alleen visueel verwarren —
             # ze worden in de runner-loop toch geskipt).
             checked: bool = (
-                at["name"] in _DEFAULT_CHECKED_NAMES
-                and int(at["id"]) not in completed_ids
+                at["name"] in _DEFAULT_CHECKED_NAMES and not is_done
             )
             choices.append(
                 questionary.Choice(
-                    title=f"{label}  ·  {at['name']}{suffix}",
+                    title=title,
                     value=int(at["id"]),
                     checked=checked,
                 )
@@ -605,9 +634,19 @@ def main(argv: list[str] | None = None) -> int:
         "\nKies analyses om te draaien (spatie = aan/uit, enter = bevestig, "
         "ctrl-c = afbreken).\nDependencies worden automatisch toegevoegd."
     )
+    # Custom style: groep-separators in cyaan-vet zodat de tabbladen-
+    # indeling visueel uit de keuzes springt. De individuele Choice-
+    # titels gebruiken zelf al HTML-kleuring voor het ✓-vinkje.
+    menu_style = questionary.Style(
+        [
+            ("separator", "fg:#5fafff bold"),
+            ("question", "bold"),
+        ]
+    )
     selectie = questionary.checkbox(
         "Welke analyses?",
         choices=choices,
+        style=menu_style,
     ).ask()
     if not selectie:
         print("Geen selectie. Afgebroken.")
@@ -616,22 +655,30 @@ def main(argv: list[str] | None = None) -> int:
     selected_ids: set[int] = {int(s) for s in selectie}
     expanded = _expand_with_deps(selected_ids, by_id)
 
-    # 'bijbelteksten' kan via een dep-keten in `expanded` zitten — niet zelf
-    # draaien, maar verifiëren dat het er al is, anders abort.
-    bijbelteksten_id: int | None = next(
-        (int(at["id"]) for at in types if at["name"] == _BIJBELTEKSTEN_NAAM),
-        None,
-    )
-    if bijbelteksten_id is not None and bijbelteksten_id in expanded:
-        if bijbelteksten_id not in completed_ids:
-            print(
-                "\n✗ Dependency 'bijbelteksten' ontbreekt voor deze sermon. "
-                "Draai eerst /original_scriptures/ via de Streamlit-UI."
-            )
-            return 2
-        # Niet zelf opnieuw draaien — uit de te-draaien set halen, maar
-        # wel als 'voltooid' markeren voor topologische sortering.
-        expanded.discard(bijbelteksten_id)
+    # Interne auxiliary types kunnen via een dep-keten in `expanded` zitten —
+    # niet zelf draaien, maar verifiëren dat ze er al zijn, anders abort.
+    auxiliary_id_to_name: dict[int, str] = {
+        int(at["id"]): at["name"]
+        for at in types
+        if at["name"] in _INTERNAL_AUXILIARY_NAMES
+    }
+    ontbrekend_aux: list[str] = []
+    for aux_id, aux_name in auxiliary_id_to_name.items():
+        if aux_id not in expanded:
+            continue
+        if aux_id in completed_ids:
+            # Aanwezig — uit de te-draaien set halen; topologische sort
+            # behandelt 'm dan als al-voltooid voorganger.
+            expanded.discard(aux_id)
+        else:
+            ontbrekend_aux.append(aux_name)
+    if ontbrekend_aux:
+        print(
+            f"\n✗ Interne dependencies ontbreken: {', '.join(sorted(ontbrekend_aux))}\n"
+            "  Maak de SermonAnalysis opnieuw aan via Streamlit zodat "
+            "deze automatisch worden gevuld (bijbelteksten en base-analyses)."
+        )
+        return 2
 
     extra: set[int] = expanded - selected_ids
     if extra:
