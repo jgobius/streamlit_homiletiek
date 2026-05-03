@@ -62,13 +62,24 @@ _SLOT_RETRY_DELAY_SECONDS: int = 5
 _SLOT_RETRY_MAX: int = 3
 
 # Naam-patronen voor analyses die gebruikerskeuzes vereisen en dus uit de
-# CLI-batch worden geweerd. Komen overeen met de drie groepen die in
-# Streamlit een dialog tonen voordat ze gestart kunnen worden:
-# - preek_*       → preekschets_selectie (kerntekst, focus, perspectieven, ...)
-# - feedback_*    → feedback_context_keuze + handmatige volledige_preek
-# - volledige_preek → handmatig ingevuld door voorganger
+# CLI-batch worden geweerd. Komen overeen met de groepen die in Streamlit
+# een dialog tonen voordat ze gestart kunnen worden:
+# - preek_*               → preekschets_selectie (kerntekst, focus, ...)
+# - feedback_*            → feedback_context_keuze + handmatige volledige_preek
+# - volledige_preek       → handmatig ingevuld door voorganger
+# - homiletische_lowry /  → ook preekschets-agents in substitute.py
+#   homiletische_buttrick   (zie _HOMILETISCHE_STRUCTUUR_TEMPLATES). Ze
+#                           gebruiken kerntekst_selectie, focus_en_functie_selectie
+#                           en perspectieven_selectie en falen zonder die
+#                           UI-input.
 _USER_CHOICE_PREFIXES: tuple[str, ...] = ("preek_", "feedback_")
-_USER_CHOICE_NAMES: frozenset[str] = frozenset({"volledige_preek"})
+_USER_CHOICE_NAMES: frozenset[str] = frozenset(
+    {
+        "volledige_preek",
+        "homiletische_lowry",
+        "homiletische_buttrick",
+    }
+)
 
 # 'bijbelteksten' wordt door /original_scriptures/ gevuld, niet door
 # /single_analysis/. Voor een verse SermonAnalysis is dit altijd al
