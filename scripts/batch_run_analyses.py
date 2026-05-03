@@ -666,16 +666,19 @@ def _login(api_url: str, username: str | None) -> JwtHandler:
         or os.environ.get("API_PASSWORD")
         or getpass.getpass("Password: ")
     )
-    handler = JwtHandler(
-        username=user,
-        password=wachtwoord,
-        base_url=api_url,
-        access_endpoint=_JWT_ACCESS_PATH,
-        refresh_endpoint=_JWT_REFRESH_PATH,
-    )
-    # Trigger token-fetch direct zodat fout-credentials meteen falen i.p.v. pas
-    # bij de eerste echte request.
+    # JwtHandler.__init__ doet zelf de POST naar /api/token/, dus de 401-
+    # HTTPError ontsnapt tijdens de constructor — niet pas bij `handler.token`.
+    # Daarom wrappen we de constructie + token-fetch beide binnen dezelfde
+    # try/except.
     try:
+        handler = JwtHandler(
+            username=user,
+            password=wachtwoord,
+            base_url=api_url,
+            access_endpoint=_JWT_ACCESS_PATH,
+            refresh_endpoint=_JWT_REFRESH_PATH,
+        )
+        # Trigger token-property zodat een eventuele lazy refresh hier ook valt.
         _ = handler.token
     except requests.HTTPError as exc:
         status = exc.response.status_code if exc.response is not None else "?"
@@ -684,7 +687,7 @@ def _login(api_url: str, username: str | None) -> JwtHandler:
                 "Login mislukt (HTTP 401): gebruikersnaam of wachtwoord onjuist.\n"
                 f"  Backend: {api_url}\n"
                 "  Controleer of je tegen de juiste backend praat (lokaal vs Heroku) "
-                "via --api-url of API_BASE_URL."
+                "via --api-url, API_BASE_URL of HEROKU_API_BASE_URL met --prod."
             ) from exc
         raise _LoginFailed(
             f"Login mislukt (HTTP {status}) tegen {api_url}: {exc}"
@@ -714,7 +717,32 @@ def main(argv: list[str] | None = None) -> int:
 
     # Initiële status — als deze al 'error' is, willen we niet dat de
     # poll-logica elke nieuwe analyse direct als 'failed' rapporteert.
-    initial_status = _fetch_sermon_status(api_url, jwt, args.sermon_id)
+    # 404 hier betekent typisch: sermon-id bestaat niet of hoort bij een
+    # andere gebruiker (DRF-viewset filtert per-user). 403 = geen toegang.
+    try:
+        initial_status = _fetch_sermon_status(api_url, jwt, args.sermon_id)
+    except requests.HTTPError as exc:
+        status = exc.response.status_code if exc.response is not None else "?"
+        if status == 404:
+            print(
+                f"\n✗ SermonAnalysis met id={args.sermon_id} niet gevonden op {api_url}.\n"
+                "  Mogelijke oorzaken:\n"
+                "  - Het id bestaat niet.\n"
+                "  - De sermon hoort bij een andere gebruiker (de API filtert per-user).\n"
+                "  - Je praat tegen de verkeerde backend (lokaal vs Heroku — check --api-url / --prod)."
+            )
+            return 1
+        if status == 403:
+            print(
+                f"\n✗ Geen toegang tot SermonAnalysis id={args.sermon_id} (HTTP 403).\n"
+                "  Log in als de eigenaar van deze sermon."
+            )
+            return 1
+        print(f"\n✗ Onverwachte fout bij ophalen sermon-status (HTTP {status}): {exc}")
+        return 1
+    except requests.RequestException as exc:
+        print(f"\n✗ Backend niet bereikbaar voor sermon-status: {exc}")
+        return 1
     pre_existing_error = initial_status == "error"
     if pre_existing_error:
         print(
@@ -723,11 +751,19 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     print("\nAnalysetypes ophalen...")
-    types = _fetch_all_analysis_types(api_url, jwt)
+    try:
+        types = _fetch_all_analysis_types(api_url, jwt)
+    except requests.RequestException as exc:
+        print(f"\n✗ Kon analysetypes niet ophalen: {exc}")
+        return 1
     by_id = _build_index(types)
 
     print(f"Reeds voltooide analyses ophalen voor sermon {args.sermon_id}...")
-    completed_ids = _fetch_completed_type_ids(api_url, jwt, args.sermon_id)
+    try:
+        completed_ids = _fetch_completed_type_ids(api_url, jwt, args.sermon_id)
+    except requests.RequestException as exc:
+        print(f"\n✗ Kon voltooide analyses niet ophalen: {exc}")
+        return 1
     print(f"  → {len(completed_ids)} reeds voltooid.")
 
     selectable = _filter_selectable(types)
