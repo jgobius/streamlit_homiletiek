@@ -99,6 +99,10 @@ _DEFAULT_CHECKED_NAMES: frozenset[str] = frozenset(
         "base_analysis_creatief",
         "base_analysis_perspectief_creatief",
         "structuralistische_exegese",
+        # Postille gebruikt in substitute.py een minimale substitutietak
+        # zonder kerntekst-selectie (alleen $voorbeeld_preken) en is dus
+        # batch-veilig, ondanks dat het een preekschets-type is.
+        "postille",
         # Verdieping (alle 10)
         "kunst_cultuur",
         "gemeente_spiritualiteit",
