@@ -18,14 +18,12 @@ import getpass
 import os
 import sys
 from collections import defaultdict, deque
-from html import escape as _html_escape
 from pathlib import Path
 from time import sleep, time
 from typing import Any
 
 import questionary
 import requests
-from prompt_toolkit.formatted_text import HTML
 
 # Maak imports vanuit de streamlit_homiletiek-repo werkend wanneer dit script
 # wordt gedraaid als `python -m scripts.batch_run_analyses` (dan zit de repo
@@ -436,18 +434,19 @@ def _build_menu_choices(
         for at in by_group[grp_name]:
             label: str = at.get("front_end_name") or at["name"]
             is_done: bool = int(at["id"]) in completed_ids
-            # HTML-tekst i.p.v. plain string zodat questionary (via
-            # prompt_toolkit) het ✓-vinkje groen en de uitleg gedimd kan
-            # renderen. Het label zelf wordt HTML-escaped omdat front-end-
-            # namen "&" of "<" kunnen bevatten ("Kerk & gemeente" e.d.).
+            # Lijst van (style, text)-tuples i.p.v. HTML(), omdat questionary
+            # 2.1.1 een HTML-object via str() rendert (waardoor de gebruiker
+            # de Python-repr ziet i.p.v. opgemaakte tekst). Tuples worden
+            # door prompt_toolkit direct als FormattedText opgepikt.
             if is_done:
-                title: Any = HTML(
-                    f"{_html_escape(label)} "
-                    f"<ansigreen>✓</ansigreen> "
-                    f"<ansibrightblack>al gedaan, wordt geskipt</ansibrightblack>"
-                )
+                title: Any = [
+                    ("", f"{label} "),
+                    ("ansigreen", "✓"),
+                    ("", " "),
+                    ("ansibrightblack", "al gedaan, wordt geskipt"),
+                ]
             else:
-                title = HTML(_html_escape(label))
+                title = label
             # Default-aanvinken voor de core productie-set, maar nooit voor
             # analyses die al voltooid zijn (zou alleen visueel verwarren —
             # ze worden in de runner-loop toch geskipt).
