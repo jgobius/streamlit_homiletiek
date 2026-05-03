@@ -441,9 +441,9 @@ def _build_menu_choices(
             if is_done:
                 title: Any = [
                     ("", f"{label} "),
-                    ("ansigreen", "✓"),
+                    ("ansibrightgreen bold", "✓"),
                     ("", " "),
-                    ("ansibrightblack", "al gedaan, wordt geskipt"),
+                    ("ansibrightblack italic", "al gedaan, wordt geskipt"),
                 ]
             else:
                 title = label
@@ -633,13 +633,24 @@ def main(argv: list[str] | None = None) -> int:
         "\nKies analyses om te draaien (spatie = aan/uit, enter = bevestig, "
         "ctrl-c = afbreken).\nDependencies worden automatisch toegevoegd."
     )
-    # Custom style: groep-separators in cyaan-vet zodat de tabbladen-
-    # indeling visueel uit de keuzes springt. De individuele Choice-
-    # titels gebruiken zelf al HTML-kleuring voor het ✓-vinkje.
+    # Custom style. Reden per klasse:
+    # - separator    : groep-titel ('── BaseAnalysis ──') in cyaan-vet zodat
+    #                  de tabbladen-indeling visueel uit de keuzes springt.
+    # - question     : de vraag bovenaan ('Welke analyses?') vet.
+    # - selected     : de ●-indicator van een aangevinkte keuze in helder
+    #                  groen+vet — defaultkleur was nauwelijks zichtbaar.
+    # - pointer      : de »-cursor in helder cyaan+vet zodat duidelijk is
+    #                  welke regel de focus heeft.
+    # - highlighted  : de hele regel waar de cursor op staat, inclusief de
+    #                  ○/●-indicator voor die regel; bright-yellow+vet geeft
+    #                  unmistakable contrast met niet-gefocuste rijen.
     menu_style = questionary.Style(
         [
             ("separator", "fg:#5fafff bold"),
             ("question", "bold"),
+            ("selected", "fg:ansibrightgreen bold"),
+            ("pointer", "fg:ansibrightcyan bold"),
+            ("highlighted", "fg:ansibrightyellow bold"),
         ]
     )
     selectie = questionary.checkbox(
