@@ -492,8 +492,15 @@ def _group_items_in_display_order(
 def _choices_for_items(
     items: list[dict[str, Any]],
     completed_ids: set[int],
+    initially_checked_ids: set[int] | None = None,
 ) -> list[questionary.Choice]:
-    """Bouw questionary.Choice-objecten voor één tabblad (groep)."""
+    """Bouw questionary.Choice-objecten voor één tabblad (groep).
+
+    Bij `initially_checked_ids=None` (eerste bezoek) gebruiken we
+    `_DEFAULT_CHECKED_NAMES` als initiële vinkjes. Bij een terugkeer naar
+    een tabblad geeft de aanroeper de eerder gemaakte selectie mee zodat
+    de toggles van de gebruiker bewaard blijven.
+    """
     out: list[questionary.Choice] = []
     for at in items:
         label: str = at.get("front_end_name") or at["name"]
@@ -511,10 +518,13 @@ def _choices_for_items(
             ]
         else:
             title = label
-        # Default-aanvinken voor de core productie-set, maar nooit voor
-        # reeds voltooide analyses (zou alleen visueel verwarren — ze
-        # worden in de runner-loop toch geskipt).
-        checked: bool = at["name"] in _DEFAULT_CHECKED_NAMES and not is_done
+        if initially_checked_ids is not None:
+            checked: bool = int(at["id"]) in initially_checked_ids
+        else:
+            # Default-aanvinken voor de core productie-set, maar nooit voor
+            # reeds voltooide analyses (zou alleen visueel verwarren — ze
+            # worden in de runner-loop toch geskipt).
+            checked = at["name"] in _DEFAULT_CHECKED_NAMES and not is_done
         out.append(
             questionary.Choice(title=title, value=int(at["id"]), checked=checked)
         )
@@ -775,8 +785,9 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         "\nKies analyses per tabblad:\n"
-        "  spatie = aan/uit  ·  enter = volgende tabblad  ·  ctrl-c = afbreken\n"
+        "  spatie = aan/uit  ·  enter = bevestig dit tabblad  ·  ctrl-c = afbreken\n"
         "  [X] = wordt gedraaid  ·  [ ] = wordt overgeslagen\n"
+        "Na elk tabblad kun je vooruit, terug, of afsluiten.\n"
         "Dependencies worden automatisch toegevoegd."
     )
     # Custom style. Reden per klasse:
@@ -796,27 +807,76 @@ def main(argv: list[str] | None = None) -> int:
         ]
     )
 
-    # Per tabblad een aparte checkbox-prompt; de selectie hoopt zich op
-    # in `selected_ids`. Voordeel t.o.v. één lange lijst: per tabblad ~10
-    # zichtbare regels, minder scrollen, en de groep waar je nu kiest is
-    # bovenaan duidelijk gelabeld.
-    selected_ids: set[int] = set()
+    # Per tabblad een aparte checkbox-prompt; selecties hoopt zich op per
+    # tab-index in `selecties_per_tab` zodat de gebruiker met '← Vorige'
+    # naar een eerder tabblad kan terugkeren zonder selecties te verliezen.
+    # We gebruiken een while-loop met handmatig index-management i.p.v. een
+    # for-loop omdat we vooruit én achteruit moeten kunnen springen.
+    selecties_per_tab: dict[int, set[int]] = {}
     totaal = len(grouped)
-    for idx, (groep_naam, items) in enumerate(grouped, start=1):
+    i = 0
+    while i < totaal:
+        groep_naam, items = grouped[i]
         pretty = _GROUP_DISPLAY_NAMES.get(groep_naam, groep_naam)
-        choices = _choices_for_items(items, completed_ids)
+        # Bij eerste bezoek: defaults uit _DEFAULT_CHECKED_NAMES; bij
+        # terugkeer: de keuzes die de gebruiker eerder maakte.
+        pre_checked: set[int] | None = selecties_per_tab.get(i)
+        choices = _choices_for_items(
+            items,
+            completed_ids,
+            initially_checked_ids=pre_checked,
+        )
         selectie = questionary.checkbox(
-            f"[{idx}/{totaal}] {pretty}",
+            f"[{i + 1}/{totaal}] {pretty}",
             choices=choices,
             style=menu_style,
         ).ask()
-        # Ctrl-C / Esc geeft None terug; lege selectie [] is ook prima
-        # (gebruiker wilt niets uit dit tabblad).
         if selectie is None:
             print("Afgebroken.")
             return 0
-        selected_ids.update(int(s) for s in selectie)
+        selecties_per_tab[i] = {int(s) for s in selectie}
 
+        # Eén tabblad → geen navigatie nodig.
+        if totaal == 1:
+            break
+
+        # Nav-prompt met alleen relevante opties. 'Volgende' staat eerst
+        # zodat een Enter-zonder-actie het meest voor de hand liggende
+        # gedrag (forward) oplevert.
+        totaal_aangevinkt = sum(len(v) for v in selecties_per_tab.values())
+        nav_choices: list[questionary.Choice] = []
+        if i < totaal - 1:
+            nav_choices.append(
+                questionary.Choice(title="→ Volgende tabblad", value="next")
+            )
+        if i > 0:
+            nav_choices.append(
+                questionary.Choice(title="← Vorige tabblad", value="prev")
+            )
+        nav_choices.append(
+            questionary.Choice(
+                title=f"✓ Klaar — gebruik huidige selecties ({totaal_aangevinkt} aangevinkt)",
+                value="done",
+            )
+        )
+        nav = questionary.select(
+            f"Tabblad {i + 1}/{totaal} ({pretty}) — wat nu?",
+            choices=nav_choices,
+            style=menu_style,
+        ).ask()
+        if nav is None:
+            print("Afgebroken.")
+            return 0
+        if nav == "next":
+            i += 1
+        elif nav == "prev":
+            i -= 1
+        else:  # "done"
+            break
+
+    selected_ids: set[int] = set()
+    for ids in selecties_per_tab.values():
+        selected_ids.update(ids)
     if not selected_ids:
         print("Geen selectie over alle tabbladen. Afgebroken.")
         return 0
