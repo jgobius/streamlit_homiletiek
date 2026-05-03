@@ -23,7 +23,19 @@ from time import sleep, time
 from typing import Any
 
 import questionary
+import questionary.prompts.common as _questionary_common
 import requests
+
+# Monkey-patch de selectie-indicators in questionary 2.1.1: de defaults
+# ('●' en '○') verschillen op veel terminals nauwelijks van elkaar in
+# kleur of vorm, waardoor onduidelijk is welke regels door spatie zijn
+# aangezet. '[X]' versus '[ ]' is textueel ondubbelzinnig en blijft ook
+# leesbaar op terminals zonder kleur. We patchen specifiek
+# `questionary.prompts.common` (waar de constanten via `from … import`
+# zijn gebonden); aanpassen op `questionary.constants` heeft geen effect
+# omdat de naam in common.py al lokaal gebonden is.
+_questionary_common.INDICATOR_SELECTED = "[X]"
+_questionary_common.INDICATOR_UNSELECTED = "[ ]"
 
 # Maak imports vanuit de streamlit_homiletiek-repo werkend wanneer dit script
 # wordt gedraaid als `python -m scripts.batch_run_analyses` (dan zit de repo
@@ -110,6 +122,12 @@ _INTERNAL_AUXILIARY_NAMES: frozenset[str] = frozenset(
         "base_analysis",
         "base_analysis_creatief",
         "base_analysis_perspectief_creatief",
+        # brueggemann_methode_selector is alleen een opstap-analyse voor
+        # preek_brueggemann_poet (die wegens kerntekst-selectie uit de batch
+        # is geweerd). Geen enkele batch-eligible analyse hangt ervan af, dus
+        # de "auxiliary missing"-abort-tak wordt nooit getriggerd; toevoegen
+        # hier filtert hem uit het menu.
+        "brueggemann_methode_selector",
     }
 )
 
@@ -630,8 +648,10 @@ def main(argv: list[str] | None = None) -> int:
     choices = _build_menu_choices(selectable, completed_ids)
 
     print(
-        "\nKies analyses om te draaien (spatie = aan/uit, enter = bevestig, "
-        "ctrl-c = afbreken).\nDependencies worden automatisch toegevoegd."
+        "\nKies analyses om te draaien:\n"
+        "  spatie = aan/uit  ·  enter = bevestig  ·  ctrl-c = afbreken\n"
+        "  [X] = wordt gedraaid  ·  [ ] = wordt overgeslagen\n"
+        "Dependencies worden automatisch toegevoegd."
     )
     # Custom style. Reden per klasse:
     # - separator    : groep-titel ('── BaseAnalysis ──') in cyaan-vet zodat
