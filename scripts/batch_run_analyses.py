@@ -36,7 +36,16 @@ from src.api.jwthandler import JwtHandler  # noqa: E402
 
 # Endpoints op de Django-backend voor het ophalen van analysetypes,
 # bestaande resultaten en de status van de sermon zelf.
-_ANALYSIS_TYPES_PATH: str = "/api/analysis-types/"
+#
+# /api/analysis-types/ gebruikt depth=3 en serialiseert recursief over
+# de self-M2M `depends_on` — bij 60+ types loopt dat over de Heroku-30s-
+# timeout heen (H12). De /slim/-action geeft alleen wat we hier nodig
+# hebben (id, name, depends_on als id-list, group als string) en is
+# meetbaar binnen 2s. We vallen bij een 404 terug op de volledige
+# endpoint zodat het script óók werkt tegen oudere backends die /slim/
+# nog niet hebben.
+_ANALYSIS_TYPES_PATH: str = "/api/analysis-types/slim/"
+_ANALYSIS_TYPES_FALLBACK_PATH: str = "/api/analysis-types/"
 _ANALYSIS_RESULTS_PATH: str = "/api/analysis-results/"
 _SERMON_ANALYSES_PATH: str = "/api/sermon-analyses/"
 
@@ -211,10 +220,20 @@ def _post(url: str, jwt: JwtHandler, data: dict[str, Any]) -> requests.Response:
 def _fetch_all_analysis_types(api_url: str, jwt: JwtHandler) -> list[dict[str, Any]]:
     """Haal alle AnalysisTypes op van de Django-backend.
 
-    De viewset gebruikt geen pagination (geen DEFAULT_PAGINATION_CLASS), dus
-    één call levert de volledige lijst.
+    Probeert eerst /slim/ (snel, geen depth=3-recursie). Bij 404 valt
+    het terug op de volledige endpoint — handig als het script tegen
+    een backend draait waar de slim-action nog niet is uitgerold.
     """
-    return _get(f"{api_url}{_ANALYSIS_TYPES_PATH}", jwt)
+    try:
+        return _get(f"{api_url}{_ANALYSIS_TYPES_PATH}", jwt)
+    except requests.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            print(
+                "  /slim/ niet beschikbaar op deze backend, "
+                "val terug op /api/analysis-types/ (kan traag zijn)..."
+            )
+            return _get(f"{api_url}{_ANALYSIS_TYPES_FALLBACK_PATH}", jwt)
+        raise
 
 
 def _fetch_completed_type_ids(
