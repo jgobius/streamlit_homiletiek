@@ -266,13 +266,14 @@ else:
         if _email and _email not in naam_per_email:
             naam_per_email[_email] = _it.get("user_full_name") or ""
 
-    # Sorteren op zondagdatum. Tonen we meer dan één analyse, dan krijgt de
+    # Sorteren op aanmaaktijd. Tonen we meer dan één analyse, dan krijgt de
     # gebruiker een segmented_control om de volgorde te wisselen. Default is
-    # 'Nieuwste eerst' zodat de oranje gemarkeerde 'laatste' analyse ook direct
-    # bovenaan staat.
+    # 'Nieuwste eerst' zodat de zojuist aangemaakte analyse direct bovenaan
+    # verschijnt — gebruikers verwachten "laatst gestart" te zien staan,
+    # niet "meest recente zondag".
     if len(analysis) > 1:
         sort_order = st.segmented_control(
-            "Sorteren op zondagdatum",
+            "Sorteren op aanmaaktijd",
             options=["Nieuwste eerst", "Oudste eerst"],
             default="Nieuwste eerst",
             key="dashboard_sort_order",
@@ -283,22 +284,24 @@ else:
     else:
         sort_order = "Nieuwste eerst"
 
-    # Sorteer op (sermon_date, id). De id-tiebreak zorgt voor een stabiele
-    # volgorde bij meerdere analyses op dezelfde zondag (hoogste id = meest
-    # recent aangemaakt).
+    # Sorteer op (created_at, id). De id-tiebreak zorgt voor een stabiele
+    # volgorde als twee records exact hetzelfde aanmaaktijdstip hebben (en
+    # vangt records van vóór de created_at-migratie op: lege string sorteert
+    # consistent vóór elke ISO-timestamp). Hoogste id = meest recent aangemaakt
+    # binnen die tiebreak.
     sorted_analysis = sorted(
         analysis,
-        key=lambda it: (it["sermon_date"], it["id"]),
+        key=lambda it: (it.get("created_at") or "", it["id"]),
         reverse=(sort_order == "Nieuwste eerst"),
     )
 
-    # Bepaal welke analyse als 'laatste' gemarkeerd wordt: de analyse met de
-    # meest recente zondagdatum. Dit is onafhankelijk van de gekozen sortering,
+    # Bepaal welke analyse als 'laatste' gemarkeerd wordt: de meest recent
+    # aangemaakte analyse. Dit is onafhankelijk van de gekozen sortering,
     # zodat dezelfde analyse oranje blijft ook als de gebruiker op 'Oudste
     # eerst' sorteert.
     latest_id = max(
         analysis,
-        key=lambda it: (it["sermon_date"], it["id"]),
+        key=lambda it: (it.get("created_at") or "", it["id"]),
     )["id"]
 
     # In superuser-modus tonen we per gebruiker een aparte sectie met een
