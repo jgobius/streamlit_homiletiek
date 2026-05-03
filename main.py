@@ -192,32 +192,35 @@ li[role="option"][aria-selected="true"] * {
 }
 /* Datumkiezer (popover-kalender van st.date_input). De baseweb-kalender
    heeft geen eigen data-baseweb="calendar" attribuut op alle lagen;
-   daarom targeten we via role/aria en de nav-knop labels.
-   Belangrijk: de aria-roledescription-qualifier is bewust weggelaten op
-   [role="grid"] / [role="row"] omdat baseweb dat attribuut niet altijd
-   meelevert; zonder qualifier blijven ook de "vulcellen" rondom de maand
-   donker. */
+   daarom targeten we via role/aria en de nav-knop labels. */
 [data-baseweb="calendar"],
 [data-baseweb="calendar"] > div,
 [data-baseweb="datepicker"],
 [data-baseweb="calendar-header"],
-[role="grid"],
-[role="grid"] [role="row"],
+[role="grid"][aria-roledescription="Calendar month"],
+[role="grid"][aria-roledescription="Calendar month"] [role="row"],
 [role="gridcell"] {
     background-color: #262730 !important;
     color: #FAFAFA !important;
 }
-/* Tekst binnen de kalender wit; achtergrond NIET blanket op transparent
-   zetten — anders overschrijft deze regel (zelfde specificiteit, later in
-   de stylesheet) de #262730 op lege gridcells, en die tonen dan als witte
-   blokken. Achtergrond expliciet alleen transparant maken op de inner
-   day-div (die anders de hover/selected-cirkel doorbreekt). */
-[data-baseweb="calendar"] * {
-    color: #FAFAFA !important;
-}
+/* Blanket-regel maakt alle descendants transparant zodat baseweb's eigen
+   witte/lichtgrijze bg op interne wrapper-divs (header, weekrij-container,
+   inner day-div) niet doorlekt. Heeft als bijwerking dat lege gridcells
+   ook transparant worden — die worden hieronder met een hogere-specificiteit
+   regel apart donker gezet, anders tonen ze als witte blokken. */
+[data-baseweb="calendar"] *,
 [role="gridcell"] > div {
-    background-color: transparent !important;
     color: #FAFAFA !important;
+    background-color: transparent !important;
+}
+/* Lege "vulcellen" buiten de huidige maand: de blanket-regel hierboven
+   maakt [role="gridcell"] zelf transparant (gelijke specificiteit, later
+   in de stylesheet wint), waardoor cellen zonder inner-div terugvallen
+   op de browser-default (wit). Met een specificiteit-boost via een
+   ancestor-selector forceren we deze cellen alsnog donker. */
+[data-baseweb="popover"] [role="gridcell"],
+[data-baseweb="calendar"] [role="gridcell"] {
+    background-color: #262730 !important;
 }
 /* Navigatie- en maand/jaar-knoppen in de kalenderheader. */
 button[aria-label="Previous month."],
