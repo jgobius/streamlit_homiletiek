@@ -245,11 +245,27 @@ div[alt="Saturday"] {
 [role="gridcell"][aria-label*="Not available"] > div {
     color: #6A6A7A !important;
 }
-/* Geselecteerde datum — oranje accent. */
+/* BaseWeb tekent de zichtbare cel-achtergrond via een ::after pseudo-element
+   (positie absolute, achter de inhoud). Default-bg is wit, en bij cellen
+   zonder dag-content (de "vulcellen" buiten de huidige maand én de cellen
+   na de laatste dag van de maand) is geen tekst die er overheen komt —
+   waardoor witte blokken zichtbaar werden in dark mode. Forceer de pseudo
+   donker; getComputedStyle rapporteert content="none" maar de pseudo wordt
+   in de praktijk wél gerenderd. De geselecteerde cel krijgt zijn oranje
+   vulling óók via ::after, dus die overschrijven we hieronder weer. */
+[role="gridcell"]::after {
+    background-color: #262730 !important;
+}
+/* Geselecteerde datum — oranje accent. Zowel de cel zelf als de ::after
+   (de eigenlijke gekleurde vulling) worden oranje gezet. */
 [data-baseweb="calendar"] [aria-selected="true"],
 [role="gridcell"][aria-label*="Selected"] {
     background-color: #FF8000 !important;
     color: #FFFFFF !important;
+}
+[role="gridcell"][aria-label*="Selected"]::after,
+[role="gridcell"][aria-selected="true"]::after {
+    background-color: #FF8000 !important;
 }
 [data-baseweb="calendar"] [aria-selected="true"] *,
 [role="gridcell"][aria-label*="Selected"] > div {
