@@ -28,6 +28,12 @@ def get_token(username: str, password: str) -> APIHandler:
 
     return api_handler
 
+# Terugknop naar de publieke landingpage. Streamlit heeft geen native
+# back-link-styling, dus een gewone secundaire knop bovenaan de pagina.
+# Bewust geen type="primary": de hoofd-actie op deze pagina blijft "Login".
+if st.button("← Terug naar hoofdpagina"):
+    st.switch_page(f"{st.session_state['page_navigation_dir']}/frontpage.py")
+
 st.title("Inloggen")
 user_name = st.text_input("Username")
 password = st.text_input("Password", type="password")

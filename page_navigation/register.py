@@ -21,6 +21,12 @@ st.session_state.setdefault("address", {})
 # adres door een tijdelijke API-fout).
 st.session_state.setdefault("address_lookup_key", None)
 
+# Terugknop naar de publieke landingpage. Streamlit heeft geen native
+# back-link-styling, dus een gewone secundaire knop bovenaan de pagina.
+# Bewust geen type="primary": de hoofd-actie op deze pagina blijft "Registreren".
+if st.button("← Terug naar hoofdpagina"):
+    st.switch_page(f"{st.session_state['page_navigation_dir']}/frontpage.py")
+
 st.title("Registreren voor kerkdienstanalyses")
 
 first_name = st.text_input("Voornaam", max_chars=150)
