@@ -13,18 +13,26 @@ def _render_list(values: list) -> None:
 def _format_bevolkingsomvang(waarde: Any) -> str:
     """Zet een bevolkingsomvang om naar een string met punten als duizendtalscheiding.
 
-    De agent levert `bevolkingsomvang` soms als int (bv. 43310) en soms als
-    reeds geformatteerde string (bv. "43.310" of "43,310"). Wij strippen alle
-    niet-cijfers en formatteren opnieuw, zodat de weergave consistent is en
-    `int()` niet crasht op een al geformatteerde waarde. Lukt parsen niet,
-    dan tonen we de originele waarde onveranderd.
+    De agent levert `bevolkingsomvang` soms als int (bv. 43310), soms als
+    reeds geformatteerde string (bv. "43.310" of "43,310"), en soms als
+    vrije-tekst-omschrijving (bv. "Ongeveer 21.120 inwoners (totaal Leerdam,
+    geëxtrapoleerd naar 2026)."). In het laatste geval mogen we niet zomaar
+    alle cijfers concatten — dan wordt "21.120 ... 2026" tot "211.202.026"
+    en verschijnt 211 miljoen op het scherm. We herformatteren daarom alleen
+    wanneer de waarde *puur* numeriek is (alleen cijfers, eventueel met
+    duizendtalscheiding via `.`, `,` of spatie). Anders tonen we de
+    oorspronkelijke tekst onveranderd, zodat de duiding van de agent intact
+    blijft.
     """
     if isinstance(waarde, (int, float)):
         return f"{int(waarde):,}".replace(",", ".")
-    cijfers = "".join(ch for ch in str(waarde) if ch.isdigit())
-    if not cijfers:
-        return str(waarde)
-    return f"{int(cijfers):,}".replace(",", ".")
+    tekst = str(waarde).strip()
+    # Strip duizendtalscheidingen en whitespace; wat overblijft moet puur cijfer zijn
+    # om hem als getal te durven herformatteren.
+    cijfers = tekst.replace(".", "").replace(",", "").replace(" ", "")
+    if cijfers.isdigit() and cijfers:
+        return f"{int(cijfers):,}".replace(",", ".")
+    return tekst
 
 
 def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
