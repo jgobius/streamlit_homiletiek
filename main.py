@@ -1063,7 +1063,11 @@ def main():
     # opgenomen. De pagina zelf vereist geen auth (post naar
     # /api/auth/password-reset-confirm/ via raw requests), dus is veilig om in
     # beide lijsten op te nemen.
-    pages = [dashboard_page, new_analysis_page, liturgisch_jaar_page, church_overview_page, new_church_page, analysis_overview_page, logout_page, reset_password_page, reset_password_confirm_page, frontpage]
+    # `login_page` en `register_page` staan ook in de authenticated lijst zodat
+    # de "Inloggen"- en "Registreren"-knoppen op de frontpage (die voor zowel
+    # uitgelogde als ingelogde bezoekers wordt getoond) niet crashen met een
+    # `Could not find page`-fout wanneer een ingelogde gebruiker erop klikt.
+    pages = [dashboard_page, new_analysis_page, liturgisch_jaar_page, church_overview_page, new_church_page, analysis_overview_page, logout_page, reset_password_page, reset_password_confirm_page, login_page, register_page, frontpage]
 
     if 'api_handler' not in st.session_state:
         # logout_page wordt ook in de unauthenticated lijst opgenomen zodat de
