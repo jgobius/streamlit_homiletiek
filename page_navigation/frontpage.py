@@ -47,18 +47,29 @@ def _render_home():
         "VoorbereidVoorgaan.nl is momenteel beschikbaar voor een beperkte groep genodigden. "
         "Aanmelding is alleen mogelijk via een persoonlijke uitnodiging."
     )
-    # Twee losse knoppen: een primaire knop voor inloggen (de meest voorkomende
-    # actie voor reeds uitgenodigde gebruikers) en een secundaire knop naar de
-    # registratiepagina voor wie nog geen account heeft. Voorheen ging één
-    # gecombineerde knop naar login.py, waardoor registratie niet zichtbaar
-    # was vanaf de landingpage.
-    col_login, col_register = st.columns([1, 1])
-    with col_login:
-        if st.button("Inloggen", type="primary", use_container_width=True):
-            st.switch_page(f"{st.session_state['page_navigation_dir']}/login.py")
-    with col_register:
-        if st.button("Registreren", type="secondary", use_container_width=True):
-            st.switch_page(f"{st.session_state['page_navigation_dir']}/register.py")
+    # Voor reeds ingelogde gebruikers (api_handler aanwezig in session_state)
+    # vervangen we de inlog-/registreerknoppen door één 'Naar dashboard'-knop.
+    # Anders zou een ingelogde gebruiker die via deze landingpage komt opnieuw
+    # door een login-flow moeten — onnodig en verwarrend, omdat de sessie al
+    # actief is. De auth-check `'api_handler' in st.session_state` is dezelfde
+    # die main.py gebruikt om tussen de auth- en gast-navigatielijst te kiezen.
+    if 'api_handler' in st.session_state:
+        if st.button("Naar dashboard", type="primary", use_container_width=True):
+            st.switch_page(
+                f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py"
+            )
+    else:
+        # Twee losse knoppen voor gasten: een primaire knop voor inloggen (de
+        # meest voorkomende actie voor reeds uitgenodigde gebruikers) en een
+        # secundaire knop naar de registratiepagina voor wie nog geen account
+        # heeft.
+        col_login, col_register = st.columns([1, 1])
+        with col_login:
+            if st.button("Inloggen", type="primary", use_container_width=True):
+                st.switch_page(f"{st.session_state['page_navigation_dir']}/login.py")
+        with col_register:
+            if st.button("Registreren", type="secondary", use_container_width=True):
+                st.switch_page(f"{st.session_state['page_navigation_dir']}/register.py")
 
     st.divider()
     st.markdown(
