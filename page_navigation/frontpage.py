@@ -2,15 +2,15 @@ import streamlit as st
 
 
 def _render_home():
-    st.title("VoorbereidVoorgaan.nl")
-    st.markdown("*Preek die raakt, begint bij wie er zit*")
+    st.title("Voorbereid voorgaan")
+    st.markdown("*Een preek die raakt, begint bij wie er zit*")
     st.markdown(
         "VoorbereidVoorgaan.nl is een experimenteel platform voor contextuele homiletische analyses, "
         "speciaal ontwikkeld voor predikanten en voorgangers. Op basis van locatie, gemeente en datum genereert "
         "het platform een uitgebreide analyse die u helpt aansluiting te vinden tussen de Bijbeltekst en de "
         "concrete levenswereld van uw gemeente."
     )
-    st.caption("Een initiatief van Jan-Jaap Gobius du Sart en Wim Otte — non-profit, zonder commercieel oogmerk.")
+    st.caption("Een initiatief van Jan-Jaap Gobius du Sart en Wim Otte – non-profit, zonder commercieel oogmerk.")
 
     st.divider()
     st.subheader("Drie kernpunten")
@@ -24,8 +24,8 @@ def _render_home():
     with col2:
         st.markdown("**Theologisch rigoureus**")
         st.markdown(
-            "Het platform put uit een brede homiletische traditie — van Lowry tot Brueggemann, van Noordmans "
-            "tot Rutledge — en verbindt exegetische inzichten met hedendaagse preekleer."
+            "Het platform put uit een brede homiletische traditie – van Lowry tot Brueggemann, van Noordmans "
+            "tot Rutledge – en verbindt exegetische inzichten met hedendaagse preekleer."
         )
     with col3:
         st.markdown("**Uw gemeente**")
@@ -37,8 +37,8 @@ def _render_home():
     st.divider()
     st.info(
         "**Disclaimer.** De output van VoorbereidVoorgaan.nl is uitsluitend bedoeld als inspiratiemateriaal "
-        "ter ondersteuning van uw voorbereiding. De verantwoordelijkheid voor de preek — inhoudelijk, "
-        "theologisch en pastoraal — blijft te allen tijde bij de voorganger. Het platform vervangt geen eigen "
+        "ter ondersteuning van uw voorbereiding. De verantwoordelijkheid voor de preek – inhoudelijk, "
+        "theologisch en pastoraal – blijft te allen tijde bij de voorganger. Het platform vervangt geen eigen "
         "studie, gebed of pastorale betrokkenheid."
     )
 
@@ -47,12 +47,22 @@ def _render_home():
         "VoorbereidVoorgaan.nl is momenteel beschikbaar voor een beperkte groep genodigden. "
         "Aanmelding is alleen mogelijk via een persoonlijke uitnodiging."
     )
-    if st.button("Aanmelden / Inloggen", type="primary"):
-        st.switch_page(f"{st.session_state['page_navigation_dir']}/login.py")
+    # Twee losse knoppen: een primaire knop voor inloggen (de meest voorkomende
+    # actie voor reeds uitgenodigde gebruikers) en een secundaire knop naar de
+    # registratiepagina voor wie nog geen account heeft. Voorheen ging één
+    # gecombineerde knop naar login.py, waardoor registratie niet zichtbaar
+    # was vanaf de landingpage.
+    col_login, col_register = st.columns([1, 1])
+    with col_login:
+        if st.button("Inloggen", type="primary", use_container_width=True):
+            st.switch_page(f"{st.session_state['page_navigation_dir']}/login.py")
+    with col_register:
+        if st.button("Registreren", type="secondary", use_container_width=True):
+            st.switch_page(f"{st.session_state['page_navigation_dir']}/register.py")
 
     st.divider()
     st.markdown(
-        "💳 **Kosten & betaling.** Het platform werkt op basis van kostprijsberekening: u betaalt uitsluitend "
+        "💳 **Kosten & betaling.** [Gratis voor testgebruikers!] Het platform werkt op basis van kostprijsberekening: u betaalt uitsluitend "
         "de werkelijke kosten van de analyse, zonder winstopslag. De exacte prijs wordt vooraf getoond. "
         "Betaling verloopt veilig via **Mollie / iDEAL**."
     )
@@ -88,8 +98,7 @@ def _render_over_ons():
             "op het gebied van predictiemodellen en generatieve modellen. Hij heeft de databronnen en taalmodellen opgezet."
         )
         st.markdown(
-            "Die combinatie maakt hem bij uitstek geschikt om te beoordelen wat gegenereerde analyses kunnen "
-            "en — minstens zo belangrijk — wat ze niet kunnen. Als voorganger kent hij de praktijk van de "
+            "Als voorganger kent hij de praktijk van de "
             "wekelijkse preekvoorbereiding van binnenuit."
         )
 
@@ -130,14 +139,14 @@ def _render_methode():
 
     st.subheader("Het probleem: preken die vragen beantwoorden die niemand stelt")
     st.markdown(
-        "De Duitse homileticus Friedrich Niebergall (1866—1932) formuleerde al aan het begin van de twintigste eeuw een "
+        "De Duitse homileticus Friedrich Niebergall (1866–1932) formuleerde al aan het begin van de twintigste eeuw een "
         "scherpe diagnose van de prediking: veel preken beantwoorden vragen die niemand stelt. Ze zijn "
-        "theologisch solide, exegetisch doordacht — maar ze landen niet, omdat ze geen verbinding maken met "
+        "theologisch solide, exegetisch doordacht – maar ze landen niet, omdat ze geen verbinding maken met "
         "wat gemeenteleden werkelijk bezighoudt."
     )
     st.markdown(
         "Dit inzicht is sindsdien verdiept door decennia van homiletisch onderzoek, maar het probleem is "
-        "hardnekkig. Contextuele informatie over de gemeente als geheel is beschikbaar — maar versnipperd, "
+        "hardnekkig. Contextuele informatie over de gemeente als geheel is beschikbaar – maar versnipperd, "
         "moeilijk toegankelijk en zelden systematisch ontsloten voor de preekvoorbereiding."
     )
 
@@ -153,12 +162,12 @@ def _render_methode():
     with col2:
         st.markdown("**De wereld van de tekst**")
         st.markdown(
-            "Wat zegt de Bijbeltekst — in haar literaire, historische en canonieke context? Welke "
+            "Wat zegt de Bijbeltekst – in haar literaire, historische en canonieke context? Welke "
             "theologische claims doet zij? Hoe heeft de kerk door de eeuwen heen met deze tekst geworsteld?"
         )
     st.markdown(
         "De uitdaging van de prediking is het overbruggen van die twee werelden. VoorbereidVoorgaan.nl legt "
-        "bijzondere nadruk op de wereld van de hoorder — omdat die informatie voor de meeste voorgangers het "
+        "bijzondere nadruk op de wereld van de hoorder – omdat die informatie voor de meeste voorgangers het "
         "moeilijkst toegankelijk is."
     )
 
@@ -174,7 +183,7 @@ def _render_methode():
         ("Dorothee Sölle", "De politieke theologie en de stem van de lijdende in de prediking"),
     ]
     for naam, omschrijving in tradities:
-        st.markdown(f"- **{naam}** — {omschrijving}")
+        st.markdown(f"- **{naam}** – {omschrijving}")
 
     st.subheader("Contextanalyse: databronnen")
     col1, col2, col3 = st.columns(3)
@@ -229,27 +238,27 @@ def _render_methode():
 def _render_werkwijze():
     st.header("Werkwijze")
     st.markdown(
-        "Het platform vraagt weinig van u — de invoer is minimaal, de output is uitgebreid. "
+        "Het platform vraagt weinig van u – de invoer is minimaal, de output is uitgebreid. "
         "Hieronder vindt u een overzicht van de stappen."
     )
 
-    st.markdown("#### Stap 1 — Registreren")
+    st.markdown("#### Stap 1 – Registreren")
     st.markdown(
         "VoorbereidVoorgaan.nl is momenteel alleen toegankelijk voor genodigden. U heeft een persoonlijke "
         "uitnodigingslink nodig om een account aan te maken."
     )
 
-    st.markdown("#### Stap 2 — Invoer")
+    st.markdown("#### Stap 2 – Invoer")
     st.markdown("U voert drie gegevens in:")
     st.markdown(
-        "- **Locatie** — de gemeente of wijk waar uw kerk staat\n"
-        "- **Gemeente** — de kerkelijke gemeenschap waarvoor u de dienst voorbereidt\n"
-        "- **Datum** — de datum van de dienst\n\n"
+        "- **Locatie** – de gemeente of wijk waar uw kerk staat\n"
+        "- **Gemeente** – de kerkelijke gemeenschap waarvoor u de dienst voorbereidt\n"
+        "- **Datum** – de datum van de dienst\n\n"
         "Op basis van deze drie gegevens worden de bijbehorende Bijbeltekst, de demografische context en "
         "de mentaliteitsprofielen automatisch geladen. Het systeem is klaar om analyses te genereren."
     )
 
-    st.markdown("#### Stap 3 — Analyse")
+    st.markdown("#### Stap 3 – Analyse")
     st.markdown("Het systeem is in staat om een uitgebreide homiletische structuur te bieden. Andere handvatten zijn onder andere:")
     st.markdown(
         "- Een contextprofiel van de gemeente en omgeving\n"
@@ -263,37 +272,28 @@ def _render_werkwijze():
         "Het genereren duurt doorgaans 1–3 minuten per onderdeel."
     )
 
-    st.markdown("#### Stap 4 — Werken met de output")
+    st.markdown("#### Stap 4 – Werken met de output")
     st.markdown(
         "De set analyses wordt stap voor stap door de voorganger gemaakt. Het systeem is niet bedoeld om een kant-en-klare preek te genereren. " \
-        "Het is meer een verzameling van perspectieven, inzichten en suggesties waaruit u selectief kunt putten. De verantwoordelijkheid voor de preek — "
-        "inhoudelijk, theologisch en pastoraal — blijft te allen tijde bij u als voorganger."
-    )
-
-    st.markdown("#### Stap 5 — Feedback geven")
-    st.markdown(
-        "Na het lezen van de analyse kunt u per sectie feedback geven:\n"
-        "- 👍 **Duim omhoog** — deze sectie was waardevol voor mijn voorbereiding\n"
-        "- 👎 **Duim omlaag** — deze sectie was niet nuttig of klopte niet\n"
-        "- **Toelichting** (optioneel) — wat werkte wel of niet, en waarom?\n\n"
-        "Uw feedback is anoniem verwerkt en wordt uitsluitend gebruikt voor de doorontwikkeling van het platform en in het opdoen van algemene homiletische inzichten."
+        "Het is meer een verzameling van perspectieven, inzichten en suggesties waaruit u selectief kunt putten. De verantwoordelijkheid voor de preek – "
+        "inhoudelijk, theologisch en pastoraal – blijft te allen tijde bij u als voorganger."
     )
 
     st.divider()
     st.subheader("Kosten en betaling")
     st.markdown(
         "VoorbereidVoorgaan.nl werkt op basis van kostprijsberekening. U betaalt uitsluitend de werkelijke "
-        "kosten van het genereren van de analyse — voornamelijk de kosten van de taalmodellen die worden "
-        "gebruikt. Er is geen abonnement, geen winstopslag en er zijn geen verborgen kosten."
-        "Testgebruikers krijgen een voorschot van enkele euro's om het systeem te testen."
+        "kosten van het genereren van de analyse – voornamelijk de kosten van de taalmodellen die worden "
+        "gebruikt. Er is geen abonnement, geen winstopslag en er zijn geen verborgen kosten. "
+        "Testgebruikers krijgen een voorschot van twintig euro om het systeem vrijblijvend te testen."
     )
     st.info(
         "**Praktische informatie**\n\n"
-        "- **Generatietijd** — doorgaans 1–3 minuten per onderdeel\n"
-        "- **Output** — tientallen analyses, leesbaar in de browser\n"
-        "- **Leesrooster** — standaard het Oecumenisch Leesrooster (RCL / Evangelielijst)\n"
-        "- **Bijbelvertaling** — standaard de Nieuwe Bijbelvertaling (NBV21) of de Herziene Statenvertaling\n"
-        "- **Taal** — analyses beschikbaar in het Nederlands"
+        "- **Generatietijd** – doorgaans 1–3 minuten per onderdeel\n"
+        "- **Output** – tientallen analyses, leesbaar in de browser\n"
+        "- **Leesrooster** – standaard het Oecumenisch Leesrooster (RCL / Evangelielijst)\n"
+        "- **Bijbelvertaling** – standaard de Nieuwe Bijbelvertaling (NBV21), maar ook aanwezig zijn de Naardense Bijbel, de Statenvertaling en de  Herziene Statenvertaling\n"
+        "- **Taal** – analyses beschikbaar in het Nederlands"
     )
 
 
@@ -309,7 +309,7 @@ def _render_vragen():
         ),
         (
             "Is dit een ghostwriter?",
-            "Nee — nadrukkelijk niet. VoorbereidVoorgaan.nl levert exegetische aantekeningen, liedsuggesties, "
+            "Nee – nadrukkelijk niet. VoorbereidVoorgaan.nl levert exegetische aantekeningen, liedsuggesties, "
             "preekschetsen en homiletische structuren als inspiratiemateriaal. De inhoud, de toon, de structuur "
             "en de theologische keuzes van de preek zijn en blijven de verantwoordelijkheid van de voorganger.",
         ),
@@ -328,7 +328,7 @@ def _render_vragen():
         ),
         (
             "Wat kost het?",
-            "U betaalt de werkelijke kostprijs van de analyse — uitsluitend de kosten van de taalmodellen die "
+            "U betaalt de werkelijke kostprijs van de analyse – uitsluitend de kosten van de taalmodellen die "
             "worden ingezet. Er is geen abonnement en geen winstopslag. De kosten liggen in de orde van enkele "
             "euro's per volledige homiletische analyse." 
             "In de praktijk zal een voorganger slechts enkele specifieke onderdelen willen gebruiken als aanvulling op bestaande voorbereiding.",
@@ -351,9 +351,9 @@ def _render_vragen():
         ),
         (
             "Welke bijbelvertaling wordt gebruikt?",
-            "Standaard werkt het platform met de Nieuwe Bijbelvertaling (NBV21). Ook de Herziene Statenvertaling "
-            "is beschikbaar. Het onderliggende Grieks voor de NBV21 wordt opgehaald uit de Nestle-Aland Novum Testamentum Graece (NA28)." 
-            "Het Grieks bij de HSV komt uit de gereconstrueerde Texus Receptus-versie."
+            "Standaard werkt het platform met de Nieuwe Bijbelvertaling (NBV21). Ook de Naardense Bijbel en de (Herziene) Statenvertaling "
+            "zijn beschikbaar. Het onderliggende Grieks voor de NBV21 wordt opgehaald uit de Nestle-Aland Novum Testamentum Graece (NA28)." 
+            "Het Grieks bij de (H)SV komt uit de gereconstrueerde Texus Receptus-versie. "
             "Beide vertalingen worden, wat OT-lezingen betreft, gekoppeld aan het Hebreeuws uit de Biblia Hebraica Stuttgartensia.",
         ),
         (
@@ -369,13 +369,13 @@ def _render_vragen():
         ),
         (
             "Hoe wordt feedback gebruikt?",
-            "Uw feedback per analysesectie (duim omhoog/omlaag + optionele toelichting) wordt anoniem verwerkt "
+            "Uw feedback per analysesectie (en optionele toelichting) wordt anoniem verwerkt "
             "voor het verbeteren van de kwaliteit van toekomstige analyses.",
         ),
         (
             "Wat is de relatie met de Universiteit Utrecht?",
-            "Wim Otte is verbonden aan de Universiteit Utrecht en Tilburg School of Catholic Theology. VoorbereidVoorgaan.nl is echter geen formeel "
-            "onderzoeksproject van de universiteit.",
+            "Wim Otte is verbonden aan de Universiteit Utrecht en Tilburg School of Catholic Theology. VoorbereidVoorgaan.nl is echter geen "
+            "onderzoeksproject.",
         ),
     ]
 
