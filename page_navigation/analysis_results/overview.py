@@ -1274,7 +1274,7 @@ def preekschets_selectie_dialog(
                 text = (verse.get("modern_text") or "").strip()
                 verzen.append({"ref": f"{book_chapter}:{number}", "text": text})
 
-    st.subheader("Kerntekst(en)")
+    st.subheader("Kerngedeelte")
     selected_refs = []
     if verzen:
         for v in verzen:
@@ -1575,7 +1575,7 @@ def preekschets_selectie_dialog(
         not _focus_beschikbaar or focus_optie_value is not None
     )
     if not selected_refs:
-        st.warning("Selecteer minimaal één kerntekst.")
+        st.warning("Selecteer minimaal één vers voor het kerngedeelte.")
     if _focus_beschikbaar and focus_optie_value is None:
         st.warning("Selecteer een focus-en-functie optie.")
     if st.button(
@@ -1698,7 +1698,7 @@ def volledige_preek_dialog(
         help=(
             "Bijbelteksten zijn altijd beschikbaar omdat elke kerkdienst-"
             "analyse de Schriftlezingen heeft. Preekschets-materiaal "
-            "(perspectieven, representatieve hoorders, kernteksten, "
+            "(perspectieven, representatieve hoorders, kerngedeelte, "
             "focus/functie en illustraties) is alleen bruikbaar als je de "
             "Preekschetsen-tab eerder hebt gedraaid."
         ),

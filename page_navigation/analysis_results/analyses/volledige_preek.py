@@ -75,7 +75,7 @@ def volledige_preek(analysis: dict, analysis_id: int) -> None:
 
     kerntekst = result.get("kerntekst", "")
     if kerntekst:
-        with st.expander("Kerntekst", expanded=False):
+        with st.expander("Kerngedeelte", expanded=False):
             st.info(clean_md(kerntekst))
 
     structuuroverzicht = result.get("structuuroverzicht", "")
