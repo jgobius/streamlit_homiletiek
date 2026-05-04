@@ -33,6 +33,13 @@ user_name = st.text_input("Username")
 password = st.text_input("Password", type="password")
 login_button = st.button("Login", disabled=not user_name or not password)
 
+# "Wachtwoord vergeten?" — secundaire actie, daarom als losse knop onder
+# de Login-knop. We gebruiken een gewone knop (geen markdown-link) zodat
+# de navigatie via st.switch_page loopt en de Streamlit-routing intact
+# blijft (een markdown-link zou de volledige app herstarten).
+if st.button("Wachtwoord vergeten?"):
+    st.switch_page(f"{st.session_state['page_navigation_dir']}/wachtwoord_vergeten.py")
+
 if login_button:
 
     try:

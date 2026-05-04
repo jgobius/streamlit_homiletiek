@@ -1028,6 +1028,20 @@ def main():
     logout_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/logout.py", title='Uitloggen')
     register_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/register.py", title='Registreren')
     reset_password_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/reset_password.py", title='Wachtwoord resetten')
+    # Pre-login wachtwoord-vergeten flow. `url_path` op de bevestigingspagina
+    # wordt expliciet gezet zodat hij precies overeenkomt met de mail-link
+    # die de backend genereert (FRONTEND_URL/Wachtwoord_resetten_bevestigen
+    # ?token=<uuid>); zo blijft de URL stabiel als de Streamlit-default ooit
+    # zou wijzigen.
+    forgot_password_page = st.Page(
+        page=f"{st.session_state['page_navigation_dir']}/wachtwoord_vergeten.py",
+        title='Wachtwoord vergeten',
+    )
+    reset_password_confirm_page = st.Page(
+        page=f"{st.session_state['page_navigation_dir']}/wachtwoord_resetten_bevestigen.py",
+        title='Wachtwoord resetten bevestigen',
+        url_path='Wachtwoord_resetten_bevestigen',
+    )
     dashboard_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py", title='Overzicht kerkdienstanalyses')
     # settings_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/settings.py", title='Instellingen')
     new_analysis_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analyses/new_analysis.py", title='Nieuwe kerkdienstanalyse')
@@ -1044,7 +1058,18 @@ def main():
         # gebruiker op /logout kan blijven staan nadat api_handler is gewist.
         # Zonder deze toevoeging valt Streamlit terug op de eerste pagina in de
         # lijst (frontpage) en draait de knop-callback op logout.py niet meer.
-        pg = st.navigation([frontpage, login_page, register_page, dashboard_page, logout_page], position='hidden')
+        pg = st.navigation(
+            [
+                frontpage,
+                login_page,
+                register_page,
+                forgot_password_page,
+                reset_password_confirm_page,
+                dashboard_page,
+                logout_page,
+            ],
+            position='hidden',
+        )
         pg.run()
     else:
         pg = st.navigation(pages, position='hidden')
