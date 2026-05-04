@@ -121,7 +121,12 @@ st.markdown(
 )
 
 # --- Categorisatie van analyse-types per tabblad ---
-REANALYSIS_LOCK_TIMEOUT_SECONDS = 30
+# Lock-timeout voor heranalyse-/refresh-knoppen: voorkomt dat een dubbele
+# klik binnen dit venster een tweede pipeline-run start. Gezet op 3 minuten
+# omdat analyses (Tavily + LLM) regelmatig 1-2 minuten duren; 30 s gaf
+# valse "klaar"-signalen waarna de gebruiker tóch nog een tweede run kon
+# triggeren terwijl de eerste nog liep.
+REANALYSIS_LOCK_TIMEOUT_SECONDS = 180
 
 # Woordentelling-grenzen voor het 'Eigen preek'-dialoog worden geïmporteerd
 # uit src.utils.utils zodat deze dialog en de bewerk-view in
