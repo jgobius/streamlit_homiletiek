@@ -243,8 +243,13 @@ def bijbelteksten(analysis: dict[str, Any]) -> None:
                 is_heb = _is_hebrew(source_text)
                 direction = "rtl" if is_heb else "ltr"
                 align = "right" if is_heb else "left"
+                # Hebreeuws krijgt een grotere fontgrootte omdat de
+                # klinkertekens (niqqud) en cantillatie-accenten anders
+                # nauwelijks leesbaar zijn. Grieks/Latijns blijft op de
+                # bestaande grootte staan.
+                font_size = "1.25em" if is_heb else "0.8em"
                 st.markdown(
-                    f"<p style='color:#888;font-size:0.8em;font-style:italic;"
+                    f"<p style='color:#888;font-size:{font_size};font-style:italic;"
                     f"direction:{direction};text-align:{align};margin-top:2px;'>"
                     f"{source_text}</p>",
                     unsafe_allow_html=True,
