@@ -1055,7 +1055,15 @@ def main():
     # op het dashboard en de "Terug naar hoofdpagina"-knop op de uitlogpagina
     # via st.switch_page kunnen navigeren. Streamlit accepteert switch_page
     # alleen voor pagina's die in de actieve st.navigation-lijst zijn opgenomen.
-    pages = [dashboard_page, new_analysis_page, liturgisch_jaar_page, church_overview_page, new_church_page, analysis_overview_page, logout_page, reset_password_page, frontpage]
+    # `reset_password_confirm_page` staat ook in de authenticated lijst zodat
+    # een ingelogde gebruiker die op de mail-link klikt (FRONTEND_URL/
+    # Wachtwoord_resetten_bevestigen?token=...) gewoon op de bevestigingspagina
+    # uitkomt en niet op de default-pagina (dashboard) — Streamlit kan immers
+    # alleen navigeren naar pagina's die in de actieve st.navigation-lijst zijn
+    # opgenomen. De pagina zelf vereist geen auth (post naar
+    # /api/auth/password-reset-confirm/ via raw requests), dus is veilig om in
+    # beide lijsten op te nemen.
+    pages = [dashboard_page, new_analysis_page, liturgisch_jaar_page, church_overview_page, new_church_page, analysis_overview_page, logout_page, reset_password_page, reset_password_confirm_page, frontpage]
 
     if 'api_handler' not in st.session_state:
         # logout_page wordt ook in de unauthenticated lijst opgenomen zodat de
