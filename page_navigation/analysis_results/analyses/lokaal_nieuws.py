@@ -18,17 +18,6 @@ def _render_bronnen(urls: list[str]) -> None:
     st.caption(f"Bronnen: {links}")
 
 
-def _render_validatie(validatie: dict[str, Any]) -> None:
-    # Toon alleen het bewijs voor de lokale binding; de drie boolean-checks
-    # (lokaal/actueel/raakt inwoners) worden niet meer als checkmark-rij
-    # gerenderd — dat oogde te schools voor de doelgroep.
-    if not validatie:
-        return
-    bewijs = validatie.get("bewijs")
-    if bewijs:
-        st.caption(f"Bewijs: {clean_md(bewijs)}")
-
-
 def _render_homiletische_duiding(duiding: dict[str, Any]) -> None:
     # Vijf dimensies zoals in wereldnieuws: pastoraal, profetisch, diaconaal,
     # liturgisch, homiletisch. Compact gestapeld om de lezer niet te overladen.
@@ -93,7 +82,6 @@ def lokaal_nieuws(analysis: dict[str, Any]) -> None:
                                 f"Locatie: {localiteit['concrete_locatie']}"
                             )
 
-                _render_validatie(item.get("validatie", {}))
                 _render_homiletische_duiding(item.get("homiletische_duiding", {}))
                 _render_bronnen(item.get("bronnen", []))
 
