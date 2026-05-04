@@ -1019,7 +1019,11 @@ def main():
             # consistent met de patronen hierboven.
             _inject_compact_bullets_css()
 
-    welcome_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/welcome.py", title='Welcome')
+    # Landingpage is sinds deze wijziging de uitgebreide front-page met info,
+    # methode-uitleg, werkwijze en Q&A. De oude minimale welcome.py is vervangen
+    # door page_navigation/frontpage.py — dezelfde tekst die op de publieke
+    # presentatiebranch (front_page) is ontwikkeld.
+    frontpage = st.Page(page=f"{st.session_state['page_navigation_dir']}/frontpage.py", title='Welcome')
     login_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/login.py", title='Inloggen')
     logout_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/logout.py", title='Uitloggen')
     register_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/register.py", title='Registreren')
@@ -1039,8 +1043,8 @@ def main():
         # logout_page wordt ook in de unauthenticated lijst opgenomen zodat de
         # gebruiker op /logout kan blijven staan nadat api_handler is gewist.
         # Zonder deze toevoeging valt Streamlit terug op de eerste pagina in de
-        # lijst (welcome) en draait de knop-callback op logout.py niet meer.
-        pg = st.navigation([welcome_page, login_page, register_page, dashboard_page, logout_page], position='hidden')
+        # lijst (frontpage) en draait de knop-callback op logout.py niet meer.
+        pg = st.navigation([frontpage, login_page, register_page, dashboard_page, logout_page], position='hidden')
         pg.run()
     else:
         pg = st.navigation(pages, position='hidden')
