@@ -68,6 +68,56 @@ _INLINE_STRING_MAX = 120
 # reeks van ≥ 1 blank line telt als nieuwe alinea.
 _BLANK_LINE_RE = re.compile(r"\n\s*\n")
 
+# Tavily is de search-tool die de agent intern gebruikt; verwijzingen ernaar
+# (bv. "datum onbekend (Tavily)", "via Tavily Search Tool", URL's naar
+# tavily.com) horen niet in een document dat de prediker meeneemt naar
+# de kerkenraad. We scrubben string-leafs op drie niveaus: parenthetische
+# mentions wegknippen, losse Tavily-tokens met optionele begeleidingswoorden
+# vervangen door leeg, en URL's naar tavily.com strippen. Aanvullend slaan
+# we dict-keys met 'tavily' in de naam volledig over.
+_TAVILY_KEY_FRAGMENT = "tavily"
+_TAVILY_PAREN_RE = re.compile(
+    r"\s*\([^)]*\btavily\b[^)]*\)", flags=re.IGNORECASE
+)
+_TAVILY_URL_RE = re.compile(r"https?://\S*tavily\S*", flags=re.IGNORECASE)
+_TAVILY_PHRASE_RE = re.compile(
+    r"(?:\b(?:via|uit|door|volgens|met behulp van|met)\s+)?"
+    r"\bTavily(?:[\s-](?:Search(?:\s+Tool)?|zoekopdracht|zoekresultaten?|"
+    r"onderzoek|tool|tools|bron|bronnen|results?|api))?\b",
+    flags=re.IGNORECASE,
+)
+_TAVILY_DOMAIN_RE = re.compile(
+    r"\btavily\.[a-z]+(?:\.[a-z]+)*(?:/\S*)?", flags=re.IGNORECASE
+)
+_WHITESPACE_COLLAPSE_RE = re.compile(r"[ \t]{2,}")
+_DANGLING_PUNCT_RE = re.compile(
+    r"\s*[—–\-,;:]\s*$|^\s*[—–\-,;:]\s*"
+)
+
+
+def _scrub_tavily(text: str) -> str:
+    """Verwijdert Tavily-verwijzingen uit een string-leaf.
+
+    De backend laat in fallback-meldingen soms tooling-namen lekken (bijv.
+    'datum onbekend (Tavily)' of 'via Tavily Search Tool'). Voor de
+    eindgebruiker zijn dat interne ruis-verwijzingen die niet in het
+    geëxporteerde document horen. We strippen ze op de minst destructieve
+    manier: eerst parentheticals waar 'tavily' in voorkomt verwijderen,
+    daarna URL's en losse Tavily-tokens (incl. veelvoorkomende compounds
+    en optionele begeleidingswoorden 'via/uit/...'), en tot slot dubbele
+    whitespace en losse punctuatie aan rand of staart opruimen.
+    """
+    if not text:
+        return text
+    schoon = _TAVILY_PAREN_RE.sub("", text)
+    schoon = _TAVILY_URL_RE.sub("", schoon)
+    schoon = _TAVILY_DOMAIN_RE.sub("", schoon)
+    schoon = _TAVILY_PHRASE_RE.sub("", schoon)
+    schoon = _WHITESPACE_COLLAPSE_RE.sub(" ", schoon)
+    # Losse punctuatie aan begin/einde die door het scrubben is overgebleven.
+    schoon = _DANGLING_PUNCT_RE.sub("", schoon).strip()
+    return schoon
+
 def bouw_kerkdienstanalyse_docx(
     analysis_id: int,
     api_handler: APIHandler,
@@ -417,6 +467,8 @@ def _walk(
     elif isinstance(value, str):
         _add_paragraph_multiline(doc, value)
     else:
+        # Niet-string primitieven (getallen) bevatten geen Tavily-tekst, dus
+        # gewoon doorgeven aan str().
         doc.add_paragraph(str(value))
 
 
@@ -436,6 +488,11 @@ def _walk_dict(
     for key, val in value.items():
         if key in skip_keys:
             continue
+        # Sla velden over waarvan de sleutel zelf naar Tavily verwijst
+        # (bv. 'tavily_query', 'tavily_results'). Die zijn diagnostisch
+        # voor de backend en horen niet in het Word-document.
+        if isinstance(key, str) and _TAVILY_KEY_FRAGMENT in key.lower():
+            continue
         label = _humanize_key(key)
         if isinstance(val, (dict, list)):
             niveau = min(heading_level, _MAX_HEADING_LEVEL)
@@ -450,9 +507,20 @@ def _walk_dict(
             # losse paragraphs, anders verdwijnen de alinea-grenzen uit de
             # model-output in één lange inline-regel.
             niveau = min(heading_level, _MAX_HEADING_LEVEL)
+            schoon = _scrub_tavily(val)
+            if not schoon:
+                continue
             doc.add_heading(label, level=niveau)
-            _add_paragraph_multiline(doc, val)
+            _add_paragraph_multiline(doc, schoon)
         else:
+            # Inline 'Sleutel: waarde' — string-waardes scrubben; als er na
+            # het scrubben niets overblijft slaan we de hele regel over zodat
+            # we geen 'Datum: '-regels krijgen waar alleen 'Tavily' stond.
+            if isinstance(val, str):
+                schoon = _scrub_tavily(val)
+                if not schoon:
+                    continue
+                val = schoon
             p = doc.add_paragraph()
             p.add_run(f"{label}: ").bold = True
             _append_value_run(p, val)
@@ -484,7 +552,15 @@ def _walk_list(value: list, doc, heading_level: int) -> None:
         for item in value:
             if item is None or item == "":
                 continue
-            tekst = ("Ja" if item else "Nee") if isinstance(item, bool) else str(item)
+            if isinstance(item, bool):
+                tekst = "Ja" if item else "Nee"
+            else:
+                tekst = _scrub_tavily(str(item))
+                # Bullet-items die volledig uit een Tavily-verwijzing bestonden
+                # worden hierdoor leeg en moeten worden overgeslagen — anders
+                # krijgen we een lege bullet in de lijst.
+                if not tekst:
+                    continue
             doc.add_paragraph(tekst, style="List Bullet")
         return
 
@@ -502,7 +578,12 @@ def _subheading_van_dict(item: dict) -> tuple[str | None, str | None]:
     for key in _SUBHEADING_KEYS:
         val = item.get(key)
         if isinstance(val, str) and val.strip():
-            return key, val.strip()
+            # Subheadings worden als heading in het document gerenderd, dus
+            # ook hier eerst de Tavily-mentions strippen voordat we hem
+            # promoveren — anders verschijnt 'Tavily' alsnog als kop.
+            schoon = _scrub_tavily(val.strip())
+            if schoon:
+                return key, schoon
     return None, None
 
 
@@ -519,13 +600,16 @@ def _add_paragraph_multiline(doc, text: str) -> None:
     Zo blijven gestructureerde analyse-resultaten met meerdere alinea's ook
     in Word leesbaar: de model-output gebruikt vaak '\\n\\n' als alinea-
     scheider, wat python-docx anders als één grote paragraph zou behandelen.
+    Per stuk wordt nog een keer door _scrub_tavily gehaald, zodat ook
+    callers die deze helper rechtstreeks aanroepen geen Tavily-mentions
+    door kunnen lekken.
     """
     text = text.strip()
     if not text:
         return
     stukken = _BLANK_LINE_RE.split(text)
     for stuk in stukken:
-        gestript = stuk.strip()
+        gestript = _scrub_tavily(stuk.strip())
         if not gestript:
             continue
         doc.add_paragraph(gestript)
