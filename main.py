@@ -1051,7 +1051,11 @@ def main():
 
     analysis_overview_page = st.Page(page=f"{st.session_state['page_navigation_dir']}/analysis_results/overview.py", title='Analyse overzicht')
 
-    pages = [dashboard_page, new_analysis_page, liturgisch_jaar_page, church_overview_page, new_church_page, analysis_overview_page, logout_page, reset_password_page]
+    # Frontpage staat ook in de authenticated lijst zodat de "Hoofdpagina"-knop
+    # op het dashboard en de "Terug naar hoofdpagina"-knop op de uitlogpagina
+    # via st.switch_page kunnen navigeren. Streamlit accepteert switch_page
+    # alleen voor pagina's die in de actieve st.navigation-lijst zijn opgenomen.
+    pages = [dashboard_page, new_analysis_page, liturgisch_jaar_page, church_overview_page, new_church_page, analysis_overview_page, logout_page, reset_password_page, frontpage]
 
     if 'api_handler' not in st.session_state:
         # logout_page wordt ook in de unauthenticated lijst opgenomen zodat de

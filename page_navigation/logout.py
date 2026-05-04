@@ -52,3 +52,8 @@ st.success('Je bent succesvol uitgelogd.')
 
 if st.button('Opnieuw inloggen', type='primary'):
     st.switch_page(f"{st.session_state['page_navigation_dir']}/login.py")
+
+# Tweede actie: terug naar de publieke landingpage. Bewust secundair (default
+# type) zodat 'Opnieuw inloggen' visueel de hoofd-actie blijft.
+if st.button('Terug naar hoofdpagina'):
+    st.switch_page(f"{st.session_state['page_navigation_dir']}/frontpage.py")

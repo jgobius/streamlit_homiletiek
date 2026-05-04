@@ -210,6 +210,15 @@ if _token_info is not None:
             f"Cumulatief verbruik: {formatteer_eur(_kosten_eur)}."
         )
 
+# Subtiele "Hoofdpagina"-knop bovenaan zodat de gebruiker na het inloggen
+# alsnog terug kan naar de publieke landingpage. We gebruiken een smalle
+# kolom zodat de knop niet de volledige breedte beslaat en daardoor visueel
+# ondergeschikt blijft aan de eigenlijke titel hieronder.
+_terug_kolom, _ = st.columns([1, 5])
+with _terug_kolom:
+    if st.button("← Hoofdpagina", key="dashboard_terug_hoofdpagina"):
+        st.switch_page(f"{st.session_state['page_navigation_dir']}/frontpage.py")
+
 st.title("Kerkdienstanalyses")
 st.write("Overzicht van alle kerkdienstanalyses.")
 
