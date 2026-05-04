@@ -19,19 +19,11 @@ def _render_bronnen(urls: list[str]) -> None:
 
 
 def _render_validatie(validatie: dict[str, Any]) -> None:
-    # Visuele controle of een lokaal nieuwsitem aan de drie eisen voldoet:
-    # actueel (dit jaar), lokaal (binnen gemeente), raakt inwoners.
+    # Toon alleen het bewijs voor de lokale binding; de drie boolean-checks
+    # (lokaal/actueel/raakt inwoners) worden niet meer als checkmark-rij
+    # gerenderd — dat oogde te schools voor de doelgroep.
     if not validatie:
         return
-    checks = [
-        ("Lokaal", validatie.get("is_lokaal")),
-        ("Actueel", validatie.get("is_actueel")),
-        ("Raakt inwoners", validatie.get("raakt_inwoners")),
-    ]
-    cols = st.columns(len(checks))
-    for col, (label, value) in zip(cols, checks):
-        icon = "✅" if value else "❌"
-        col.markdown(f"{icon} **{label}**")
     bewijs = validatie.get("bewijs")
     if bewijs:
         st.caption(f"Bewijs: {clean_md(bewijs)}")
