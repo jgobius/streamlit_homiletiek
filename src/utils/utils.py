@@ -860,9 +860,22 @@ def _sla_thema_voorkeur_op() -> None:
 
 
 def render_sidebar():
-    
+
     with st.sidebar:
-        
+
+        # "Hoofdpagina"-link bovenaan het menu (boven de expanders) zodat de
+        # ingelogde gebruiker vanuit elke render_sidebar()-pagina (dashboard,
+        # gemeenten, nieuwe analyse, nieuwe gemeente) met één klik terug kan
+        # naar de publieke landingpage. Eerdere positionering — een losse
+        # knop in een smalle kolom bovenaan dashboard.py — viel visueel
+        # rommelig uit; door hem in het linker menu te plaatsen sluit hij
+        # aan bij de overige navigatielinks en blijft de hoofdcontent
+        # ongestoord.
+        st.page_link(
+            label="← Hoofdpagina",
+            page=f"{st.session_state['page_navigation_dir']}/frontpage.py",
+        )
+
         with st.expander("Kerkdienstanalyses"):
             st.page_link(label="Overzicht kerkdienstanalyses", page=f"{st.session_state['page_navigation_dir']}/analyses/dashboard.py")
             # Verberg de "Nieuwe kerkdienstanalyse"-link zodra de early-test-
