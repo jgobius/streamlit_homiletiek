@@ -62,10 +62,15 @@ def contextduiding(analysis: dict[str, Any]) -> None:
             # standaard in <p>) niet alsnog asymmetrische witruimte
             # opleveren. De border-color gebruikt currentColor met opacity
             # zodat de lijn in zowel light- als dark-mode subtiel mee-
-            # kleurt met de tekstkleur van het thema.
+            # kleurt met de tekstkleur van het thema. De marge is
+            # asymmetrisch (0.5rem boven, 1.25rem onder) omdat de bold
+            # kop 'Tekstueel vertrekpunt' direct onder de lijn anders
+            # visueel tegen de streep aan plakt — Streamlit's eigen
+            # margin-collapsing op de <p>-wrapper voegt aan die kant
+            # geen extra ruimte toe.
             st.markdown(
                 '<div style="margin: 0; padding: 0; line-height: 0;">'
-                '<hr style="margin: 0.5rem 0; border: none; '
+                '<hr style="margin: 0.5rem 0 1.25rem 0; border: none; '
                 'border-top: 1px solid currentColor; opacity: 0.2;">'
                 '</div>',
                 unsafe_allow_html=True,
