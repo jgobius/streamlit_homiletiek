@@ -102,17 +102,8 @@ def feedback_aristoteles(analysis: dict[str, Any]) -> None:
 
     st.divider()
 
-    # === 2. Drie modi — scores naast elkaar ===
+    # === 2. Drie modi — direct als expanders (score staat in expander-titel) ===
     st.markdown("### Aristotelische modi")
-    score_cols = st.columns(3)
-    for i, (key, label, _) in enumerate(_MODI):
-        modus = modi.get(key, {})
-        score = modus.get("score") if isinstance(modus, dict) else None
-        with score_cols[i]:
-            # Compactere weergave dan st.metric; gekleurde badge geeft
-            # in één oogopslag aan of de score sterk of zwak is.
-            st.markdown(f"**{label}**  \n{_score_label(score)}")
-
     for key, label, sublabel in _MODI:
         modus = modi.get(key, {})
         if not isinstance(modus, dict) or not modus:
@@ -191,12 +182,8 @@ def feedback_aristoteles(analysis: dict[str, Any]) -> None:
     if ortho:
         st.divider()
         st.markdown("### Orthodoxie · Orthopathie · Orthopraxie")
-        o_cols = st.columns(3)
-        for i, (key, label, sublabel) in enumerate(_ORTHO):
-            blok = ortho.get(key, {})
-            score = blok.get("score") if isinstance(blok, dict) else None
-            with o_cols[i]:
-                st.markdown(f"**{label}**  \n{_score_label(score)}")
+        # Score staat in de expander-titel; aparte score-rij ervoor weggelaten
+        # om dubbele weergave te vermijden.
         for key, label, sublabel in _ORTHO:
             blok = ortho.get(key, {})
             if not isinstance(blok, dict) or not blok:

@@ -202,19 +202,10 @@ def feedback_kolb(analysis: dict[str, Any]) -> None:
 
     st.divider()
 
-    # === 2. Kolb fasen (4 scores + details) ===
+    # === 2. Kolb fasen (details — score staat in expander-titel) ===
     st.markdown("### Kolb-fasen")
     if fasen:
-        score_cols = st.columns(4)
-        fase_keys = list(_FASE_LABELS.keys())
-        for i, key in enumerate(fase_keys):
-            fase = fasen.get(key, {})
-            afk, label = _FASE_LABELS[key]
-            score = fase.get("score") if isinstance(fase, dict) else None
-            with score_cols[i]:
-                st.markdown(f"**{afk}**  \n{_score_label(score)}")
-
-        for key in fase_keys:
+        for key in _FASE_LABELS:
             fase = fasen.get(key, {})
             if fase:
                 _render_fase_detail(key, fase)

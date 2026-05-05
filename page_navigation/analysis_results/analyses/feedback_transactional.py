@@ -102,17 +102,8 @@ def feedback_transactional(analysis: dict[str, Any]) -> None:
     ac_blok = kind.get("vrijheid_van_aangepast_kind_AC", {}) if isinstance(kind, dict) else {}
     fc_blok = kind.get("vrij_kind_FC", {}) if isinstance(kind, dict) else {}
 
-    scores_matrix = [
-        ("CP", cp_blok.get("score") if isinstance(cp_blok, dict) else None),
-        ("NP", np_blok.get("score") if isinstance(np_blok, dict) else None),
-        ("A",  adult_blok.get("score") if isinstance(adult_blok, dict) else None),
-        ("AC", ac_blok.get("score") if isinstance(ac_blok, dict) else None),
-        ("FC", fc_blok.get("score") if isinstance(fc_blok, dict) else None),
-    ]
-    score_cols = st.columns(5)
-    for i, (afk, score) in enumerate(scores_matrix):
-        with score_cols[i]:
-            st.markdown(f"**{afk}**  \n{_score_label(score)}")
+    # Score per ego-positie staat in de expander-titel (zie _render_ego_blok);
+    # aparte score-rij ervoor weggelaten om dubbele weergave te vermijden.
 
     dominante = ego.get("dominante_ego_positie", "") if isinstance(ego, dict) else ""
     if dominante:

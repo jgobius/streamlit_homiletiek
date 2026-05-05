@@ -126,16 +126,8 @@ def feedback_schulz_von_thun(analysis: dict[str, Any]) -> None:
 
     st.divider()
 
-    # === 2. Vier zijden — scores naast elkaar ===
+    # === 2. Vier zijden — direct als expanders (score staat in expander-titel) ===
     st.markdown("### Vier zijden")
-    score_cols = st.columns(4)
-    for i, (key, label, _) in enumerate(_ZIJDEN):
-        blok = analyse_blok.get(key, {}) if isinstance(analyse_blok, dict) else {}
-        score = blok.get("score") if isinstance(blok, dict) else None
-        kleur = label.split("—")[0].strip()
-        with score_cols[i]:
-            st.markdown(f"**{kleur}**  \n{_score_label(score)}")
-
     for key, label, extra_keys in _ZIJDEN:
         blok = analyse_blok.get(key, {}) if isinstance(analyse_blok, dict) else {}
         if blok:

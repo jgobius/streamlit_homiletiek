@@ -145,13 +145,8 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
     if domein_a:
         st.markdown("### Domein A — Poëtica van de taal")
         samenvatting_a = domein_a.get("samenvatting_taal", "")
-        score_cols = st.columns(3)
-        for i, (key, label, _) in enumerate(_DOMEIN_A):
-            blok = domein_a.get(key, {})
-            score = blok.get("score") if isinstance(blok, dict) else None
-            afk = label.split("—")[0].strip()
-            with score_cols[i]:
-                st.markdown(f"**{afk}**  \n{_score_label(score)}")
+        # Score staat in de expander-titel per criterium; aparte score-rij
+        # ervoor weggelaten om dubbele weergave te vermijden.
         if samenvatting_a:
             st.caption(clean_md(samenvatting_a))
         for key, label, extra_keys in _DOMEIN_A:
@@ -163,13 +158,8 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
     if domein_b:
         st.markdown("### Domein B — Dramaturgie van de structuur")
         samenvatting_b = domein_b.get("samenvatting_structuur", "")
-        score_cols = st.columns(3)
-        for i, (key, label, _) in enumerate(_DOMEIN_B):
-            blok = domein_b.get(key, {})
-            score = blok.get("score") if isinstance(blok, dict) else None
-            afk = label.split("—")[0].strip()
-            with score_cols[i]:
-                st.markdown(f"**{afk}**  \n{_score_label(score)}")
+        # Score staat in de expander-titel per criterium; aparte score-rij
+        # ervoor weggelaten om dubbele weergave te vermijden.
         if samenvatting_b:
             st.caption(clean_md(samenvatting_b))
         for key, label, extra_keys in _DOMEIN_B:

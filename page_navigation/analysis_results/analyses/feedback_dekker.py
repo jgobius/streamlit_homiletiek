@@ -81,26 +81,12 @@ def feedback_dekker(analysis: dict[str, Any]) -> None:
 
     st.divider()
 
-    # === 2. Scoregrid — 8 criteria als 4×2 metrics ===
+    # === 2. Detail per criterium — score staat in elke expander-titel ===
     st.markdown("### Analyse per criterium")
 
-    scores = []
     for key, label in _CRITERIA:
         blok = criteria.get(key, {})
         score = blok.get("score_1_tot_10") if isinstance(blok, dict) else None
-        scores.append((key, label, score, blok))
-
-    col_rows = [st.columns(4), st.columns(4)]
-    for i, (key, label, score, blok) in enumerate(scores):
-        row = col_rows[i // 4]
-        with row[i % 4]:
-            short = label.split("—")[0].strip() if "—" in label else label
-            # Compactere weergave dan st.metric — gekleurde badge laat
-            # in één oogopslag zien of de score sterk of zwak is.
-            st.markdown(f"**{short}**  \n{_score_label(score)}")
-
-    # === 3. Detail per criterium ===
-    for key, label, score, blok in scores:
         if not isinstance(blok, dict) or not blok:
             continue
         with st.expander(f"{label}  {_score_label(score)}", expanded=False):
