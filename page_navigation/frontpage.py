@@ -10,7 +10,7 @@ def _render_home():
         "het platform een uitgebreide set voorzetten die u helpt aansluiting te vinden tussen de Bijbeltekst en de "
         "concrete levenswereld van uw gemeente."
     )
-    st.caption("Een initiatief van Jan-Jaap Gobius du Sart en Wim Otte – zonder commercieel oogmerk.")
+    st.caption("Een initiatief van Wim Otte en Jan-Jaap Gobius du Sart – zonder commercieel oogmerk.")
 
     st.divider()
     st.subheader("Drie kernpunten")
@@ -92,7 +92,7 @@ def _render_over_ons():
         st.subheader("Jan-Jaap Gobius du Sart")
         st.caption("Technisch architect · Ondernemer · CGK")
         st.markdown(
-            "Jan-Jaap is professioneel softwareontwikkelaar, fiscaal jurist en ondernemer. Als technisch "
+            "Jan-Jaap is fiscaal jurist met een focus op de toepassing van technologie in de praktijk. Als technisch "
             "architect van VoorbereidVoorgaan.nl heeft hij het systeem ontworpen en gebouwd: van de "
             "infrastructuur tot de integratie van databronnen en taalmodellen."
         )
