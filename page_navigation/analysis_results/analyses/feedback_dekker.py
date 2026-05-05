@@ -32,11 +32,13 @@ def _score_color(score) -> str:
         return "gray"
 
 
+# Schaalsuffix '/10' weggelaten omdat 10 de standaardschaal is.
+# Voeg een suffix pas toe wanneer de schaal écht afwijkt (bv. '/5').
 def _score_label(score) -> str:
     try:
         s = int(score)
         color = _score_color(s)
-        return f":{color}[{s}/10]"
+        return f":{color}[**{s}**]"
     except (TypeError, ValueError):
         return str(score) if score else "—"
 
@@ -92,12 +94,10 @@ def feedback_dekker(analysis: dict[str, Any]) -> None:
     for i, (key, label, score, blok) in enumerate(scores):
         row = col_rows[i // 4]
         with row[i % 4]:
-            try:
-                score_val = f"{int(score)}/10" if score is not None else "—"
-            except (TypeError, ValueError):
-                score_val = "—"
             short = label.split("—")[0].strip() if "—" in label else label
-            st.metric(short, score_val)
+            # Compactere weergave dan st.metric — gekleurde badge laat
+            # in één oogopslag zien of de score sterk of zwak is.
+            st.markdown(f"**{short}**  \n{_score_label(score)}")
 
     # === 3. Detail per criterium ===
     for key, label, score, blok in scores:

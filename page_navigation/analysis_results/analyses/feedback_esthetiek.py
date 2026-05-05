@@ -18,26 +18,21 @@ _DOMEIN_B = [
 ]
 
 
+# Schaalsuffix '/10' weggelaten omdat 10 de standaardschaal is.
+# Voeg een suffix pas toe wanneer de schaal écht afwijkt (bv. '/5').
 def _score_label(score) -> str:
     try:
         s = int(score)
         if s >= 8:
-            return f":green[{s}/10]"
+            return f":green[**{s}**]"
         elif s >= 6:
-            return f":blue[{s}/10]"
+            return f":blue[**{s}**]"
         elif s >= 4:
-            return f":orange[{s}/10]"
+            return f":orange[**{s}**]"
         else:
-            return f":red[{s}/10]"
+            return f":red[**{s}**]"
     except (TypeError, ValueError):
         return str(score) if score else "—"
-
-
-def _score_val(score) -> str:
-    try:
-        return f"{int(score)}/10" if score is not None else "—"
-    except (TypeError, ValueError):
-        return "—"
 
 
 def _render_criterium(label: str, blok: dict, extra_keys: list[str]) -> None:
@@ -97,7 +92,9 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
     cols = st.columns(3)
     with cols[0]:
         if overall is not None:
-            st.metric("Overall esthetische score", _score_val(overall))
+            # Compactere weergave dan st.metric — gekleurde badge laat
+            # in één oogopslag zien of de score sterk of zwak is.
+            st.markdown(f"**Overall esthetische score**  \n{_score_label(overall)}")
     with cols[1]:
         if stijl:
             st.markdown(f"**Esthetische stijl**  \n{clean_md(stijl)}")
@@ -154,7 +151,7 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
             score = blok.get("score") if isinstance(blok, dict) else None
             afk = label.split("—")[0].strip()
             with score_cols[i]:
-                st.metric(afk, _score_val(score))
+                st.markdown(f"**{afk}**  \n{_score_label(score)}")
         if samenvatting_a:
             st.caption(clean_md(samenvatting_a))
         for key, label, extra_keys in _DOMEIN_A:
@@ -172,7 +169,7 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
             score = blok.get("score") if isinstance(blok, dict) else None
             afk = label.split("—")[0].strip()
             with score_cols[i]:
-                st.metric(afk, _score_val(score))
+                st.markdown(f"**{afk}**  \n{_score_label(score)}")
         if samenvatting_b:
             st.caption(clean_md(samenvatting_b))
         for key, label, extra_keys in _DOMEIN_B:
@@ -186,7 +183,7 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
         st.markdown("### Kitsch-diagnose")
         kitsch_score = kitsch.get("anti_kitsch_score")
         if kitsch_score is not None:
-            st.metric("Anti-kitsch score", _score_val(kitsch_score))
+            st.markdown(f"**Anti-kitsch score**  \n{_score_label(kitsch_score)}")
         kitsch_analyse = kitsch.get("analyse", "")
         if kitsch_analyse:
             st.markdown(clean_md(kitsch_analyse))
@@ -216,7 +213,7 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
         st.markdown("### Ruimte voor genade (Cilliers)")
         ruimte_score = ruimte.get("ruimte_score")
         if ruimte_score is not None:
-            st.metric("Ruimte-score", _score_val(ruimte_score))
+            st.markdown(f"**Ruimte-score**  \n{_score_label(ruimte_score)}")
         ruimte_analyse = ruimte.get("analyse", "")
         if ruimte_analyse:
             st.markdown(clean_md(ruimte_analyse))

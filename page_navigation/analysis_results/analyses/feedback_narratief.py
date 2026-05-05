@@ -58,6 +58,24 @@ def _is_truthy(val) -> bool:
     return val not in (None, False, "false", "False", "")
 
 
+# Schaalsuffix '/10' weggelaten omdat 10 de standaardschaal is.
+# Voeg een suffix pas toe wanneer de schaal écht afwijkt (bv. '/5').
+def _score_label(score) -> str:
+    try:
+        s = int(score)
+        if s >= 8:
+            color = "green"
+        elif s >= 6:
+            color = "blue"
+        elif s >= 4:
+            color = "orange"
+        else:
+            color = "red"
+        return f":{color}[**{s}**]"
+    except (TypeError, ValueError):
+        return str(score) if score else "—"
+
+
 def feedback_narratief(analysis: dict[str, Any]) -> None:
     """Renderer voor narratieve semiotiek feedback (Greimas actantieel model)."""
     result = analysis.get("result", {})
@@ -187,7 +205,9 @@ def feedback_narratief(analysis: dict[str, Any]) -> None:
             sc_cols = st.columns(3)
             with sc_cols[0]:
                 if rutledge is not None:
-                    st.metric("Rutledge-score", f"{rutledge}/10")
+                    # Compactere weergave dan st.metric — gekleurde badge laat
+                    # in één oogopslag zien of de score sterk of zwak is.
+                    st.markdown(f"**Rutledge-score**  \n{_score_label(rutledge)}")
             with sc_cols[1]:
                 if god_count:
                     st.markdown(f"**God als subject:** {clean_md(str(god_count))}")
@@ -211,7 +231,7 @@ def feedback_narratief(analysis: dict[str, Any]) -> None:
                 mprom = mblok.get("prominentie") if isinstance(mblok, dict) else None
                 afk = mlabel.split("(")[0].strip()
                 with mod_cols[i]:
-                    st.metric(afk, f"{mprom}/10" if mprom is not None else "—")
+                    st.markdown(f"**{afk}**  \n{_score_label(mprom)}")
 
     # === 4. Exemplarisme-check ===
     exemplarisme = diag.get("exemplarisme_check", {})

@@ -20,26 +20,21 @@ _OOR_LABELS = [
 ]
 
 
+# Schaalsuffix '/10' weggelaten omdat 10 de standaardschaal is.
+# Voeg een suffix pas toe wanneer de schaal écht afwijkt (bv. '/5').
 def _score_label(score) -> str:
     try:
         s = int(score)
         if s >= 8:
-            return f":green[{s}/10]"
+            return f":green[**{s}**]"
         elif s >= 6:
-            return f":blue[{s}/10]"
+            return f":blue[**{s}**]"
         elif s >= 4:
-            return f":orange[{s}/10]"
+            return f":orange[**{s}**]"
         else:
-            return f":red[{s}/10]"
+            return f":red[**{s}**]"
     except (TypeError, ValueError):
         return str(score) if score else "—"
-
-
-def _score_val(score) -> str:
-    try:
-        return f"{int(score)}/10" if score is not None else "—"
-    except (TypeError, ValueError):
-        return "—"
 
 
 def _render_zijde(label: str, blok: dict, extra_keys: list[str]) -> None:
@@ -96,7 +91,9 @@ def feedback_schulz_von_thun(analysis: dict[str, Any]) -> None:
     col_score, col_warn = st.columns([1, 3])
     with col_score:
         if overall is not None:
-            st.metric("Overall communicatiescore", _score_val(overall))
+            # Compactere weergave dan st.metric — gekleurde badge laat
+            # in één oogopslag zien of de score sterk of zwak is.
+            st.markdown(f"**Overall communicatiescore**  \n{_score_label(overall)}")
     with col_warn:
         if waarschuwing:
             st.caption(f"Barthiaanse waarschuwing: {clean_md(waarschuwing)}")
@@ -137,7 +134,7 @@ def feedback_schulz_von_thun(analysis: dict[str, Any]) -> None:
         score = blok.get("score") if isinstance(blok, dict) else None
         kleur = label.split("—")[0].strip()
         with score_cols[i]:
-            st.metric(kleur, _score_val(score))
+            st.markdown(f"**{kleur}**  \n{_score_label(score)}")
 
     for key, label, extra_keys in _ZIJDEN:
         blok = analyse_blok.get(key, {}) if isinstance(analyse_blok, dict) else {}

@@ -34,17 +34,19 @@ _OSMER_LABELS = {
 }
 
 
+# Schaalsuffix '/10' weggelaten omdat 10 de standaardschaal is.
+# Voeg een suffix pas toe wanneer de schaal écht afwijkt (bv. '/5').
 def _score_label(score) -> str:
     try:
         s = int(score)
         if s >= 8:
-            return f":green[{s}/10]"
+            return f":green[**{s}**]"
         elif s >= 6:
-            return f":blue[{s}/10]"
+            return f":blue[**{s}**]"
         elif s >= 4:
-            return f":orange[{s}/10]"
+            return f":orange[**{s}**]"
         else:
-            return f":red[{s}/10]"
+            return f":red[**{s}**]"
     except (TypeError, ValueError):
         return str(score) if score else "—"
 
@@ -151,7 +153,9 @@ def feedback_kolb(analysis: dict[str, Any]) -> None:
     cols = st.columns(3)
     with cols[0]:
         if overall_score is not None:
-            st.metric("Overall Kolb-score", f"{overall_score}/10")
+            # Compactere weergave dan st.metric — gekleurde badge laat
+            # in één oogopslag zien of de score sterk of zwak is.
+            st.markdown(f"**Overall Kolb-score**  \n{_score_label(overall_score)}")
     with cols[1]:
         if primaire_stijl:
             st.markdown(f"**Dominante stijl**  \n{clean_md(primaire_stijl)}")
@@ -208,11 +212,7 @@ def feedback_kolb(analysis: dict[str, Any]) -> None:
             afk, label = _FASE_LABELS[key]
             score = fase.get("score") if isinstance(fase, dict) else None
             with score_cols[i]:
-                try:
-                    score_val = f"{int(score)}/10" if score is not None else "—"
-                except (TypeError, ValueError):
-                    score_val = str(score) if score else "—"
-                st.metric(afk, score_val)
+                st.markdown(f"**{afk}**  \n{_score_label(score)}")
 
         for key in fase_keys:
             fase = fasen.get(key, {})

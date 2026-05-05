@@ -18,6 +18,9 @@ _ORTHO = [
 ]
 
 
+# Schaalsuffix '/10' weggelaten omdat 10 de standaardschaal is en
+# de toevoeging in elke metric/badge dezelfde nutteloze ruis oplevert.
+# Voeg pas een suffix (bv. '/5') toe wanneer de schaal écht afwijkt.
 def _score_label(score) -> str:
     try:
         s = int(score)
@@ -29,16 +32,9 @@ def _score_label(score) -> str:
             color = "orange"
         else:
             color = "red"
-        return f":{color}[{s}/10]"
+        return f":{color}[**{s}**]"
     except (TypeError, ValueError):
         return str(score) if score else "—"
-
-
-def _score_val(score) -> str:
-    try:
-        return f"{int(score)}/10" if score is not None else "—"
-    except (TypeError, ValueError):
-        return "—"
 
 
 def feedback_aristoteles(analysis: dict[str, Any]) -> None:
@@ -61,7 +57,10 @@ def feedback_aristoteles(analysis: dict[str, Any]) -> None:
     cols = st.columns(3)
     with cols[0]:
         if overall is not None:
-            st.metric("Overall retorische score", _score_val(overall))
+            # Geen st.metric — die schaalt de score naar een veel te grote
+            # fontsize. Markdown houdt het compact en de gekleurde badge
+            # blijft visueel herkenbaar.
+            st.markdown(f"**Overall retorische score**  \n{_score_label(overall)}")
     with cols[1]:
         if stijl:
             st.markdown(f"**Retorische stijl**  \n{clean_md(stijl)}")
@@ -110,7 +109,9 @@ def feedback_aristoteles(analysis: dict[str, Any]) -> None:
         modus = modi.get(key, {})
         score = modus.get("score") if isinstance(modus, dict) else None
         with score_cols[i]:
-            st.metric(label, _score_val(score))
+            # Compactere weergave dan st.metric; gekleurde badge geeft
+            # in één oogopslag aan of de score sterk of zwak is.
+            st.markdown(f"**{label}**  \n{_score_label(score)}")
 
     for key, label, sublabel in _MODI:
         modus = modi.get(key, {})
@@ -169,7 +170,7 @@ def feedback_aristoteles(analysis: dict[str, Any]) -> None:
                 st.markdown(f"**Zwakste modus**  \n{clean_md(onderdrukt)}")
         with col3:
             if balans_score is not None:
-                st.metric("Balansscore", _score_val(balans_score))
+                st.markdown(f"**Balansscore**  \n{_score_label(balans_score)}")
 
         balans_analyse = balans.get("analyse", "")
         if balans_analyse:
@@ -195,7 +196,7 @@ def feedback_aristoteles(analysis: dict[str, Any]) -> None:
             blok = ortho.get(key, {})
             score = blok.get("score") if isinstance(blok, dict) else None
             with o_cols[i]:
-                st.metric(label, _score_val(score))
+                st.markdown(f"**{label}**  \n{_score_label(score)}")
         for key, label, sublabel in _ORTHO:
             blok = ortho.get(key, {})
             if not isinstance(blok, dict) or not blok:
