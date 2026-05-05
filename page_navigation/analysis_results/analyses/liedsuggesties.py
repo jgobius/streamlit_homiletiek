@@ -65,9 +65,23 @@ _LEADING_COUPLET_PREFIX_RE = re.compile(
 _PLACEHOLDER_TITEL = "(geen titel beschikbaar)"
 
 
-def _gebruik_sort_key(gebruik_str: str) -> int:
-    """Laagste rang onder de pipe-gescheiden gebruiksmomenten — tiebreak."""
-    parts = [p.strip() for p in gebruik_str.split("|")]
+# Sinds de schema-wijziging (gemini-3-flash-preview compatibility) leveren
+# `type_match` en `suggestie_gebruik` arrays in plaats van `|`-gescheiden
+# strings. Oudere AnalysisResult-rijen bevatten nog wél de string-vorm,
+# dus normaliseren we beide naar list[str] zodat de renderer-logica één
+# pad heeft.
+def _normaliseer_meervoud(waarde: Any) -> list[str]:
+    """Geef een waarde altijd terug als list[str] — accepteert array én pipe-string."""
+    if isinstance(waarde, list):
+        return [str(v).strip() for v in waarde if str(v).strip()]
+    if isinstance(waarde, str) and waarde:
+        return [p.strip() for p in waarde.split("|") if p.strip()]
+    return []
+
+
+def _gebruik_sort_key(gebruik: Any) -> int:
+    """Laagste rang onder de gebruiksmomenten — tiebreak."""
+    parts = _normaliseer_meervoud(gebruik)
     ranks = [_GEBRUIK_ORDER.index(p) if p in _GEBRUIK_ORDER else 99 for p in parts]
     return min(ranks) if ranks else 99
 
@@ -174,8 +188,10 @@ def _render_lied(lied: dict[str, Any]) -> None:
     eerste_regel = lied.get("eerste_regel", "")
     karakter = lied.get("karakter", "")
     toelichting = lied.get("toelichting", "")
-    type_match = lied.get("type_match", "")
-    suggestie_gebruik = lied.get("suggestie_gebruik", "")
+    # Normaliseer naar list[str] — accepteert zowel de nieuwe array-vorm
+    # als oudere `|`-gescheiden strings uit historische analyses.
+    type_match = _normaliseer_meervoud(lied.get("type_match", ""))
+    suggestie_gebruik = _normaliseer_meervoud(lied.get("suggestie_gebruik", ""))
 
     hoofdtitel, caption_regel = _bepaal_kop_en_caption(titel, eerste_regel, nummer)
 
@@ -208,13 +224,12 @@ def _render_lied(lied: dict[str, Any]) -> None:
         with tag_cols[0]:
             if type_match:
                 labels = " · ".join(
-                    _MATCH_LABELS.get(t.strip(), t.strip())
-                    for t in type_match.split("|")
+                    _MATCH_LABELS.get(t, t) for t in type_match
                 )
                 st.caption(labels)
         with tag_cols[1]:
             if suggestie_gebruik:
-                st.caption("🕐 " + " · ".join(s.strip() for s in suggestie_gebruik.split("|")))
+                st.caption("🕐 " + " · ".join(suggestie_gebruik))
 
 
 def liedsuggesties(analysis: dict[str, Any]) -> None:
