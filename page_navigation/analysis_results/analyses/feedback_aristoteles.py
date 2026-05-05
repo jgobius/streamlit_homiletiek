@@ -50,23 +50,25 @@ def feedback_aristoteles(analysis: dict[str, Any]) -> None:
     ortho = result.get("orthodoxie_orthopathie_orthopraxie", {})
 
     # === 1. Totaalbeeld bovenaan ===
+    # Vroegere indeling was 3 kolommen (score | stijl | doelgroep). Probleem:
+    # 'score' is 1 cijfer, 'stijl' meestal 1 regel, maar 'doelgroep' is een
+    # uitgebreide alinea van vaak 8-10 regels. De doelgroep-kolom hing dan ver
+    # onder de andere twee, met een visueel onevenwichtige rij als gevolg.
+    # Nieuwe indeling: korte score inline bij het totaalbeeld-kopje, stijl en
+    # doelgroep stapelen elk op volle breedte zodat de tekstvulling niet meer
+    # vecht om kolombreedte.
     overall = totaal.get("overall_retorische_score")
     stijl = totaal.get("primaire_retorische_stijl", "")
     doelgroep = totaal.get("doelgroep_analyse", "")
 
-    cols = st.columns(3)
-    with cols[0]:
-        if overall is not None:
-            # Geen st.metric — die schaalt de score naar een veel te grote
-            # fontsize. Markdown houdt het compact en de gekleurde badge
-            # blijft visueel herkenbaar.
-            st.markdown(f"**Overall retorische score**  \n{_score_label(overall)}")
-    with cols[1]:
-        if stijl:
-            st.markdown(f"**Retorische stijl**  \n{clean_md(stijl)}")
-    with cols[2]:
-        if doelgroep:
-            st.markdown(f"**Doelgroep**  \n{clean_md(doelgroep)}")
+    if overall is not None:
+        # Score als inline-badge naast een minimale label-tekst; geen st.metric
+        # omdat die de score naar een veel te grote fontsize schaalt.
+        st.markdown(f"**Overall retorische score:** {_score_label(overall)}")
+    if stijl:
+        st.markdown(f"**Retorische stijl**  \n{clean_md(stijl)}")
+    if doelgroep:
+        st.markdown(f"**Doelgroep**  \n{clean_md(doelgroep)}")
 
     samenvatting = totaal.get("samenvatting", "")
     if samenvatting:
@@ -100,9 +102,9 @@ def feedback_aristoteles(analysis: dict[str, Any]) -> None:
         with st.expander("Conclusie", expanded=False):
             st.markdown(clean_md(conclusie))
 
-    st.divider()
-
     # === 2. Drie modi — direct als expanders (score staat in expander-titel) ===
+    # Geen st.divider() vóór de H3-kop: het kopje + Streamlits standaard
+    # bovenmarge geven al voldoende scheiding van het bovenliggende blok.
     st.markdown("### Aristotelische modi")
     for key, label, sublabel in _MODI:
         modus = modi.get(key, {})
@@ -146,22 +148,26 @@ def feedback_aristoteles(analysis: dict[str, Any]) -> None:
                             st.warning(f"△ {clean_md(str(p))}")
 
     # === 3. Retorische balans ===
+    # Geen leading divider; de H3-kop fungeert zelf als sectiescheiding.
+    # Vroegere 3-kolomsrij (sterkste | zwakste | balansscore) had hetzelfde
+    # onbalans-probleem als het totaalbeeld-blok hierboven: de balansscore is
+    # 1 cijfer, sterkste/zwakste modus zijn variabele teksten waarbij de ene
+    # vaak veel korter is dan de andere. Oplossing: balansscore als inline-
+    # badge bij het kopje, sterkste/zwakste modus op 2 gelijke kolommen.
     if balans:
-        st.divider()
         st.markdown("### Retorische balans")
         dominant = balans.get("dominante_modus", "")
         onderdrukt = balans.get("onderdrukte_modus", "")
         balans_score = balans.get("balans_score")
-        col1, col2, col3 = st.columns(3)
+        if balans_score is not None:
+            st.markdown(f"**Balansscore:** {_score_label(balans_score)}")
+        col1, col2 = st.columns(2)
         with col1:
             if dominant:
                 st.markdown(f"**Sterkste modus**  \n{clean_md(dominant)}")
         with col2:
             if onderdrukt:
                 st.markdown(f"**Zwakste modus**  \n{clean_md(onderdrukt)}")
-        with col3:
-            if balans_score is not None:
-                st.markdown(f"**Balansscore**  \n{_score_label(balans_score)}")
 
         balans_analyse = balans.get("analyse", "")
         if balans_analyse:
@@ -179,8 +185,8 @@ def feedback_aristoteles(analysis: dict[str, Any]) -> None:
             st.info(clean_md(aanbeveling))
 
     # === 4. Orthodoxie / Orthopathie / Orthopraxie ===
+    # Geen leading divider; de H3-kop is al voldoende scheiding.
     if ortho:
-        st.divider()
         st.markdown("### Orthodoxie · Orthopathie · Orthopraxie")
         # Score staat in de expander-titel; aparte score-rij ervoor weggelaten
         # om dubbele weergave te vermijden.

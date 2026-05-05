@@ -1154,13 +1154,16 @@ def _render_titel_en_actieknoppen(result: dict, key_prefix: str) -> None:
     """Render de titel (front_end_name) gevolgd door de vier actieknoppen.
 
     Gebundeld zodat alle tabs dezelfde volgorde hanteren: titel → knoppen →
-    scheidingslijn → inhoud. De afsluitende st.divider() wordt hier centraal
-    gerenderd zodat elke analyse (over alle tabbladen heen) exact dezelfde kop
-    heeft; individuele renderers mogen geen eigen leading divider meer tekenen.
+    inhoud. Vroeger stond hier een afsluitende st.divider(); die is verwijderd
+    omdat de titel + lichtgrijze knopvakken al een sterk genoeg visueel anker
+    vormen. Een extra horizontale streep daaronder gaf op feedback-pagina's
+    (Aristoteles, Dekker) een opeenstapeling van grijze lijnen die de blik
+    versplinterde. Individuele renderers mogen nog steeds geen eigen leading
+    divider tekenen — Streamlits standaard whitespace na de actiebalk is
+    voldoende.
     """
     st.title(result["analysis_type"]["front_end_name"])
     _render_actieknoppen(result, key_prefix)
-    st.divider()
 
 
 def _render_actieknoppen(result: dict, key_prefix: str) -> None:

@@ -79,9 +79,10 @@ def feedback_dekker(analysis: dict[str, Any]) -> None:
                     if p:
                         st.warning(f"△ {clean_md(str(p))}")
 
-    st.divider()
-
     # === 2. Detail per criterium — score staat in elke expander-titel ===
+    # Geen st.divider() vóór de H3-kop; het kopje + Streamlits standaard
+    # bovenmarge geven al voldoende visuele scheiding van het algehele-
+    # beoordeling-blok hierboven.
     st.markdown("### Analyse per criterium")
 
     for key, label in _CRITERIA:
