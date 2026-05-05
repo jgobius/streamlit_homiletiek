@@ -90,7 +90,7 @@ def _render_over_ons():
     col1, col2 = st.columns(2, gap="large")
     with col1:
         st.subheader("Jan-Jaap Gobius du Sart")
-        st.caption("Technisch architect · Ondernemer · CGK")
+        st.caption("Fiscaal jurist · Technisch architect · CGK")
         st.markdown(
             "Jan-Jaap is fiscaal jurist met een focus op de toepassing van technologie in de praktijk. Als technisch "
             "architect van VoorbereidVoorgaan.nl heeft hij het systeem ontworpen en gebouwd: van de "
