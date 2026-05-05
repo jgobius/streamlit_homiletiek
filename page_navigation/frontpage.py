@@ -314,7 +314,7 @@ def _render_vragen():
             "De output is zorgvuldig samengesteld, maar kent beperkingen. Het systeem werkt met gecontroleerde "
             "databronnen (CBS, Motivaction, verkiezingsdata) en een brede homiletische literatuurbasis. "
             "Desondanks kunnen taalmodellen fouten maken, nuances missen of verkeerde accenten leggen. "
-            "Alle output kan aangepast en verwijderd worden voordat het als input dient in de verdere analyse."
+            "Alle output kan aangepast en verwijderd worden voordat het als input dient in de verdere analyse. "
             "Behandel de output altijd als hulpmiddel dat uw eigen oordeel niet vervangt.",
         ),
         (
@@ -327,7 +327,7 @@ def _render_vragen():
             "Voor testgebruikers in de testperiode is het gratis. "
             "Daarna betaalt u de werkelijke kostprijs van de analyse – uitsluitend de kosten van de taalmodellen die "
             "worden ingezet. Er is geen abonnement. De kosten liggen in de orde van enkele "
-            "euro's per volledige homiletische analyse." 
+            "euro's per volledige homiletische analyse. " 
             "In de praktijk zal een voorganger niet alle onderdelen willen gebruiken als aanvulling op bestaande voorbereiding.",
         ),
         (
@@ -349,9 +349,9 @@ def _render_vragen():
         (
             "Welke bijbelvertaling wordt gebruikt?",
             "Standaard werkt het platform met de Nieuwe Bijbelvertaling (NBV21). Ook de Naardense Bijbel en de (Herziene) Statenvertaling "
-            "zijn beschikbaar. Het onderliggende Grieks voor de NBV21 wordt opgehaald uit de Nestle-Aland Novum Testamentum Graece (NA28)." 
+            "zijn beschikbaar. Het onderliggende Grieks voor de NBV21 wordt opgehaald uit de Nestle-Aland Novum Testamentum Graece (NA28). " 
             "Het Grieks bij de (H)SV komt uit de gereconstrueerde Texus Receptus-versie. "
-            "Beide vertalingen worden, wat OT-lezingen betreft, gekoppeld aan het Hebreeuws uit de Biblia Hebraica Stuttgartensia."
+            "Beide vertalingen worden, wat OT-lezingen betreft, gekoppeld aan het Hebreeuws uit de Biblia Hebraica Stuttgartensia. "
             "De Bijbelteksten worden bij de start van een nieuwe kerkdienstanalyse van het Internet gehaald en staan niet in een eigen database.",
         ),
         (
