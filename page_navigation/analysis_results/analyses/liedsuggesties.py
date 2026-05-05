@@ -64,6 +64,27 @@ _LEADING_COUPLET_PREFIX_RE = re.compile(
 # mag nooit als zichtbare titel naar de gebruiker doorlekken.
 _PLACEHOLDER_TITEL = "(geen titel beschikbaar)"
 
+# Trailing leestekens en witruimte die LLMs soms aan een bundelnaam
+# plakken ('Opwekking,' i.p.v. 'Opwekking'). Zonder normaliseren
+# verschijnen 'Opwekking (14)' en 'Opwekking, (1)' als aparte
+# expanders in het bundeloverzicht — we strippen daarom alle trailing
+# komma's, puntkomma's en punten plus omliggende spaties zodat één
+# logische bundel ook één groep wordt.
+_TRAILING_LEESTEKENS_RE = re.compile(r"[\s,;.]+$")
+
+
+def _normaliseer_bundelnaam(bundel: Any) -> str:
+    """Strip trailing leestekens/whitespace uit een bundelnaam.
+
+    Voorkomt dat varianten als 'Opwekking' en 'Opwekking,' als twee
+    verschillende bundels in het overzicht verschijnen. We raken alleen
+    achterliggende leestekens aan — interne spaties en hoofdletters
+    blijven behouden, omdat 'Op Toonhoogte' en 'Op Toonhoogte
+    inspiratiebundel' wél bewust aparte bundels zijn.
+    """
+    s = str(bundel or "").strip()
+    return _TRAILING_LEESTEKENS_RE.sub("", s)
+
 
 # Sinds de schema-wijziging (gemini-3-flash-preview compatibility) leveren
 # `type_match` en `suggestie_gebruik` arrays in plaats van `|`-gescheiden
@@ -183,7 +204,10 @@ def _bepaal_kop_en_caption(
 
 def _render_lied(lied: dict[str, Any]) -> None:
     nummer = str(lied.get("nummer", "") or "").strip()
-    bundel = lied.get("bundel", "")
+    # Ook hier normaliseren — anders ontsnapt 'Schrijvers voor
+    # Gerechtigheid,' aan de _BUNDELS_ZONDER_OFFICIEEL_NUMMER-check
+    # en zou er alsnog een (interne) nummer-kolom verschijnen.
+    bundel = _normaliseer_bundelnaam(lied.get("bundel", ""))
     titel = lied.get("titel", "")
     eerste_regel = lied.get("eerste_regel", "")
     karakter = lied.get("karakter", "")
@@ -242,9 +266,12 @@ def liedsuggesties(analysis: dict[str, Any]) -> None:
     st.divider()
 
     # ── Groeperen per bundel ──────────────────────────────────────────────────
+    # Normaliseer de bundelnaam zodat 'Opwekking' en 'Opwekking,' als één
+    # groep verschijnen; lege of alleen-uit-leestekens-bestaande namen
+    # vallen terug op 'Overig'.
     by_bundel: dict[str, list[dict]] = defaultdict(list)
     for lied in liederen:
-        bundel = lied.get("bundel", "Overig")
+        bundel = _normaliseer_bundelnaam(lied.get("bundel", "")) or "Overig"
         by_bundel[bundel].append(lied)
 
     # Bundels alfabetisch
