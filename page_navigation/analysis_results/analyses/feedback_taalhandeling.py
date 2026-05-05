@@ -151,16 +151,11 @@ def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
 
     # === 2. Werkwoord-analyse ===
     # Geen leading divider; de H3-kop is voldoende scheiding.
+    # Geen st.metric-rij meer: de percentages staan al in de expander-titels
+    # ("Assertieven (124×, 70%)"), en st.metric rendert ze in een te grote
+    # font waardoor het blok onnodig dominant werd.
     if werkwoorden:
         st.markdown("### Werkwoord-analyse")
-        pct_cols = st.columns(5)
-        for i, (key, label) in enumerate(_WERKWOORD_CATEGORIEEN):
-            blok = werkwoorden.get(key, {})
-            pct = blok.get("procent", "") if isinstance(blok, dict) else ""
-            afk = label[:4]
-            with pct_cols[i]:
-                st.metric(afk, str(pct) if pct else "—")
-
         for key, label in _WERKWOORD_CATEGORIEEN:
             blok = werkwoorden.get(key, {})
             if not isinstance(blok, dict) or not blok:
@@ -193,16 +188,18 @@ def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
         prim_class = constatief.get("primaire_classificatie", "")
         con_pct = constatief.get("constatief_percentage", "")
         perf_pct = constatief.get("performatief_percentage", "")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if prim_class:
-                st.markdown(f"**Classificatie:** {clean_md(prim_class.replace('_', ' '))}")
-        with col2:
-            if con_pct:
-                st.metric("Constatief", str(con_pct))
-        with col3:
-            if perf_pct:
-                st.metric("Performatief", str(perf_pct))
+        # Eén compacte regel i.p.v. drie st.metric-kolommen — st.metric was
+        # visueel te dominant en de getallen kwamen al terug in de
+        # surplus/deficit-secties hieronder.
+        if prim_class:
+            st.markdown(f"**Classificatie:** {clean_md(prim_class.replace('_', ' '))}")
+        pct_parts: list[str] = []
+        if con_pct:
+            pct_parts.append(f"**Constatief:** {con_pct}")
+        if perf_pct:
+            pct_parts.append(f"**Performatief:** {perf_pct}")
+        if pct_parts:
+            st.markdown("  ·  ".join(pct_parts))
 
         toezegging = constatief.get("toezegging_check", {})
         if isinstance(toezegging, dict):
