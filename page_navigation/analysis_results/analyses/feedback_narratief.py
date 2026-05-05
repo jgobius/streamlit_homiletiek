@@ -139,9 +139,9 @@ def feedback_narratief(analysis: dict[str, Any]) -> None:
                     if bewijs:
                         st.markdown(f"> {clean_md(bewijs)}")
 
-    st.divider()
-
     # === 2. Actantiële analyse ===
+    # Geen leading divider; de H3-kop scheidt al van het diagnostisch
+    # overzicht hierboven.
     st.markdown("### Actantiële analyse")
     primair = actant.get("primair_narratief_programma", {}) if isinstance(actant, dict) else {}
     if primair:
@@ -191,8 +191,8 @@ def feedback_narratief(analysis: dict[str, Any]) -> None:
                 st.markdown(f"**{k_label}:** {clean_md(str(v))}")
 
     # === 3. Grammaticale analyse ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if gram:
-        st.divider()
         st.markdown("### Grammaticale analyse")
         subject_check = gram.get("subject_check", {})
         modale = gram.get("modale_analyse", {})
@@ -255,7 +255,7 @@ def feedback_narratief(analysis: dict[str, Any]) -> None:
         for k, _ in _AANBEV_SECTIES
     )
     if aanbev_beschikbaar:
-        st.divider()
+        # Geen leading divider; de H3-kop is voldoende scheiding.
         st.markdown("### Aanbevelingen")
         for key, label in _AANBEV_SECTIES:
             blok = aanbev.get(key, {})

@@ -86,17 +86,16 @@ def feedback_schulz_von_thun(analysis: dict[str, Any]) -> None:
     receptie = result.get("receptie_simulatie", {})
 
     # === 1. Totaaloverzicht ===
+    # Vroeger asymmetrische 1:3-kolomsindeling — krappe scorelabel-kolom
+    # wrapte 'Overall communicatiescore' over 2 regels en de waarschuwings-
+    # caption hing er ongelijk naast. Nu: score inline (1 regel), waar-
+    # schuwing op volle breedte als caption.
     overall = totaal.get("overall_communicatie_score")
     waarschuwing = totaal.get("barthiaanse_waarschuwing", "")
-    col_score, col_warn = st.columns([1, 3])
-    with col_score:
-        if overall is not None:
-            # Compactere weergave dan st.metric — gekleurde badge laat
-            # in één oogopslag zien of de score sterk of zwak is.
-            st.markdown(f"**Overall communicatiescore**  \n{_score_label(overall)}")
-    with col_warn:
-        if waarschuwing:
-            st.caption(f"Barthiaanse waarschuwing: {clean_md(waarschuwing)}")
+    if overall is not None:
+        st.markdown(f"**Overall communicatiescore:** {_score_label(overall)}")
+    if waarschuwing:
+        st.caption(f"Barthiaanse waarschuwing: {clean_md(waarschuwing)}")
 
     samenvatting = totaal.get("samenvatting", "")
     if samenvatting:
@@ -124,9 +123,8 @@ def feedback_schulz_von_thun(analysis: dict[str, Any]) -> None:
         with st.expander("Conclusie", expanded=False):
             st.markdown(clean_md(conclusie))
 
-    st.divider()
-
     # === 2. Vier zijden — direct als expanders (score staat in expander-titel) ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     st.markdown("### Vier zijden")
     for key, label, extra_keys in _ZIJDEN:
         blok = analyse_blok.get(key, {}) if isinstance(analyse_blok, dict) else {}
@@ -134,8 +132,8 @@ def feedback_schulz_von_thun(analysis: dict[str, Any]) -> None:
             _render_zijde(label, blok, extra_keys)
 
     # === 3. Congruentie en storingen ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if congruentie:
-        st.divider()
         st.markdown("### Congruentie en storingen")
         dominant = congruentie.get("dominante_zijde", "")
         oordeel = congruentie.get("congruentie_oordeel", "")
@@ -154,8 +152,8 @@ def feedback_schulz_von_thun(analysis: dict[str, Any]) -> None:
                 st.markdown(f"**{k_label}:** {clean_md(str(v))}")
 
     # === 4. Receptie — vier oren ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if receptie:
-        st.divider()
         st.markdown("### Receptie — vier oren")
         for key, label in _OOR_LABELS:
             v = receptie.get(key, "")

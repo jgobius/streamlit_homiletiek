@@ -89,9 +89,9 @@ def feedback_transactional(analysis: dict[str, Any]) -> None:
         with st.expander("Advies voor game-vrije communicatie", expanded=False):
             st.markdown(clean_md(advies))
 
-    st.divider()
-
     # === 2. Ego-posities — scores naast elkaar ===
+    # Geen leading divider; de H3-kop scheidt al van het totaaloverzicht
+    # hierboven.
     st.markdown("### Ego-posities")
 
     ouder = ego.get("ouder_parent", {}) if isinstance(ego, dict) else {}
@@ -121,8 +121,8 @@ def feedback_transactional(analysis: dict[str, Any]) -> None:
                      ["toelichting_score", "aanwezigheid"])
 
     # === 3. Transactie-analyse ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if transactie:
-        st.divider()
         st.markdown("### Transactie-analyse")
         zuiverheid = transactie.get("communicatieve_zuiverheid_score")
         stijl = transactie.get("primaire_transactie_stijl", "")
@@ -141,8 +141,8 @@ def feedback_transactional(analysis: dict[str, Any]) -> None:
                     st.markdown(clean_md(str(v)))
 
     # === 4. Spel-analyse (Games) ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if spelen:
-        st.divider()
         st.markdown("### Spel-analyse (Games)")
         gedetecteerde = spelen.get("gedetecteerde_spelen", [])
         if gedetecteerde:
@@ -171,8 +171,8 @@ def feedback_transactional(analysis: dict[str, Any]) -> None:
                 st.markdown(clean_md(geen_spelen))
 
     # === 5. Dramadriehoek (Karpman) ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if drama:
-        st.divider()
         st.markdown("### Dramadriehoek (Karpman)")
         rollen = drama.get("rollen_van_prediker", {})
         if isinstance(rollen, dict):

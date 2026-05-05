@@ -79,26 +79,31 @@ def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
     sacramenteel = result.get("sacramenteel_patroon_analyse", {})
 
     # === 1. Diagnostisch overzicht ===
+    # Vroeger 4 kolommen (diagnose | eindoordeel | gebeur-score | sacramentele
+    # kracht). Probleem: 'GETUIGEND SUBJECTIEF' wrapte over 2 regels in een
+    # smalle kolom. Nu: twee badges naast elkaar op 2 kolommen (allebei 1
+    # regel), en de twee korte scores inline op één regel daaronder.
     primaire_diagnose = diag.get("primaire_diagnose", "")
     overall_beoordeling = aanbev.get("overall_beoordeling", "")
     gebeuren_score = diag.get("gebeuren_score")
     sacramentele_kracht = diag.get("sacramentele_kracht")
 
-    cols = st.columns(4)
-    with cols[0]:
-        if primaire_diagnose:
-            _diagnose_badge(primaire_diagnose)
-    with cols[1]:
-        if overall_beoordeling:
-            _overall_badge(overall_beoordeling)
-    with cols[2]:
-        if gebeuren_score is not None:
-            # Compactere weergave dan st.metric — gekleurde badge laat
-            # in één oogopslag zien of de score sterk of zwak is.
-            st.markdown(f"**Gebeur-score**  \n{_score_label(gebeuren_score)}")
-    with cols[3]:
-        if sacramentele_kracht is not None:
-            st.markdown(f"**Sacramentele kracht**  \n{_score_label(sacramentele_kracht)}")
+    if primaire_diagnose or overall_beoordeling:
+        col_d, col_e = st.columns(2)
+        with col_d:
+            if primaire_diagnose:
+                _diagnose_badge(primaire_diagnose)
+        with col_e:
+            if overall_beoordeling:
+                _overall_badge(overall_beoordeling)
+
+    score_parts: list[str] = []
+    if gebeuren_score is not None:
+        score_parts.append(f"**Gebeur-score:** {_score_label(gebeuren_score)}")
+    if sacramentele_kracht is not None:
+        score_parts.append(f"**Sacramentele kracht:** {_score_label(sacramentele_kracht)}")
+    if score_parts:
+        st.markdown("  ·  ".join(score_parts))
 
     diagnose_toelichting = diag.get("diagnose_toelichting", "")
     if diagnose_toelichting:
@@ -144,9 +149,8 @@ def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
                     elif item:
                         st.warning(f"△ {clean_md(str(item))}")
 
-    st.divider()
-
     # === 2. Werkwoord-analyse ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if werkwoorden:
         st.markdown("### Werkwoord-analyse")
         pct_cols = st.columns(5)
@@ -183,8 +187,8 @@ def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
                         st.caption(f"**{k_label}:** {clean_md(str(v))}")
 
     # === 3. Constatief / Performatief diagnose ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if constatief:
-        st.divider()
         st.markdown("### Constatief / Performatief")
         prim_class = constatief.get("primaire_classificatie", "")
         con_pct = constatief.get("constatief_percentage", "")
@@ -240,8 +244,8 @@ def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
                         st.markdown(f"**{k_label}:** {clean_md(str(v))}")
 
     # === 4. Sacramenteel patroon ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if sacramenteel:
-        st.divider()
         st.markdown("### Sacramenteel patroon")
         patroon = sacramenteel.get("patroon_identificatie", "")
         if patroon:
@@ -267,7 +271,7 @@ def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
         for k, _ in _AANBEV_SECTIES
     )
     if aanbev_beschikbaar:
-        st.divider()
+        # Geen leading divider; de H3-kop is voldoende scheiding.
         st.markdown("### Aanbevelingen")
         for key, label in _AANBEV_SECTIES:
             blok = aanbev.get(key, {})

@@ -85,22 +85,22 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
     ruimte = result.get("ruimte_voor_genade_analyse", {})
 
     # === 1. Totaaloverzicht ===
+    # Vroegere indeling was 3 kolommen (score | stijl | doelgroep). Probleem
+    # gelijk aan Aristoteles: 'doelgroep_analyse' is meestal een uitgebreide
+    # alinea, terwijl 'score' 1 cijfer is en 'stijl' 1 regel — kolom 3 hangt
+    # ver onder de andere twee. Nu: korte score inline, stijl + doelgroep
+    # stapelen op volle breedte zodat lange tekst niet meer met kolombreedte
+    # vecht.
     overall = totaal.get("overall_esthetische_score")
     stijl = totaal.get("primaire_esthetische_stijl", "")
     doelgroep = totaal.get("doelgroep_analyse", "")
 
-    cols = st.columns(3)
-    with cols[0]:
-        if overall is not None:
-            # Compactere weergave dan st.metric — gekleurde badge laat
-            # in één oogopslag zien of de score sterk of zwak is.
-            st.markdown(f"**Overall esthetische score**  \n{_score_label(overall)}")
-    with cols[1]:
-        if stijl:
-            st.markdown(f"**Esthetische stijl**  \n{clean_md(stijl)}")
-    with cols[2]:
-        if doelgroep:
-            st.markdown(f"**Doelgroep**  \n{clean_md(doelgroep)}")
+    if overall is not None:
+        st.markdown(f"**Overall esthetische score:** {_score_label(overall)}")
+    if stijl:
+        st.markdown(f"**Esthetische stijl**  \n{clean_md(stijl)}")
+    if doelgroep:
+        st.markdown(f"**Doelgroep**  \n{clean_md(doelgroep)}")
 
     samenvatting = totaal.get("samenvatting", "")
     if samenvatting:
@@ -139,9 +139,8 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
         with st.expander("Conclusie", expanded=False):
             st.markdown(clean_md(conclusie))
 
-    st.divider()
-
     # === 2. Domein A — Poëtica van de taal ===
+    # Geen leading divider — de H3-kop is al sectiescheiding genoeg.
     if domein_a:
         st.markdown("### Domein A — Poëtica van de taal")
         samenvatting_a = domein_a.get("samenvatting_taal", "")
@@ -168,8 +167,8 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
                 _render_criterium(label, blok, extra_keys)
 
     # === 4. Kitsch-diagnose ===
+    # Geen leading divider; de H3-kop scheidt al van het Domein-B-blok.
     if kitsch:
-        st.divider()
         st.markdown("### Kitsch-diagnose")
         kitsch_score = kitsch.get("anti_kitsch_score")
         if kitsch_score is not None:
@@ -198,8 +197,8 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
             st.caption(f"Aanbeveling: {clean_md(kitsch_aanbev)}")
 
     # === 5. Ruimte voor genade (Cilliers) ===
+    # Geen leading divider; de H3-kop is al voldoende scheiding.
     if ruimte:
-        st.divider()
         st.markdown("### Ruimte voor genade (Cilliers)")
         ruimte_score = ruimte.get("ruimte_score")
         if ruimte_score is not None:
