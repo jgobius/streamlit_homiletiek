@@ -288,6 +288,14 @@ def bouw_kerkdienstanalyse_docx(
     # bijbelteksten-runs allemaal achter elkaar in het Word-document
     # verschijnen, terwijl de Streamlit-UI alleen de nieuwste toont.
     sub_analyses = _alleen_nieuwste_per_type(sub_analyses)
+    # Filter analyses die in de DB als "(intern)" gemarkeerd zijn — bv.
+    # `brueggemann_methode_selector` met front_end_name "Brueggemann
+    # methode-selector (intern)". Dat zijn diagnostische tussenstappen
+    # van de agent-pijplijn (welke methode kiezen we, welke variant
+    # gebruiken we), geen output die de prediker wil zien. Schaalbaar:
+    # elke toekomstige analyse met "(intern)" in de display-naam wordt
+    # automatisch uitgesloten zonder extra mapping bij te werken.
+    sub_analyses = _filter_interne_analyses(sub_analyses)
 
     cb(0.15, "Document opbouwen — kop...")
     doc = Document()
@@ -399,6 +407,31 @@ def _lijst_normaliseren(respons: Any) -> list[dict]:
     if isinstance(respons, dict) and isinstance(respons.get("results"), list):
         return respons["results"]
     return []
+
+
+def _filter_interne_analyses(sub_analyses: list[dict]) -> list[dict]:
+    """Verwijdert sub-analyses die in de DB als "(intern)" gemarkeerd zijn.
+
+    De convention in `analysis_result.AnalysisType.front_end_name` is dat
+    diagnostische / selector-types (zoals `brueggemann_methode_selector`)
+    de suffix "(intern)" krijgen. Die rapporteren over keuzes binnen de
+    agent-pijplijn — niet over de inhoud van de preek — en horen dus
+    niet in het document dat de prediker meeneemt.
+
+    Detectie via de display-naam in plaats van een hard-coded skip-lijst,
+    zodat een toekomstige interne analyse automatisch wordt uitgesloten
+    zonder dat we deze module hoeven bij te werken.
+    """
+    schoon: list[dict] = []
+    for sub in sub_analyses:
+        if not isinstance(sub, dict):
+            schoon.append(sub)
+            continue
+        front = ((sub.get("analysis_type") or {}).get("front_end_name") or "")
+        if "(intern)" in front.lower():
+            continue
+        schoon.append(sub)
+    return schoon
 
 
 def _alleen_nieuwste_per_type(sub_analyses: list[dict]) -> list[dict]:
