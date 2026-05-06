@@ -10,7 +10,6 @@ from src.utils.utils import (
     get_data,
     render_sidebar,
     haal_cumulatief_tokenverbruik_op,
-    bereken_kosten_eur,
     formatteer_eur,
     # Polling-fragment dat een toast toont zodra een gestarte analyse
     # klaar is in de database (zie src/utils/utils.py).
@@ -198,10 +197,11 @@ analysis = st.session_state["dashboard_analyses_cache"]
 _token_info = haal_cumulatief_tokenverbruik_op()
 _limiet_overschreden = False
 if _token_info is not None:
-    _tot_in, _tot_uit, _, _max_in, _max_uit, _budget_eur = _token_info
-    # Frontend-only kostenberekening (zie `bereken_kosten_eur`); blijft
-    # parallel lopen met de bestaande token-velden zonder DB-wijziging.
-    _kosten_eur = bereken_kosten_eur(_tot_in, _tot_uit)
+    # total_cost dekt sinds 2026-05 zowel LLM-kosten als Tavily-credits,
+    # zodat de waarschuwing alle productie-relevante bronnen meeneemt.
+    # Tavily-credits worden hieronder niet apart getoond; dat gebeurt in
+    # de sidebar (zie `_render_cumulative_token_usage_sidebar`).
+    _tot_in, _tot_uit, _kosten_eur, _max_in, _max_uit, _budget_eur, _tavily_credits = _token_info
     _limiet_overschreden = _budget_eur > 0 and _kosten_eur > _budget_eur
     if _limiet_overschreden:
         # st.warning geeft Streamlit's native oranje/gele waarschuwingsbalk.

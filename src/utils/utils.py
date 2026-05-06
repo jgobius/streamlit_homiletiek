@@ -943,6 +943,15 @@ _TOKENVERBRUIK_CACHE_KEY = "_tokenverbruik_cache"
 _KOSTEN_EUR_PER_MILJOEN_INPUT = 0.75
 _KOSTEN_EUR_PER_MILJOEN_OUTPUT = 4.5
 
+# Tavily-tarief: $0.008 per credit op advanced search depth (≈ €0,0074 bij
+# 1 USD ≈ 0,92 EUR). Bron: https://tavily.com/pricing — gecontroleerd
+# 2026-05-06. We rekenen altijd met `search_depth='advanced'` (zie
+# homiletiek_agent/src/agents/tools/tavily_tool.py), wat 2 credits per
+# zoekopdracht kost. include_raw_content staat uit. Bewust een constante
+# in plaats van secrets/.env: het tarief verandert zelden en we willen
+# dezelfde formule op dashboard én sidebar.
+_TAVILY_EUR_PER_CREDIT: float = 0.0074
+
 
 def bereken_kosten_eur(input_tokens: int, output_tokens: int) -> float:
     """Geeft de geschatte cumulatieve kosten in EUR voor de meegegeven tokens.
@@ -957,6 +966,17 @@ def bereken_kosten_eur(input_tokens: int, output_tokens: int) -> float:
     ) / 1_000_000
 
 
+def bereken_tavily_kosten_eur(credits: int) -> float:
+    """Geeft de geschatte EUR-kosten van het meegegeven aantal Tavily-credits.
+
+    Tavily rekent per "credit" (advanced search = 2 credits/query). Voor de
+    UI vermenigvuldigen we het cumulatief gelogde aantal credits met
+    ``_TAVILY_EUR_PER_CREDIT`` zodat we de kosten naast de LLM-kosten kunnen
+    laten zien en bij elkaar kunnen optellen voor de budget-waarschuwing.
+    """
+    return credits * _TAVILY_EUR_PER_CREDIT
+
+
 def formatteer_eur(bedrag: float) -> str:
     """Formatteert een EUR-bedrag in Nederlandse stijl (komma als decimaal)."""
     # `:.2f` levert standaard een punt; we wisselen die in voor een komma zodat
@@ -964,23 +984,25 @@ def formatteer_eur(bedrag: float) -> str:
     return f"€{bedrag:.2f}".replace(".", ",")
 
 
-def haal_cumulatief_tokenverbruik_op() -> tuple[int, int, float, int, int, float] | None:
+def haal_cumulatief_tokenverbruik_op() -> tuple[int, int, float, int, int, float, int] | None:
     """Haalt cumulatief tokenverbruik + per-user tokenlimiet op bij de backend.
 
     Roept ``GET /api/token-usage/cumulative/`` aan (zie backend
     ``analysis_result.views.TokenUsageView``). Het endpoint levert in de
     cumulatieve variant een object terug met de vorm
     ``{"usage": {<model>: {"input_tokens": N, "output_tokens": N}, ...},
+      "tavily_credits": N,
       "limits": {"max_input_tokens": N, "max_output_tokens": N,
                  "budget_eur": F}}``.
 
     De totale kostenberekening op basis van ``st.secrets['model_prices']``
-    is verwijderd: ``secrets.toml`` is niet langer in gebruik en de UI
-    toont alleen nog input-/output-tokens. Het cost-veld in de tuple
-    blijft bestaan (altijd 0.0) zodat bestaande callers niet hoeven te
-    veranderen. De limieten worden door de backend uit ``UserPreferences``
-    gehaald zodat ze per gebruiker via Django admin overruled kunnen
-    worden.
+    is verwijderd: ``secrets.toml`` is niet langer in gebruik. Het
+    ``total_cost``-veld in de tuple bevat sinds 2026-05 wél een waarde:
+    namelijk de som van LLM-kosten (``bereken_kosten_eur``) en
+    Tavily-kosten (``bereken_tavily_kosten_eur``). Zo dekt de bestaande
+    budget-waarschuwing alle bronnen, niet alleen LLM-tokens.
+    De limieten worden door de backend uit ``UserPreferences`` gehaald
+    zodat ze per gebruiker via Django admin overruled kunnen worden.
 
     Het resultaat wordt in ``st.session_state`` gecachet (TTL uit
     ``_TOKENVERBRUIK_CACHE_TTL_SECONDS``) zodat zowel het dashboard als de
@@ -989,11 +1011,10 @@ def haal_cumulatief_tokenverbruik_op() -> tuple[int, int, float, int, int, float
     ingelogde gebruiker verschilt en Streamlit's cache globaal is.
 
     Returnt ``(total_input, total_output, total_cost, max_input_tokens,
-    max_output_tokens, budget_eur)`` of ``None`` als de API-handler
-    ontbreekt, het endpoint niet bereikbaar is, of het antwoord onverwacht
-    gevormd is. ``total_cost`` is altijd 0.0 sinds de
-    ``st.secrets``-afhankelijkheid is verwijderd. ``None`` laat de
-    aanroepende pagina stilletjes verdergaan zonder foutmelding.
+    max_output_tokens, budget_eur, tavily_credits)`` of ``None`` als de
+    API-handler ontbreekt, het endpoint niet bereikbaar is, of het antwoord
+    onverwacht gevormd is. ``None`` laat de aanroepende pagina stilletjes
+    verdergaan zonder foutmelding.
     """
     nu = time.time()
     cached = st.session_state.get(_TOKENVERBRUIK_CACHE_KEY)
@@ -1022,20 +1043,38 @@ def haal_cumulatief_tokenverbruik_op() -> tuple[int, int, float, int, int, float
     if not isinstance(usage, dict) or not isinstance(limits, dict):
         return None
 
-    # secrets.toml wordt niet langer gebruikt voor model_prices; we tonen
-    # uitsluitend input-/output-tokens. total_cost blijft op 0.0 staan
-    # zodat de tuple-shape voor bestaande callers gelijk blijft.
     total_input = 0
     total_output = 0
-    total_cost = 0.0
     for counts in usage.values():
         total_input += counts.get("input_tokens", 0) or 0
         total_output += counts.get("output_tokens", 0) or 0
 
+    # Tavily-credits komen los mee in de respons (niet binnen `usage`,
+    # want het is geen LLM met een model_name). Bij een oudere backend
+    # zonder migratie 0026 ontbreekt het veld — fallback op 0 zodat de
+    # UI niet breekt en de sidebar simpelweg geen Tavily-regel toont.
+    tavily_credits = int(payload.get("tavily_credits", 0) or 0)
+
+    # total_cost dekt nu zowel LLM-tokens als Tavily-credits — de
+    # budget-waarschuwing op het dashboard reflecteert daarmee alle
+    # productie-relevante kosten, niet alleen het LLM-deel.
+    total_cost = (
+        bereken_kosten_eur(total_input, total_output)
+        + bereken_tavily_kosten_eur(tavily_credits)
+    )
+
     max_input = int(limits.get("max_input_tokens", 0) or 0)
     max_output = int(limits.get("max_output_tokens", 0) or 0)
     budget_eur = float(limits.get("budget_eur", 0) or 0)
-    result = (total_input, total_output, total_cost, max_input, max_output, budget_eur)
+    result = (
+        total_input,
+        total_output,
+        total_cost,
+        max_input,
+        max_output,
+        budget_eur,
+        tavily_credits,
+    )
     st.session_state[_TOKENVERBRUIK_CACHE_KEY] = (
         nu + _TOKENVERBRUIK_CACHE_TTL_SECONDS,
         result,
@@ -1062,10 +1101,14 @@ def tokenlimiet_bereikt() -> bool:
     info = haal_cumulatief_tokenverbruik_op()
     if info is None:
         return False
-    total_input, total_output, _cost, _max_input, _max_output, budget_eur = info
+    # total_cost dekt sinds 2026-05 zowel LLM-tokens als Tavily-credits;
+    # we gebruiken hem direct in plaats van bereken_kosten_eur opnieuw aan
+    # te roepen, anders zouden Tavily-kosten buiten de budget-waarschuwing
+    # blijven.
+    _total_input, _total_output, total_cost, _max_input, _max_output, budget_eur, _tavily_credits = info
     if budget_eur <= 0:
         return False
-    return bereken_kosten_eur(total_input, total_output) > budget_eur
+    return total_cost > budget_eur
 
 
 def render_analysis_results_sidebar(analysis_results: list[dict[str, Any]]) -> None:
