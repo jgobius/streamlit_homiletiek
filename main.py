@@ -954,34 +954,37 @@ def _render_cumulative_token_usage_sidebar() -> None:
     raw_limits = payload.get("limits")
     limits = raw_limits if isinstance(raw_limits, dict) else {}
     budget_eur = float(limits.get("budget_eur", 0) or 0)
-    # Som van LLM- en Tavily-kosten: zo dekt de budget-waarschuwing alle
-    # productie-relevante bronnen, niet alleen het LLM-deel.
-    kosten_eur = (
-        bereken_kosten_eur(total_input, total_output)
-        + bereken_tavily_kosten_eur(tavily_credits)
-    )
-    if budget_eur > 0:
-        percentage = (kosten_eur / budget_eur) * 100
-        budget_label = (
-            f" ({formatteer_eur(kosten_eur)} van {formatteer_eur(budget_eur)} "
-            f"— {percentage:.0f}% verbruikt)"
-        )
-    else:
-        budget_label = f" ({formatteer_eur(kosten_eur)})"
+    # Splits LLM- en tool-kosten op de respectievelijke regels en toon
+    # het totaal apart op een derde regel. Eerder hingen ze op één regel
+    # ("Totaal tokenverbruik: ... €X,XX") wat suggereerde dat het bedrag
+    # alleen de tokens dekte terwijl de tool-kosten er ook al in zaten.
+    tokens_eur = bereken_kosten_eur(total_input, total_output)
+    tools_eur = bereken_tavily_kosten_eur(tavily_credits)
+    kosten_eur = tokens_eur + tools_eur
 
     with st.sidebar:
         st.divider()
         st.caption(
-            f"Totaal tokenverbruik: {total_input:,} in / {total_output:,} uit"
-            f"{budget_label}"
+            f"Tokens: {total_input:,} in / {total_output:,} uit "
+            f"({formatteer_eur(tokens_eur)})"
         )
-        # Aparte regel voor de externe-tool-kosten zodat de gebruiker ook
-        # bij 0 credits ziet dat het feature actief is en het bedrag los
-        # kan volgen. De EUR is al meegenomen in `kosten_eur` hierboven.
+        # Aparte regel voor externe-tool-kosten — altijd zichtbaar zodat
+        # de gebruiker ook bij 0 credits ziet dat het feature actief is.
         st.caption(
-            f"Tools: {tavily_credits} credits "
-            f"({formatteer_eur(bereken_tavily_kosten_eur(tavily_credits))})"
+            f"Tools: {tavily_credits} credits ({formatteer_eur(tools_eur)})"
         )
+        # Eindregel: budgetbewaking over LLM én tools samen. Wordt ook
+        # door dashboard.py en tokenlimiet_bereikt() als drempelwaarde
+        # gebruikt, dus dit getal moet identiek zijn aan total_cost in
+        # haal_cumulatief_tokenverbruik_op.
+        if budget_eur > 0:
+            percentage = (kosten_eur / budget_eur) * 100
+            st.caption(
+                f"Totaal: {formatteer_eur(kosten_eur)} van "
+                f"{formatteer_eur(budget_eur)} — {percentage:.0f}% verbruikt"
+            )
+        else:
+            st.caption(f"Totaal: {formatteer_eur(kosten_eur)}")
 
 
 def main():
