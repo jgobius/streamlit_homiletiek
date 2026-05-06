@@ -226,6 +226,89 @@ def _dict_is_volledig_leeg(d: dict) -> bool:
     return True
 
 
+# LLM-output bevat regelmatig markdown-formatting die de Streamlit-UI via
+# `st.markdown` netjes rendert, maar die in een Word-document letterlijk
+# in de tekst belandt (de gebruiker ziet `\n\n` of `*atsmecha u-besarecha*`
+# in plaats van een alinea-grens of cursief). Twee normalisaties zijn
+# nodig:
+#
+# 1. Letterlijke '\\n'-escapes (twee karakters: backslash + 'n') komen voor
+#    wanneer de agent in zijn JSON-output `"foo\\n\\nbar"` schrijft. JSON-
+#    decode levert dan een string met letterlijke `\n`-tekens, die door
+#    onze `_BLANK_LINE_RE` (matcht echte newlines) niet als alinea-scheider
+#    herkend worden. We zetten ze in `_normaliseer_md` om naar echte
+#    newlines, identiek aan `clean_md` in `src/utils/utils.py`.
+# 2. Inline markdown — `*tekst*`, `_tekst_` (cursief) en `**tekst**` (vet)
+#    — komt vooral voor in de postille (Hebreeuws/Grieks in cursief) en
+#    bezinningsgebeden. We ontleden de tekst in plain/bold/italic runs en
+#    voegen die los toe aan de python-docx-paragraph zodat Word de
+#    formatting echt toepast.
+_LITERAL_NEWLINE_RE = re.compile(r"\\n")
+_BOLD_SPACING_RE_OPEN = re.compile(r"\*\*[ \t]+(\S)")
+_BOLD_SPACING_RE_CLOSE = re.compile(r"(\S)[ \t]+\*\*")
+# Bold vóór italic: regex-alternation gaat van links naar rechts en we
+# willen dat `**foo**` als één bold-token wordt gezien, niet als italic
+# `*` + tekst + italic `*`. Italic vereist dat het eerste teken na de
+# `*` géén whitespace of nieuwe `*` is — zo voorkomen we false positives
+# op losse asterisken (`5 * 2`) of escape-sequences.
+_INLINE_MD_RE = re.compile(
+    r"(\*\*[^*\n]+?\*\*|\*[^\s*][^*\n]*?\*)"
+)
+
+
+def _normaliseer_md(text: str) -> str:
+    """Zet markdown-artefacten om die anders letterlijk in de export
+    belanden. Spiegel van `clean_md()` uit `src/utils/utils.py`.
+
+    De Streamlit-UI laat dit door `st.markdown` afhandelen; python-docx
+    rendert tekst rauw, dus moeten wij hier normaliseren.
+    """
+    if not text:
+        return text
+    schoon = _LITERAL_NEWLINE_RE.sub("\n", text)
+    # `** tekst **` (spaties binnen bold-markers) staat vet niet correct
+    # in de hand; ze komen voor wanneer de LLM woorden binnen een bold-
+    # blok afbreekt. Dichtknijpen zodat onze _INLINE_MD_RE de bold-token
+    # straks als één geheel matcht.
+    schoon = _BOLD_SPACING_RE_OPEN.sub(r"**\1", schoon)
+    schoon = _BOLD_SPACING_RE_CLOSE.sub(r"\1**", schoon)
+    return schoon
+
+
+def _voeg_md_runs_toe(paragraph, text: str, *, basis_bold: bool = False) -> None:
+    """Voegt runs toe aan `paragraph` met inline-markdown-formatting toegepast.
+
+    Splitst `text` op `**bold**`- en `*italic*`-tokens en emit per stuk
+    een aparte run. Plain stukken erven `basis_bold` over (handig voor
+    de "Sleutel: waarde"-regels in `_walk_dict`, waar het sleutel-deel
+    al bold is).
+
+    Tokens die niet als markdown matchen worden gewoon als platte tekst
+    geëmit — een losse `*` in een formule of getal blijft dus zichtbaar
+    en wordt niet stilletjes weggegooid.
+    """
+    if not text:
+        return
+    tokens = _INLINE_MD_RE.split(text)
+    for i, token in enumerate(tokens):
+        if not token:
+            continue
+        if i % 2 == 1:
+            # Match-groep: bold of italic.
+            if token.startswith("**") and token.endswith("**"):
+                run = paragraph.add_run(token[2:-2])
+                run.bold = True
+                continue
+            if token.startswith("*") and token.endswith("*"):
+                run = paragraph.add_run(token[1:-1])
+                run.italic = True
+                continue
+        # Plain stuk.
+        run = paragraph.add_run(token)
+        if basis_bold:
+            run.bold = True
+
+
 def _scrub_tavily(text: str) -> str:
     """Verwijdert Tavily-verwijzingen uit een string-leaf.
 
@@ -716,17 +799,23 @@ def _walk_dict(
             doc.add_heading(label, level=niveau)
             _add_paragraph_multiline(doc, schoon)
         else:
-            # Inline 'Sleutel: waarde' — string-waardes scrubben; als er na
-            # het scrubben niets overblijft slaan we de hele regel over zodat
-            # we geen 'Datum: '-regels krijgen waar alleen 'Tavily' stond.
+            # Inline 'Sleutel: waarde' — string-waardes eerst markdown-
+            # normaliseren (literal \\n → newline, ** spacing) en daarna
+            # Tavily-scrubben; als er na het scrubben niets overblijft
+            # slaan we de hele regel over zodat we geen 'Datum: '-regels
+            # krijgen waar alleen 'Tavily' stond. Voor non-string waarden
+            # (bool, getal) blijft het oude pad: directe run zonder md-parse.
             if isinstance(val, str):
-                schoon = _scrub_tavily(val)
+                schoon = _scrub_tavily(_normaliseer_md(val))
                 if not schoon:
                     continue
                 val = schoon
             p = doc.add_paragraph()
             p.add_run(f"{label}: ").bold = True
-            _append_value_run(p, val)
+            if isinstance(val, str):
+                _voeg_md_runs_toe(p, val)
+            else:
+                _append_value_run(p, val)
 
 
 def _walk_list(value: list, doc, heading_level: int) -> None:
@@ -778,13 +867,14 @@ def _walk_list(value: list, doc, heading_level: int) -> None:
             if isinstance(item, bool):
                 tekst = "Ja" if item else "Nee"
             else:
-                tekst = _scrub_tavily(str(item))
+                tekst = _scrub_tavily(_normaliseer_md(str(item)))
                 # Bullet-items die volledig uit een Tavily-verwijzing bestonden
                 # worden hierdoor leeg en moeten worden overgeslagen — anders
                 # krijgen we een lege bullet in de lijst.
                 if not tekst:
                     continue
-            doc.add_paragraph(tekst, style="List Bullet")
+            p = doc.add_paragraph(style="List Bullet")
+            _voeg_md_runs_toe(p, tekst)
         return
 
     # Gemengde lijst: per item recursief verwerken zonder lijstopmaak.
@@ -826,8 +916,15 @@ def _add_paragraph_multiline(doc, text: str) -> None:
     Per stuk wordt nog een keer door _scrub_tavily gehaald, zodat ook
     callers die deze helper rechtstreeks aanroepen geen Tavily-mentions
     door kunnen lekken.
+
+    Eerst _normaliseer_md zodat letterlijke '\\n\\n'-escapes (zoals de
+    agent ze in JSON-output schrijft) als echte newlines worden herkend
+    door _BLANK_LINE_RE — anders zou de gebruiker `\\n\\n` als platte
+    tekst zien in bv. de gebeden. Inline cursief/vet wordt per stuk via
+    _voeg_md_runs_toe als echte runs gerenderd ipv letterlijke
+    `*foo*`-markers.
     """
-    text = text.strip()
+    text = _normaliseer_md(text or "").strip()
     if not text:
         return
     stukken = _BLANK_LINE_RE.split(text)
@@ -835,7 +932,8 @@ def _add_paragraph_multiline(doc, text: str) -> None:
         gestript = _scrub_tavily(stuk.strip())
         if not gestript:
             continue
-        doc.add_paragraph(gestript)
+        p = doc.add_paragraph()
+        _voeg_md_runs_toe(p, gestript)
 
 
 def _is_block_tekst(tekst: str) -> bool:
