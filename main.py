@@ -7,7 +7,7 @@ from streamlit_cookies_controller import CookieController
 
 from src.api.jwthandler import JwtHandler
 from src.api.handler import APIHandler
-from src.utils.utils import bereken_kosten_eur, formatteer_eur
+from src.utils.utils import bereken_kosten_eur, bereken_tavily_kosten_eur, formatteer_eur
 
 # Laad .env één keer bovenin zodat alle child-pages (die in dezelfde Python-
 # proces draaien via st.navigation) de environment-variabelen geërfd krijgen.
@@ -889,31 +889,45 @@ def _render_token_usage_sidebar() -> None:
     if not handler:
         return
     analysis_id = st.session_state.get('current_analysis_id')
-    # De cumulatieve variant van het endpoint retourneert {usage, limits};
-    # de niet-cumulatieve variant retourneert direct de usage-dict. Hier
-    # gebruiken we de niet-cumulatieve variant (eventueel gefilterd op
-    # huidige analyse).
+    # Beide endpoints (per-analyse en algeheel niet-cumulatief) retourneren
+    # sinds 2026-05 een wrapper-dict {"usage": {...}, "tavily_credits": N}
+    # zodat we Tavily-credits buiten de model-aggregatie kunnen tonen.
     endpoint = f"api/token-usage/?sermon_analysis_id={analysis_id}" if analysis_id else "api/token-usage/"
     try:
-        usage = handler.get(endpoint)
+        payload = handler.get(endpoint)
     except requests.exceptions.HTTPError:
         # Endpoint nog niet beschikbaar in deze omgeving; sidebar stilletjes overslaan.
         return
+    if not isinstance(payload, dict):
+        return
+    # Oudere backends (vóór de tavily_credits-uitrol) geven nog de platte
+    # dict-vorm terug; in dat geval behandelen we de payload zelf als
+    # usage-dict en tonen we geen Tavily-regel.
+    usage = payload.get("usage") if "usage" in payload else payload
     if not isinstance(usage, dict):
         return
+    tavily_credits = int(payload.get("tavily_credits", 0) or 0)
     total_input, total_output = _calc_token_totals(usage)
     with st.sidebar:
         st.divider()
         st.caption(
             f"Tokens huidige analyse: {total_input:,} in / {total_output:,} uit"
         )
+        if tavily_credits > 0:
+            # Tavily wordt los van het model getoond: het is een externe
+            # zoekservice, geen LLM-call.
+            st.caption(
+                f"Tools: {tavily_credits} credits "
+                f"({formatteer_eur(bereken_tavily_kosten_eur(tavily_credits))})"
+            )
 
 
 def _render_cumulative_token_usage_sidebar() -> None:
     # Toon het cumulatieve tokenverbruik + EUR-equivalent van de ingelogde
     # gebruiker in de sidebar. Het EUR-bedrag wordt frontend-side berekend
-    # (zie `bereken_kosten_eur`) en afgezet tegen `BUDGET_EUR` uit
-    # UserPreferences zodat de testgebruiker ziet hoeveel ruimte er nog is.
+    # (zie `bereken_kosten_eur` + `bereken_tavily_kosten_eur`) en afgezet
+    # tegen `BUDGET_EUR` uit UserPreferences zodat de testgebruiker ziet
+    # hoeveel ruimte er nog is.
     handler = st.session_state.get('api_handler')
     if not handler:
         return
@@ -924,37 +938,53 @@ def _render_cumulative_token_usage_sidebar() -> None:
         return
     if not isinstance(payload, dict):
         return
-    # De cumulatieve variant levert {"usage": {...}, "limits": {...}}; we
-    # hebben alleen `usage` nodig voor de token-totalen. Oudere backends
-    # die nog de platte dict-vorm teruggeven (zonder `usage`-sleutel)
-    # blijven ook werken doordat we dan de payload zelf als usage-dict
-    # behandelen.
+    # De cumulatieve variant levert {"usage": {...}, "tavily_credits": N,
+    # "limits": {...}}; we hebben `usage` nodig voor token-totalen en
+    # `tavily_credits` voor de aparte regel + EUR-aanvulling. Oudere
+    # backends zonder de `usage`-sleutel blijven werken doordat we dan
+    # de payload zelf als usage-dict behandelen — Tavily blijft dan op 0.
     usage = payload.get("usage") if "usage" in payload else payload
     if not isinstance(usage, dict):
         return
     total_input, total_output = _calc_token_totals(usage)
+    tavily_credits = int(payload.get("tavily_credits", 0) or 0)
 
     # `limits` ontbreekt op oudere backends; in dat geval tonen we alleen het
     # geschatte verbruik zonder budget-percentage zodat de UI niet breekt.
     raw_limits = payload.get("limits")
     limits = raw_limits if isinstance(raw_limits, dict) else {}
     budget_eur = float(limits.get("budget_eur", 0) or 0)
-    kosten_eur = bereken_kosten_eur(total_input, total_output)
-    if budget_eur > 0:
-        percentage = (kosten_eur / budget_eur) * 100
-        budget_label = (
-            f" ({formatteer_eur(kosten_eur)} van {formatteer_eur(budget_eur)} "
-            f"— {percentage:.0f}% verbruikt)"
-        )
-    else:
-        budget_label = f" ({formatteer_eur(kosten_eur)})"
+    # Splits LLM- en tool-kosten op de respectievelijke regels en toon
+    # het totaal apart op een derde regel. Eerder hingen ze op één regel
+    # ("Totaal tokenverbruik: ... €X,XX") wat suggereerde dat het bedrag
+    # alleen de tokens dekte terwijl de tool-kosten er ook al in zaten.
+    tokens_eur = bereken_kosten_eur(total_input, total_output)
+    tools_eur = bereken_tavily_kosten_eur(tavily_credits)
+    kosten_eur = tokens_eur + tools_eur
 
     with st.sidebar:
         st.divider()
         st.caption(
-            f"Totaal tokenverbruik: {total_input:,} in / {total_output:,} uit"
-            f"{budget_label}"
+            f"Tokens: {total_input:,} in / {total_output:,} uit "
+            f"({formatteer_eur(tokens_eur)})"
         )
+        # Aparte regel voor externe-tool-kosten — altijd zichtbaar zodat
+        # de gebruiker ook bij 0 credits ziet dat het feature actief is.
+        st.caption(
+            f"Tools: {tavily_credits} credits ({formatteer_eur(tools_eur)})"
+        )
+        # Eindregel: budgetbewaking over LLM én tools samen. Wordt ook
+        # door dashboard.py en tokenlimiet_bereikt() als drempelwaarde
+        # gebruikt, dus dit getal moet identiek zijn aan total_cost in
+        # haal_cumulatief_tokenverbruik_op.
+        if budget_eur > 0:
+            percentage = (kosten_eur / budget_eur) * 100
+            st.caption(
+                f"Totaal: {formatteer_eur(kosten_eur)} van "
+                f"{formatteer_eur(budget_eur)} — {percentage:.0f}% verbruikt"
+            )
+        else:
+            st.caption(f"Totaal: {formatteer_eur(kosten_eur)}")
 
 
 def main():

@@ -11,8 +11,9 @@ De *namen* (sleutels) komen overeen met `analysis_type.name` in de backend
 in de Streamlit-UI ziet wanneer een kerkdienstanalyse wordt geopend.
 """
 
-# Perspectieven: 14 culturele/wetenschappelijke invalshoeken. Worden parallel
-# aan de basis-analyses uitgevoerd en gegroepeerd onder één tabblad.
+# Perspectieven: 15 culturele/wetenschappelijke/theologische invalshoeken.
+# Worden parallel aan de basis-analyses uitgevoerd en gegroepeerd onder één
+# tabblad.
 _PERSPECTIEVEN_NAMEN: set[str] = {
     "filosofie",
     "culturele_antropologie",
@@ -28,6 +29,7 @@ _PERSPECTIEVEN_NAMEN: set[str] = {
     "gender_queer_body",
     "digitale_cultuur",
     "ruimtelijke_ordening",
+    "ethiek",
 }
 
 # Verdieping: contextduidende en Tavily-gedreven analyses die boven de basis
