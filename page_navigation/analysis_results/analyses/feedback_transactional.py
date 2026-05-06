@@ -5,26 +5,21 @@ import streamlit as st
 from src.utils.utils import clean_md
 
 
+# Schaalsuffix '/10' weggelaten omdat 10 de standaardschaal is.
+# Voeg een suffix pas toe wanneer de schaal écht afwijkt (bv. '/5').
 def _score_label(score) -> str:
     try:
         s = int(score)
         if s >= 8:
-            return f":green[{s}/10]"
+            return f":green[**{s}**]"
         elif s >= 6:
-            return f":blue[{s}/10]"
+            return f":blue[**{s}**]"
         elif s >= 4:
-            return f":orange[{s}/10]"
+            return f":orange[**{s}**]"
         else:
-            return f":red[{s}/10]"
+            return f":red[**{s}**]"
     except (TypeError, ValueError):
         return str(score) if score else "—"
-
-
-def _score_val(score) -> str:
-    try:
-        return f"{int(score)}/10" if score is not None else "—"
-    except (TypeError, ValueError):
-        return "—"
 
 
 def _render_ego_blok(label: str, blok: dict, extra_keys: list[str] | None = None) -> None:
@@ -64,7 +59,9 @@ def feedback_transactional(analysis: dict[str, Any]) -> None:
     # === 1. Totaaloverzicht ===
     overall = conclusie.get("psychologische_gezondheid_score")
     if overall is not None:
-        st.metric("Psychologische gezondheid", _score_val(overall))
+        # Compactere weergave dan st.metric — gekleurde badge laat
+        # in één oogopslag zien of de score sterk of zwak is.
+        st.markdown(f"**Psychologische gezondheid**  \n{_score_label(overall)}")
 
     samenvatting = conclusie.get("samenvatting", "")
     if samenvatting:
@@ -92,9 +89,9 @@ def feedback_transactional(analysis: dict[str, Any]) -> None:
         with st.expander("Advies voor game-vrije communicatie", expanded=False):
             st.markdown(clean_md(advies))
 
-    st.divider()
-
     # === 2. Ego-posities — scores naast elkaar ===
+    # Geen leading divider; de H3-kop scheidt al van het totaaloverzicht
+    # hierboven.
     st.markdown("### Ego-posities")
 
     ouder = ego.get("ouder_parent", {}) if isinstance(ego, dict) else {}
@@ -105,17 +102,8 @@ def feedback_transactional(analysis: dict[str, Any]) -> None:
     ac_blok = kind.get("vrijheid_van_aangepast_kind_AC", {}) if isinstance(kind, dict) else {}
     fc_blok = kind.get("vrij_kind_FC", {}) if isinstance(kind, dict) else {}
 
-    scores_matrix = [
-        ("CP", cp_blok.get("score") if isinstance(cp_blok, dict) else None),
-        ("NP", np_blok.get("score") if isinstance(np_blok, dict) else None),
-        ("A",  adult_blok.get("score") if isinstance(adult_blok, dict) else None),
-        ("AC", ac_blok.get("score") if isinstance(ac_blok, dict) else None),
-        ("FC", fc_blok.get("score") if isinstance(fc_blok, dict) else None),
-    ]
-    score_cols = st.columns(5)
-    for i, (afk, score) in enumerate(scores_matrix):
-        with score_cols[i]:
-            st.metric(afk, _score_val(score))
+    # Score per ego-positie staat in de expander-titel (zie _render_ego_blok);
+    # aparte score-rij ervoor weggelaten om dubbele weergave te vermijden.
 
     dominante = ego.get("dominante_ego_positie", "") if isinstance(ego, dict) else ""
     if dominante:
@@ -133,15 +121,15 @@ def feedback_transactional(analysis: dict[str, Any]) -> None:
                      ["toelichting_score", "aanwezigheid"])
 
     # === 3. Transactie-analyse ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if transactie:
-        st.divider()
         st.markdown("### Transactie-analyse")
         zuiverheid = transactie.get("communicatieve_zuiverheid_score")
         stijl = transactie.get("primaire_transactie_stijl", "")
         col1, col2 = st.columns(2)
         with col1:
             if zuiverheid is not None:
-                st.metric("Communicatieve zuiverheid", _score_val(zuiverheid))
+                st.markdown(f"**Communicatieve zuiverheid**  \n{_score_label(zuiverheid)}")
         with col2:
             if stijl:
                 st.markdown(f"**Transactiestijl:** {clean_md(stijl)}")
@@ -153,8 +141,8 @@ def feedback_transactional(analysis: dict[str, Any]) -> None:
                     st.markdown(clean_md(str(v)))
 
     # === 4. Spel-analyse (Games) ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if spelen:
-        st.divider()
         st.markdown("### Spel-analyse (Games)")
         gedetecteerde = spelen.get("gedetecteerde_spelen", [])
         if gedetecteerde:
@@ -183,8 +171,8 @@ def feedback_transactional(analysis: dict[str, Any]) -> None:
                 st.markdown(clean_md(geen_spelen))
 
     # === 5. Dramadriehoek (Karpman) ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if drama:
-        st.divider()
         st.markdown("### Dramadriehoek (Karpman)")
         rollen = drama.get("rollen_van_prediker", {})
         if isinstance(rollen, dict):

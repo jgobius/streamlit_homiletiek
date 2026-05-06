@@ -32,11 +32,13 @@ def _score_color(score) -> str:
         return "gray"
 
 
+# Schaalsuffix '/10' weggelaten omdat 10 de standaardschaal is.
+# Voeg een suffix pas toe wanneer de schaal écht afwijkt (bv. '/5').
 def _score_label(score) -> str:
     try:
         s = int(score)
         color = _score_color(s)
-        return f":{color}[{s}/10]"
+        return f":{color}[**{s}**]"
     except (TypeError, ValueError):
         return str(score) if score else "—"
 
@@ -77,30 +79,15 @@ def feedback_dekker(analysis: dict[str, Any]) -> None:
                     if p:
                         st.warning(f"△ {clean_md(str(p))}")
 
-    st.divider()
-
-    # === 2. Scoregrid — 8 criteria als 4×2 metrics ===
+    # === 2. Detail per criterium — score staat in elke expander-titel ===
+    # Geen st.divider() vóór de H3-kop; het kopje + Streamlits standaard
+    # bovenmarge geven al voldoende visuele scheiding van het algehele-
+    # beoordeling-blok hierboven.
     st.markdown("### Analyse per criterium")
 
-    scores = []
     for key, label in _CRITERIA:
         blok = criteria.get(key, {})
         score = blok.get("score_1_tot_10") if isinstance(blok, dict) else None
-        scores.append((key, label, score, blok))
-
-    col_rows = [st.columns(4), st.columns(4)]
-    for i, (key, label, score, blok) in enumerate(scores):
-        row = col_rows[i // 4]
-        with row[i % 4]:
-            try:
-                score_val = f"{int(score)}/10" if score is not None else "—"
-            except (TypeError, ValueError):
-                score_val = "—"
-            short = label.split("—")[0].strip() if "—" in label else label
-            st.metric(short, score_val)
-
-    # === 3. Detail per criterium ===
-    for key, label, score, blok in scores:
         if not isinstance(blok, dict) or not blok:
             continue
         with st.expander(f"{label}  {_score_label(score)}", expanded=False):

@@ -191,7 +191,10 @@ def render_analysis_footer(
     inspecteren. `analysis` is het volledige analyseresultaat-dict uit de API
     (inclusief het JSON-veld `prompt`).
     """
-    st.divider()
+    # Vroeger st.divider(); vervangen door whitespace omdat de feedbackknop een
+    # eigen rand en achtergrond heeft. Op feedback-pagina's leverde die extra
+    # grijze streep een derde of vierde horizontale lijn op één pagina op.
+    st.write("")
     analysis_result_id = int(analysis["id"])
     analysis_type = analysis.get("analysis_type", {}) or {}
     section_name = (

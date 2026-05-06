@@ -34,17 +34,19 @@ _OSMER_LABELS = {
 }
 
 
+# Schaalsuffix '/10' weggelaten omdat 10 de standaardschaal is.
+# Voeg een suffix pas toe wanneer de schaal écht afwijkt (bv. '/5').
 def _score_label(score) -> str:
     try:
         s = int(score)
         if s >= 8:
-            return f":green[{s}/10]"
+            return f":green[**{s}**]"
         elif s >= 6:
-            return f":blue[{s}/10]"
+            return f":blue[**{s}**]"
         elif s >= 4:
-            return f":orange[{s}/10]"
+            return f":orange[**{s}**]"
         else:
-            return f":red[{s}/10]"
+            return f":red[**{s}**]"
     except (TypeError, ValueError):
         return str(score) if score else "—"
 
@@ -143,21 +145,24 @@ def feedback_kolb(analysis: dict[str, Any]) -> None:
     osmer = result.get("osmer_taken_analyse", {})
 
     # === 1. Totaaloverzicht ===
+    # Score inline bij het kopje (1 cijfer hoort niet in een eigen kolom);
+    # de twee tekstuele velden 'Dominante stijl' en 'Primaire leerstijl' gaan
+    # naast elkaar in 2 gelijke kolommen.
     overall_score = totaal.get("overall_kolb_score")
     primaire_stijl = totaal.get("primaire_homiletische_stijl", "")
     primaire_leerstijl = totaal.get("primaire_leerstijl_aangesproken", "")
     uitgesloten = totaal.get("uitgesloten_leerstijlen", [])
 
-    cols = st.columns(3)
-    with cols[0]:
-        if overall_score is not None:
-            st.metric("Overall Kolb-score", f"{overall_score}/10")
-    with cols[1]:
-        if primaire_stijl:
-            st.markdown(f"**Dominante stijl**  \n{clean_md(primaire_stijl)}")
-    with cols[2]:
-        if primaire_leerstijl:
-            st.markdown(f"**Primaire leerstijl**  \n{clean_md(primaire_leerstijl)}")
+    if overall_score is not None:
+        st.markdown(f"**Overall Kolb-score:** {_score_label(overall_score)}")
+    if primaire_stijl or primaire_leerstijl:
+        col1, col2 = st.columns(2)
+        with col1:
+            if primaire_stijl:
+                st.markdown(f"**Dominante stijl**  \n{clean_md(primaire_stijl)}")
+        with col2:
+            if primaire_leerstijl:
+                st.markdown(f"**Primaire leerstijl**  \n{clean_md(primaire_leerstijl)}")
 
     samenvatting = totaal.get("samenvatting", "")
     if samenvatting:
@@ -196,25 +201,12 @@ def feedback_kolb(analysis: dict[str, Any]) -> None:
     if uitgesloten:
         st.caption("Niet aangesproken leerstijlen: " + ", ".join(str(u) for u in uitgesloten))
 
-    st.divider()
-
-    # === 2. Kolb fasen (4 scores + details) ===
+    # === 2. Kolb fasen (details — score staat in expander-titel) ===
+    # Geen leading divider; de H3-kop is voldoende scheiding van het
+    # totaaloverzicht hierboven.
     st.markdown("### Kolb-fasen")
     if fasen:
-        score_cols = st.columns(4)
-        fase_keys = list(_FASE_LABELS.keys())
-        for i, key in enumerate(fase_keys):
-            fase = fasen.get(key, {})
-            afk, label = _FASE_LABELS[key]
-            score = fase.get("score") if isinstance(fase, dict) else None
-            with score_cols[i]:
-                try:
-                    score_val = f"{int(score)}/10" if score is not None else "—"
-                except (TypeError, ValueError):
-                    score_val = str(score) if score else "—"
-                st.metric(afk, score_val)
-
-        for key in fase_keys:
+        for key in _FASE_LABELS:
             fase = fasen.get(key, {})
             if fase:
                 _render_fase_detail(key, fase)

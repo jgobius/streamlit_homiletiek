@@ -35,11 +35,11 @@ def feedback_adversarial(analysis: dict[str, Any]) -> None:
                 st.markdown("**Bestaanskracht**")
                 st.success(clean_md(bestaanskracht))
 
-    st.divider()
-
     # Per persona een expander met de volledige aanval. De persona-naam en
     # het perspectief-type (inside/outside) staan in de label zodat de
-    # lezer meteen de invalshoek herkent zonder open te klappen.
+    # lezer meteen de invalshoek herkent zonder open te klappen. Geen
+    # leading divider — de H3-kop is voldoende scheiding van het bovenliggende
+    # blok.
     aanvallen = result.get("adversariale_aanvallen", [])
     if aanvallen:
         st.markdown("### Adversariale aanvallen")

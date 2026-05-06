@@ -934,19 +934,21 @@ def render_sidebar():
 _TOKENVERBRUIK_CACHE_TTL_SECONDS = 30
 _TOKENVERBRUIK_CACHE_KEY = "_tokenverbruik_cache"
 
-# Schatting van de OpenRouter-prijzen die we frontend-side hanteren om
-# tokenverbruik om te rekenen naar EUR. Bewust geen DB-veld of secrets-bestand:
-# de testgebruikers hebben één tarief dat zelden verandert, en de echte
-# afrekening gebeurt elders. Tarieven luiden in EUR per 1.000.000 tokens.
-_KOSTEN_EUR_PER_MILJOEN_INPUT = 1.0
-_KOSTEN_EUR_PER_MILJOEN_OUTPUT = 6.0
+# Frontend-schatting voor het cumulatieve verbruik. Tarieven volgen de
+# Google-Flash-listprice ($0,50/M input, $3,00/M output) met een opslag van
+# 1,5x voor server- en infrastructuurkosten. Bewust geen DB-veld of
+# secrets-bestand: de testgebruikers hebben één tarief dat zelden verandert,
+# en de echte afrekening gebeurt elders. Tarieven luiden in EUR per
+# 1.000.000 tokens — we behandelen $ ≈ € voor deze schatting.
+_KOSTEN_EUR_PER_MILJOEN_INPUT = 0.75
+_KOSTEN_EUR_PER_MILJOEN_OUTPUT = 4.5
 
 
 def bereken_kosten_eur(input_tokens: int, output_tokens: int) -> float:
     """Geeft de geschatte cumulatieve kosten in EUR voor de meegegeven tokens.
 
-    Gebruikt vaste tarieven (€2 / 1M invoer, €12 / 1M uitvoer) zodat zowel de
-    waarschuwing op het dashboard als het sidebar-label dezelfde formule
+    Gebruikt vaste tarieven (€0,75 / 1M invoer, €4,50 / 1M uitvoer) zodat zowel
+    de waarschuwing op het dashboard als het sidebar-label dezelfde formule
     gebruiken. Geen DB-roundtrip nodig.
     """
     return (

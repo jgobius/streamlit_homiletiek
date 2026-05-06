@@ -48,26 +48,21 @@ def _overall_badge(waarde: str) -> None:
     st.markdown(f"**Eindoordeel:** :{kleur}[{waarde}]")
 
 
+# Schaalsuffix '/10' weggelaten omdat 10 de standaardschaal is.
+# Voeg een suffix pas toe wanneer de schaal écht afwijkt (bv. '/5').
 def _score_label(score) -> str:
     try:
         s = int(score)
         if s >= 8:
-            return f":green[{s}/10]"
+            return f":green[**{s}**]"
         elif s >= 6:
-            return f":blue[{s}/10]"
+            return f":blue[**{s}**]"
         elif s >= 4:
-            return f":orange[{s}/10]"
+            return f":orange[**{s}**]"
         else:
-            return f":red[{s}/10]"
+            return f":red[**{s}**]"
     except (TypeError, ValueError):
         return str(score) if score else "—"
-
-
-def _score_val(score) -> str:
-    try:
-        return f"{int(score)}/10" if score is not None else "—"
-    except (TypeError, ValueError):
-        return "—"
 
 
 def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
@@ -84,24 +79,31 @@ def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
     sacramenteel = result.get("sacramenteel_patroon_analyse", {})
 
     # === 1. Diagnostisch overzicht ===
+    # Vroeger 4 kolommen (diagnose | eindoordeel | gebeur-score | sacramentele
+    # kracht). Probleem: 'GETUIGEND SUBJECTIEF' wrapte over 2 regels in een
+    # smalle kolom. Nu: twee badges naast elkaar op 2 kolommen (allebei 1
+    # regel), en de twee korte scores inline op één regel daaronder.
     primaire_diagnose = diag.get("primaire_diagnose", "")
     overall_beoordeling = aanbev.get("overall_beoordeling", "")
     gebeuren_score = diag.get("gebeuren_score")
     sacramentele_kracht = diag.get("sacramentele_kracht")
 
-    cols = st.columns(4)
-    with cols[0]:
-        if primaire_diagnose:
-            _diagnose_badge(primaire_diagnose)
-    with cols[1]:
-        if overall_beoordeling:
-            _overall_badge(overall_beoordeling)
-    with cols[2]:
-        if gebeuren_score is not None:
-            st.metric("Gebeur-score", _score_val(gebeuren_score))
-    with cols[3]:
-        if sacramentele_kracht is not None:
-            st.metric("Sacramentele kracht", _score_val(sacramentele_kracht))
+    if primaire_diagnose or overall_beoordeling:
+        col_d, col_e = st.columns(2)
+        with col_d:
+            if primaire_diagnose:
+                _diagnose_badge(primaire_diagnose)
+        with col_e:
+            if overall_beoordeling:
+                _overall_badge(overall_beoordeling)
+
+    score_parts: list[str] = []
+    if gebeuren_score is not None:
+        score_parts.append(f"**Gebeur-score:** {_score_label(gebeuren_score)}")
+    if sacramentele_kracht is not None:
+        score_parts.append(f"**Sacramentele kracht:** {_score_label(sacramentele_kracht)}")
+    if score_parts:
+        st.markdown("  ·  ".join(score_parts))
 
     diagnose_toelichting = diag.get("diagnose_toelichting", "")
     if diagnose_toelichting:
@@ -147,19 +149,13 @@ def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
                     elif item:
                         st.warning(f"△ {clean_md(str(item))}")
 
-    st.divider()
-
     # === 2. Werkwoord-analyse ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
+    # Geen st.metric-rij meer: de percentages staan al in de expander-titels
+    # ("Assertieven (124×, 70%)"), en st.metric rendert ze in een te grote
+    # font waardoor het blok onnodig dominant werd.
     if werkwoorden:
         st.markdown("### Werkwoord-analyse")
-        pct_cols = st.columns(5)
-        for i, (key, label) in enumerate(_WERKWOORD_CATEGORIEEN):
-            blok = werkwoorden.get(key, {})
-            pct = blok.get("procent", "") if isinstance(blok, dict) else ""
-            afk = label[:4]
-            with pct_cols[i]:
-                st.metric(afk, str(pct) if pct else "—")
-
         for key, label in _WERKWOORD_CATEGORIEEN:
             blok = werkwoorden.get(key, {})
             if not isinstance(blok, dict) or not blok:
@@ -186,22 +182,24 @@ def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
                         st.caption(f"**{k_label}:** {clean_md(str(v))}")
 
     # === 3. Constatief / Performatief diagnose ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if constatief:
-        st.divider()
         st.markdown("### Constatief / Performatief")
         prim_class = constatief.get("primaire_classificatie", "")
         con_pct = constatief.get("constatief_percentage", "")
         perf_pct = constatief.get("performatief_percentage", "")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if prim_class:
-                st.markdown(f"**Classificatie:** {clean_md(prim_class.replace('_', ' '))}")
-        with col2:
-            if con_pct:
-                st.metric("Constatief", str(con_pct))
-        with col3:
-            if perf_pct:
-                st.metric("Performatief", str(perf_pct))
+        # Eén compacte regel i.p.v. drie st.metric-kolommen — st.metric was
+        # visueel te dominant en de getallen kwamen al terug in de
+        # surplus/deficit-secties hieronder.
+        if prim_class:
+            st.markdown(f"**Classificatie:** {clean_md(prim_class.replace('_', ' '))}")
+        pct_parts: list[str] = []
+        if con_pct:
+            pct_parts.append(f"**Constatief:** {con_pct}")
+        if perf_pct:
+            pct_parts.append(f"**Performatief:** {perf_pct}")
+        if pct_parts:
+            st.markdown("  ·  ".join(pct_parts))
 
         toezegging = constatief.get("toezegging_check", {})
         if isinstance(toezegging, dict):
@@ -243,8 +241,8 @@ def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
                         st.markdown(f"**{k_label}:** {clean_md(str(v))}")
 
     # === 4. Sacramenteel patroon ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if sacramenteel:
-        st.divider()
         st.markdown("### Sacramenteel patroon")
         patroon = sacramenteel.get("patroon_identificatie", "")
         if patroon:
@@ -270,7 +268,7 @@ def feedback_taalhandeling(analysis: dict[str, Any]) -> None:
         for k, _ in _AANBEV_SECTIES
     )
     if aanbev_beschikbaar:
-        st.divider()
+        # Geen leading divider; de H3-kop is voldoende scheiding.
         st.markdown("### Aanbevelingen")
         for key, label in _AANBEV_SECTIES:
             blok = aanbev.get(key, {})

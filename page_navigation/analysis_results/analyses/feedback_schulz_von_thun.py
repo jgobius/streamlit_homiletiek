@@ -20,26 +20,21 @@ _OOR_LABELS = [
 ]
 
 
+# Schaalsuffix '/10' weggelaten omdat 10 de standaardschaal is.
+# Voeg een suffix pas toe wanneer de schaal écht afwijkt (bv. '/5').
 def _score_label(score) -> str:
     try:
         s = int(score)
         if s >= 8:
-            return f":green[{s}/10]"
+            return f":green[**{s}**]"
         elif s >= 6:
-            return f":blue[{s}/10]"
+            return f":blue[**{s}**]"
         elif s >= 4:
-            return f":orange[{s}/10]"
+            return f":orange[**{s}**]"
         else:
-            return f":red[{s}/10]"
+            return f":red[**{s}**]"
     except (TypeError, ValueError):
         return str(score) if score else "—"
-
-
-def _score_val(score) -> str:
-    try:
-        return f"{int(score)}/10" if score is not None else "—"
-    except (TypeError, ValueError):
-        return "—"
 
 
 def _render_zijde(label: str, blok: dict, extra_keys: list[str]) -> None:
@@ -91,15 +86,16 @@ def feedback_schulz_von_thun(analysis: dict[str, Any]) -> None:
     receptie = result.get("receptie_simulatie", {})
 
     # === 1. Totaaloverzicht ===
+    # Vroeger asymmetrische 1:3-kolomsindeling — krappe scorelabel-kolom
+    # wrapte 'Overall communicatiescore' over 2 regels en de waarschuwings-
+    # caption hing er ongelijk naast. Nu: score inline (1 regel), waar-
+    # schuwing op volle breedte als caption.
     overall = totaal.get("overall_communicatie_score")
     waarschuwing = totaal.get("barthiaanse_waarschuwing", "")
-    col_score, col_warn = st.columns([1, 3])
-    with col_score:
-        if overall is not None:
-            st.metric("Overall communicatiescore", _score_val(overall))
-    with col_warn:
-        if waarschuwing:
-            st.caption(f"Barthiaanse waarschuwing: {clean_md(waarschuwing)}")
+    if overall is not None:
+        st.markdown(f"**Overall communicatiescore:** {_score_label(overall)}")
+    if waarschuwing:
+        st.caption(f"Barthiaanse waarschuwing: {clean_md(waarschuwing)}")
 
     samenvatting = totaal.get("samenvatting", "")
     if samenvatting:
@@ -127,26 +123,17 @@ def feedback_schulz_von_thun(analysis: dict[str, Any]) -> None:
         with st.expander("Conclusie", expanded=False):
             st.markdown(clean_md(conclusie))
 
-    st.divider()
-
-    # === 2. Vier zijden — scores naast elkaar ===
+    # === 2. Vier zijden — direct als expanders (score staat in expander-titel) ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     st.markdown("### Vier zijden")
-    score_cols = st.columns(4)
-    for i, (key, label, _) in enumerate(_ZIJDEN):
-        blok = analyse_blok.get(key, {}) if isinstance(analyse_blok, dict) else {}
-        score = blok.get("score") if isinstance(blok, dict) else None
-        kleur = label.split("—")[0].strip()
-        with score_cols[i]:
-            st.metric(kleur, _score_val(score))
-
     for key, label, extra_keys in _ZIJDEN:
         blok = analyse_blok.get(key, {}) if isinstance(analyse_blok, dict) else {}
         if blok:
             _render_zijde(label, blok, extra_keys)
 
     # === 3. Congruentie en storingen ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if congruentie:
-        st.divider()
         st.markdown("### Congruentie en storingen")
         dominant = congruentie.get("dominante_zijde", "")
         oordeel = congruentie.get("congruentie_oordeel", "")
@@ -165,8 +152,8 @@ def feedback_schulz_von_thun(analysis: dict[str, Any]) -> None:
                 st.markdown(f"**{k_label}:** {clean_md(str(v))}")
 
     # === 4. Receptie — vier oren ===
+    # Geen leading divider; de H3-kop is voldoende scheiding.
     if receptie:
-        st.divider()
         st.markdown("### Receptie — vier oren")
         for key, label in _OOR_LABELS:
             v = receptie.get(key, "")

@@ -69,29 +69,73 @@ password = st.text_input("Wachtwoord", type="password")
 check_password = st.text_input("Bevestig wachtwoord", type="password")
 
 # Toon de mismatch-waarschuwing zodra beide wachtwoorden zijn ingevuld;
-# de knop wordt hieronder ook expliciet uitgeschakeld om te voorkomen dat
-# een mismatch alsnog naar de backend gaat.
+# de daadwerkelijke blokkade gebeurt verderop via de missing_fields-check.
 passwords_match = bool(password) and password == check_password
 if password and check_password and not passwords_match:
     st.warning("Wachtwoorden komen niet overeen")
 
-# Knop pas actief als alle verplichte velden gevuld zijn, een geldig adres
-# is gevonden en beide wachtwoorden gelijk zijn. Dit voorkomt de eerder
-# gemelde fout dat een lege POST naar /api/auth/register/ gaat en de
-# backend reageert met "This field may not be blank.".
-form_complete = bool(
-    first_name
-    and last_name
-    and email
-    and postal_code
-    and house_number
-    and st.session_state["address"]
-    and passwords_match
-)
+# Bouw een lijst met ontbrekende of ongeldige velden zodat de gebruiker
+# direct ziet waarom registratie nog niet kan. Dit lost twee
+# UX-problemen op:
+#   1. Bij browser-autofill (Chrome) wordt niet altijd een Streamlit-rerun
+#      getriggerd, waardoor een eerder uitgeschakelde knop "vast" leek te
+#      zitten zonder uitleg.
+#   2. Een uitgeschakelde knop verbergt waaróm hij uit staat — een
+#      expliciete melding voorkomt dat de gebruiker hoeft te raden.
+def _verzamel_ontbrekende_velden() -> list[str]:
+    ontbreekt: list[str] = []
+    if not first_name:
+        ontbreekt.append("Voornaam")
+    if not last_name:
+        ontbreekt.append("Achternaam")
+    if not email:
+        ontbreekt.append("E-mailadres")
+    if not postal_code:
+        ontbreekt.append("Postcode")
+    if not house_number:
+        ontbreekt.append("Huisnummer")
+    # Adres-lookup faalde of postcode/huisnummer ontbreekt: in beide
+    # gevallen heeft session_state["address"] geen bruikbare gegevens.
+    if postal_code and house_number and not st.session_state["address"]:
+        ontbreekt.append("Geldig adres (postcode + huisnummer combinatie niet gevonden)")
+    if not password:
+        ontbreekt.append("Wachtwoord")
+    if not check_password:
+        ontbreekt.append("Bevestig wachtwoord")
+    if password and check_password and not passwords_match:
+        ontbreekt.append("Wachtwoorden moeten gelijk zijn")
+    return ontbreekt
 
-register = st.button("Registreren", disabled=not form_complete)
+
+missing_fields = _verzamel_ontbrekende_velden()
+
+# Live hint boven de knop. Bij elke rerun (toetsaanslag, focuswissel,
+# klik) wordt deze opnieuw opgebouwd zodat de lijst meebeweegt met de
+# invoer van de gebruiker.
+if missing_fields:
+    st.info(
+        "Nog te doen voordat je kunt registreren:\n"
+        + "\n".join(f"- {veld}" for veld in missing_fields)
+    )
+
+# Knop is bewust altijd actief. Een klik triggert sowieso een
+# Streamlit-rerun, waardoor door de browser ge-autofill'de waarden
+# alsnog in het script terechtkomen en de adres-lookup boven aan dit
+# bestand alsnog kan slagen. De definitieve validatie gebeurt in de
+# klikafhandeling hieronder.
+register = st.button("Registreren", type="primary")
 
 if register:
+    # Herbereken na de rerun die door de klik is afgedwongen — autofill-
+    # waarden zijn nu zeker opgepikt en de adres-lookup heeft kunnen
+    # draaien.
+    missing_fields = _verzamel_ontbrekende_velden()
+    if missing_fields:
+        st.error(
+            "Registratie kan nog niet voltooid worden. Ontbrekend of ongeldig:\n"
+            + "\n".join(f"- {veld}" for veld in missing_fields)
+        )
+        st.stop()
 
     try:
         user_model = UserModel(

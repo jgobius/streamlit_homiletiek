@@ -18,26 +18,21 @@ _DOMEIN_B = [
 ]
 
 
+# Schaalsuffix '/10' weggelaten omdat 10 de standaardschaal is.
+# Voeg een suffix pas toe wanneer de schaal écht afwijkt (bv. '/5').
 def _score_label(score) -> str:
     try:
         s = int(score)
         if s >= 8:
-            return f":green[{s}/10]"
+            return f":green[**{s}**]"
         elif s >= 6:
-            return f":blue[{s}/10]"
+            return f":blue[**{s}**]"
         elif s >= 4:
-            return f":orange[{s}/10]"
+            return f":orange[**{s}**]"
         else:
-            return f":red[{s}/10]"
+            return f":red[**{s}**]"
     except (TypeError, ValueError):
         return str(score) if score else "—"
-
-
-def _score_val(score) -> str:
-    try:
-        return f"{int(score)}/10" if score is not None else "—"
-    except (TypeError, ValueError):
-        return "—"
 
 
 def _render_criterium(label: str, blok: dict, extra_keys: list[str]) -> None:
@@ -90,20 +85,22 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
     ruimte = result.get("ruimte_voor_genade_analyse", {})
 
     # === 1. Totaaloverzicht ===
+    # Vroegere indeling was 3 kolommen (score | stijl | doelgroep). Probleem
+    # gelijk aan Aristoteles: 'doelgroep_analyse' is meestal een uitgebreide
+    # alinea, terwijl 'score' 1 cijfer is en 'stijl' 1 regel — kolom 3 hangt
+    # ver onder de andere twee. Nu: korte score inline, stijl + doelgroep
+    # stapelen op volle breedte zodat lange tekst niet meer met kolombreedte
+    # vecht.
     overall = totaal.get("overall_esthetische_score")
     stijl = totaal.get("primaire_esthetische_stijl", "")
     doelgroep = totaal.get("doelgroep_analyse", "")
 
-    cols = st.columns(3)
-    with cols[0]:
-        if overall is not None:
-            st.metric("Overall esthetische score", _score_val(overall))
-    with cols[1]:
-        if stijl:
-            st.markdown(f"**Esthetische stijl**  \n{clean_md(stijl)}")
-    with cols[2]:
-        if doelgroep:
-            st.markdown(f"**Doelgroep**  \n{clean_md(doelgroep)}")
+    if overall is not None:
+        st.markdown(f"**Overall esthetische score:** {_score_label(overall)}")
+    if stijl:
+        st.markdown(f"**Esthetische stijl**  \n{clean_md(stijl)}")
+    if doelgroep:
+        st.markdown(f"**Doelgroep**  \n{clean_md(doelgroep)}")
 
     samenvatting = totaal.get("samenvatting", "")
     if samenvatting:
@@ -142,19 +139,13 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
         with st.expander("Conclusie", expanded=False):
             st.markdown(clean_md(conclusie))
 
-    st.divider()
-
     # === 2. Domein A — Poëtica van de taal ===
+    # Geen leading divider — de H3-kop is al sectiescheiding genoeg.
     if domein_a:
         st.markdown("### Domein A — Poëtica van de taal")
         samenvatting_a = domein_a.get("samenvatting_taal", "")
-        score_cols = st.columns(3)
-        for i, (key, label, _) in enumerate(_DOMEIN_A):
-            blok = domein_a.get(key, {})
-            score = blok.get("score") if isinstance(blok, dict) else None
-            afk = label.split("—")[0].strip()
-            with score_cols[i]:
-                st.metric(afk, _score_val(score))
+        # Score staat in de expander-titel per criterium; aparte score-rij
+        # ervoor weggelaten om dubbele weergave te vermijden.
         if samenvatting_a:
             st.caption(clean_md(samenvatting_a))
         for key, label, extra_keys in _DOMEIN_A:
@@ -166,13 +157,8 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
     if domein_b:
         st.markdown("### Domein B — Dramaturgie van de structuur")
         samenvatting_b = domein_b.get("samenvatting_structuur", "")
-        score_cols = st.columns(3)
-        for i, (key, label, _) in enumerate(_DOMEIN_B):
-            blok = domein_b.get(key, {})
-            score = blok.get("score") if isinstance(blok, dict) else None
-            afk = label.split("—")[0].strip()
-            with score_cols[i]:
-                st.metric(afk, _score_val(score))
+        # Score staat in de expander-titel per criterium; aparte score-rij
+        # ervoor weggelaten om dubbele weergave te vermijden.
         if samenvatting_b:
             st.caption(clean_md(samenvatting_b))
         for key, label, extra_keys in _DOMEIN_B:
@@ -181,12 +167,12 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
                 _render_criterium(label, blok, extra_keys)
 
     # === 4. Kitsch-diagnose ===
+    # Geen leading divider; de H3-kop scheidt al van het Domein-B-blok.
     if kitsch:
-        st.divider()
         st.markdown("### Kitsch-diagnose")
         kitsch_score = kitsch.get("anti_kitsch_score")
         if kitsch_score is not None:
-            st.metric("Anti-kitsch score", _score_val(kitsch_score))
+            st.markdown(f"**Anti-kitsch score**  \n{_score_label(kitsch_score)}")
         kitsch_analyse = kitsch.get("analyse", "")
         if kitsch_analyse:
             st.markdown(clean_md(kitsch_analyse))
@@ -211,12 +197,12 @@ def feedback_esthetiek(analysis: dict[str, Any]) -> None:
             st.caption(f"Aanbeveling: {clean_md(kitsch_aanbev)}")
 
     # === 5. Ruimte voor genade (Cilliers) ===
+    # Geen leading divider; de H3-kop is al voldoende scheiding.
     if ruimte:
-        st.divider()
         st.markdown("### Ruimte voor genade (Cilliers)")
         ruimte_score = ruimte.get("ruimte_score")
         if ruimte_score is not None:
-            st.metric("Ruimte-score", _score_val(ruimte_score))
+            st.markdown(f"**Ruimte-score**  \n{_score_label(ruimte_score)}")
         ruimte_analyse = ruimte.get("analyse", "")
         if ruimte_analyse:
             st.markdown(clean_md(ruimte_analyse))
