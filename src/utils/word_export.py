@@ -457,12 +457,24 @@ def _groepeer_per_tab(sub_analyses: list[dict]) -> dict[str, list[dict]]:
 
 
 def _front_end_name(sub: dict) -> str:
+    """Geeft de display-naam voor een sub-analyse, gescrubd van Tavily-verwijzingen.
+
+    Zes analyse-types staan in de DB met `front_end_name` in de vorm
+    "Gemeente-spiritualiteit (Tavily)" — handig in de UI om aan te geven
+    dat de pijplijn een externe zoektool gebruikt, maar verkeerd in een
+    document dat de prediker meeneemt naar de kerkenraad. We strippen de
+    parenthetische Tavily-mention via dezelfde scrub-pipeline die ook
+    voor leaf-tekst geldt; zo blijven zowel de inhoudsopgave als de
+    sectiekoppen schoon.
+    """
     at = sub.get("analysis_type") or {}
-    return (
+    naam = (
         at.get("front_end_name")
         or _humanize_key(at.get("name", ""))
         or "Onbekende analyse"
     )
+    schoon = _scrub_tavily(naam).strip() if naam else naam
+    return schoon or "Onbekende analyse"
 
 
 # ---------------------------------------------------------------------------
@@ -944,15 +956,24 @@ def _render_bijbelteksten(doc, result: Any, heading_level: int = 3) -> None:
        Hebreeuwse rijen.
 
     `result` is een lijst van scripture-passages — zelfde shape als de
-    UI verwacht (zie `bijbelteksten.py:182`). Wanneer `result` geen lijst
-    is laten we het door de generieke walker afhandelen; dat is een
-    legacy- of error-shape die we niet stilletjes willen verbergen.
+    UI verwacht (zie `bijbelteksten.py:182`). Voor de alternatieve dict-
+    shape (oude data, bv. sermon 215 met `boek`/`verzen`/`tekst_bron`)
+    valt de UI terug op "Nog geen bijbeltekst beschikbaar"; wij doen
+    hetzelfde zodat de uitvoer voorspelbaar is en niet plotseling een
+    bulk verbose dict-walk oplevert. Wanneer alle passages na filtering
+    leeg blijken, tonen we een italic placeholder zodat de "Bijbelteksten"-
+    kop nooit wees blijft staan.
     """
     if not isinstance(result, list):
-        _walk(result, doc, heading_level=heading_level)
+        # Alt-shape (dict) of legacy/error-shape: zelfde gedrag als de UI.
+        # Beter een duidelijke melding dan een verwarrende fallback-walk
+        # met Engelstalige sleutels en interne id's.
+        p = doc.add_paragraph()
+        p.add_run("— geen renderbare bijbeltekst beschikbaar.").italic = True
         return
 
     niveau = min(heading_level, _MAX_HEADING_LEVEL)
+    iets_gerenderd = False
     for scripture in result:
         if not isinstance(scripture, dict):
             continue
@@ -993,6 +1014,7 @@ def _render_bijbelteksten(doc, result: Any, heading_level: int = 3) -> None:
                 # als de inline "Number: 1"-regel uit de generieke walker.
                 p.add_run(f"{label}. ").bold = True
                 p.add_run(schoon)
+                iets_gerenderd = True
 
             # Eén italic-blok per unieke bron-regel in het cluster — zo
             # zien opeenvolgende Dutch-versen die naar dezelfde BHS-rij
@@ -1012,6 +1034,14 @@ def _render_bijbelteksten(doc, result: Any, heading_level: int = 3) -> None:
                     pPr.append(bidi)
                 bron_run = bron_p.add_run(schone_bron)
                 bron_run.italic = True
+
+    if not iets_gerenderd:
+        # Lege of volledig gefilterde resultaten leveren anders alleen de
+        # "Bijbelteksten"-kop op uit `_render_analyse`, wat eruitziet als
+        # een verdwenen sectie. Eén italic regel maakt zichtbaar dat er
+        # niets renderbaars in de analyse zit (bv. een mislukte agent-run).
+        p = doc.add_paragraph()
+        p.add_run("— geen renderbare bijbeltekst beschikbaar.").italic = True
 
 
 # ---------------------------------------------------------------------------
