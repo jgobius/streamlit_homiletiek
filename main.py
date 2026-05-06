@@ -975,14 +975,13 @@ def _render_cumulative_token_usage_sidebar() -> None:
             f"Totaal tokenverbruik: {total_input:,} in / {total_output:,} uit"
             f"{budget_label}"
         )
-        if tavily_credits > 0:
-            # Aparte regel voor Tavily zodat de gebruiker de externe
-            # zoekservice-kosten los kan herkennen. De EUR is al meegenomen
-            # in `kosten_eur` hierboven.
-            st.caption(
-                f"Tools: {tavily_credits} credits "
-                f"({formatteer_eur(bereken_tavily_kosten_eur(tavily_credits))})"
-            )
+        # Aparte regel voor de externe-tool-kosten zodat de gebruiker ook
+        # bij 0 credits ziet dat het feature actief is en het bedrag los
+        # kan volgen. De EUR is al meegenomen in `kosten_eur` hierboven.
+        st.caption(
+            f"Tools: {tavily_credits} credits "
+            f"({formatteer_eur(bereken_tavily_kosten_eur(tavily_credits))})"
+        )
 
 
 def main():
