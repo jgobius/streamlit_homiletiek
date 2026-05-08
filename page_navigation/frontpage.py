@@ -238,6 +238,19 @@ def _render_werkwijze():
         "Hieronder vindt u een overzicht van de stappen."
     )
 
+    # Korte verwijzing naar het YouTube-kanaal met instructievideo's. Geplaatst
+    # boven de stappen zodat gebruikers die liever kijken dan lezen meteen
+    # weten dat die optie bestaat. Eén externe link volstaat – we sluiten
+    # specifieke video's niet in (geen iframe), zodat de pagina licht blijft
+    # en het kanaal als één bron kan groeien.
+    st.info(
+        "📺 **Liever zien hoe het werkt?** Op het YouTube-kanaal "
+        "[VoorbereidVoorgaan](https://www.youtube.com/@VoorbereidVoorgaan) "
+        "staan korte instructievideo's over inloggen, het aanmaken van een "
+        "kerkdienstanalyse, het exporteren naar Word en andere veelvoorkomende "
+        "handelingen. Een handige aanvulling op de stappen hieronder."
+    )
+
     st.markdown("#### Stap 1 – Registreren")
     st.markdown(
         "VoorbereidVoorgaan.nl is momenteel alleen toegankelijk voor genodigden. U heeft een persoonlijke "
