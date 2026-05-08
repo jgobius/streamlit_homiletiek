@@ -375,6 +375,25 @@ def humanize_key(key: str) -> str:
     return woorden[0].upper() + woorden[1:]
 
 
+def humaniseer_tag(value: Any) -> str:
+    """Maak een snake_case-tag leesbaar zonder de overige interpunctie
+    aan te tasten: 'politieke_crisis' → 'Politieke crisis',
+    'asiel/migratie' → 'Asiel/migratie'.
+
+    In tegenstelling tot ``humanize_key`` raakt deze helper alleen
+    underscores aan; samengestelde tag-waardes uit LLM-schema's (zoals
+    'bouw/ruimtelijk' of 'asiel/migratie' uit politieke_orientatie) houden
+    dus hun '/'-scheiding. Niet-strings of lege waarden geven we
+    onveranderd terug zodat de aanroeper zelf bepaalt of er gerenderd
+    wordt."""
+    if not isinstance(value, str) or not value:
+        return value if isinstance(value, str) else ""
+    schoon = value.replace("_", " ").strip()
+    if not schoon:
+        return value
+    return schoon[0].upper() + schoon[1:]
+
+
 def _verse_int(number: Any) -> int | None:
     """Geef het versnummer als int, of None bij iets niet-numerieks.
 
