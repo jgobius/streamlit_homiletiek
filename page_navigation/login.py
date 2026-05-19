@@ -35,9 +35,17 @@ if st.button("← Terug naar hoofdpagina"):
     st.switch_page(f"{st.session_state['page_navigation_dir']}/frontpage.py")
 
 st.title("Inloggen")
-user_name = st.text_input("Username")
-password = st.text_input("Password", type="password")
-login_button = st.button("Login", disabled=not user_name or not password)
+
+# Inputs + Login in st.form zodat Enter in een tekstveld het formulier
+# submit. Buiten een form rerunt Streamlit per toetsaanslag en triggert
+# Enter geen knop — daardoor moest de gebruiker eerder expliciet op Login
+# klikken. Binnen een form rerunt de pagina niet op input-changes, dus de
+# eerdere `disabled=not user_name or not password`-truc werkt hier niet;
+# in plaats daarvan valideren we na submit.
+with st.form("login_form"):
+    user_name = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    login_button = st.form_submit_button("Login")
 
 # "Wachtwoord vergeten?" — secundaire actie, daarom als losse knop onder
 # de Login-knop. We gebruiken een gewone knop (geen markdown-link) zodat
@@ -46,7 +54,12 @@ login_button = st.button("Login", disabled=not user_name or not password)
 if st.button("Wachtwoord vergeten?"):
     st.switch_page(f"{st.session_state['page_navigation_dir']}/wachtwoord_vergeten.py")
 
-if login_button:
+if login_button and (not user_name or not password):
+    # Validatie verplaatst van knop-`disabled` naar post-submit, omdat
+    # st.form pas rerunt bij submit en de knop-state dus niet live op de
+    # input-velden reageert.
+    st.error("Vul zowel gebruikersnaam als wachtwoord in.")
+elif login_button:
 
     try:
         api_handler = get_token(
