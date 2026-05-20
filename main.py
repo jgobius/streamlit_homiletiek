@@ -889,9 +889,11 @@ def _render_token_usage_sidebar() -> None:
     if not handler:
         return
     analysis_id = st.session_state.get('current_analysis_id')
-    # Beide endpoints (per-analyse en algeheel niet-cumulatief) retourneren
-    # sinds 2026-05 een wrapper-dict {"usage": {...}, "tavily_credits": N}
-    # zodat we Tavily-credits buiten de model-aggregatie kunnen tonen.
+    # Het endpoint retourneert een wrapper-dict {"usage": {...},
+    # "tavily_credits": N}; we gebruiken alleen `usage` voor de
+    # token-aantallen. De tool-(Tavily-)kosten worden hier bewust niet
+    # getoond — die staan al op het dashboard. Tijdens het analyseren
+    # tonen we in de sidebar enkel het tokenverbruik.
     endpoint = f"api/token-usage/?sermon_analysis_id={analysis_id}" if analysis_id else "api/token-usage/"
     try:
         payload = handler.get(endpoint)
@@ -900,26 +902,17 @@ def _render_token_usage_sidebar() -> None:
         return
     if not isinstance(payload, dict):
         return
-    # Oudere backends (vóór de tavily_credits-uitrol) geven nog de platte
-    # dict-vorm terug; in dat geval behandelen we de payload zelf als
-    # usage-dict en tonen we geen Tavily-regel.
+    # Oudere backends geven nog de platte dict-vorm terug; in dat geval
+    # behandelen we de payload zelf als usage-dict.
     usage = payload.get("usage") if "usage" in payload else payload
     if not isinstance(usage, dict):
         return
-    tavily_credits = int(payload.get("tavily_credits", 0) or 0)
     total_input, total_output = _calc_token_totals(usage)
     with st.sidebar:
         st.divider()
         st.caption(
             f"Tokens huidige analyse: {total_input:,} in / {total_output:,} uit"
         )
-        if tavily_credits > 0:
-            # Tavily wordt los van het model getoond: het is een externe
-            # zoekservice, geen LLM-call.
-            st.caption(
-                f"Tools: {tavily_credits} credits "
-                f"({formatteer_eur(bereken_tavily_kosten_eur(tavily_credits))})"
-            )
 
 
 def _render_cumulative_token_usage_sidebar() -> None:
