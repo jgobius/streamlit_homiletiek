@@ -87,7 +87,6 @@ from src.utils.analyse_tabs import (
     _PREEKSCHETS_HULPSTUKKEN,
     _PREEKSCHETSEN_TAB,
     _FEEDBACK_NAMEN,
-    _INTERN_NAMEN,
     _ALL_NON_BASIS,
     heeft_preekschets_resultaten,
 )
@@ -625,15 +624,15 @@ summary = list(latest.values())
 # Herbereken _ALL_NON_BASIS hier binnen de body zodat het overeenkomt met de
 # module-scope definitie hierboven (beide moeten synchroon blijven — dubbele
 # definitie is legacy, maar aanpassen hier bewaart de oorspronkelijke structuur).
-# _INTERN_NAMEN moet hier mee zodat interne helpers (bv. de Brueggemann
-# methode-selector) ook bij deze lokale recomputatie uit Basis verdwijnen.
+# (De Brueggemann methode-selector is geen AnalysisType meer maar een tool in
+# homiletiek_agent; hij komt niet meer uit de API en hoeft hier niet langer
+# uitgesloten te worden.)
 _ALL_NON_BASIS = (
     _PERSPECTIEVEN_NAMEN
     | _VERDIEPING_NAMEN
     | _PREEKSCHETSEN_TAB
     | _GEBEDEN_NAMEN
     | _FEEDBACK_NAMEN
-    | _INTERN_NAMEN
 )
 
 analyse_summary = sorted(

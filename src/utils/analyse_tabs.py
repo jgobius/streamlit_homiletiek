@@ -130,24 +130,16 @@ _BASIS_ORDER: list[str] = [
 # "alles wat niet in andere tabs zit".
 _BASIS_NAMEN: set[str] = set(_BASIS_ORDER) | {"postille"}
 
-# Interne helper-analyses die het model wel uitvoert maar die de predikant
-# nooit in zijn menu hoeft te zien. brueggemann_methode_selector kiest één
-# van de vier Brueggemann-methoden voor de poet-flow; zijn output wordt door
-# de substitution-laag (homiletiek_agent) gelezen en hoort dus niet thuis in
-# Basis, Verdieping of een ander gebruikersgericht tabblad.
-_INTERN_NAMEN: set[str] = {"brueggemann_methode_selector"}
-
 # Alle niet-basis namen, gebruikt in overview.py om basis-analyses te filteren.
-# _INTERN_NAMEN zit hier expliciet in zodat interne helpers ook uit de Basis-
-# kolom (en haar 'Analyse toevoegen'-menu) verdwijnen — ze staan in geen
-# enkele andere tab-set, dus na deze uitsluiting zijn ze in de UI onzichtbaar.
+# (De vroegere interne helper brueggemann_methode_selector is geen AnalysisType
+# meer maar een tool in homiletiek_agent; hij komt niet meer uit de API en
+# hoeft hier dus niet langer expliciet uitgesloten te worden.)
 _ALL_NON_BASIS: set[str] = (
     _PERSPECTIEVEN_NAMEN
     | _VERDIEPING_NAMEN
     | _PREEKSCHETSEN_TAB
     | _GEBEDEN_NAMEN
     | _FEEDBACK_NAMEN
-    | _INTERN_NAMEN
 )
 
 def heeft_preekschets_resultaten(
