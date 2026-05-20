@@ -71,13 +71,6 @@ def _render_home():
             if st.button("Registreren", type="secondary", use_container_width=True):
                 st.switch_page(f"{st.session_state['page_navigation_dir']}/register.py")
 
-    st.divider()
-    st.markdown(
-        "💳 **Kosten & betaling.** [Gratis voor testgebruikers!] Het platform werkt op basis van kostprijsberekening: u betaalt uitsluitend "
-        "de werkelijke kosten van de analyse, zonder winstopslag. De exacte prijs wordt vooraf getoond. "
-        "Betaling verloopt veilig via **Mollie / iDEAL**."
-    )
-
 
 def _render_over_ons():
     st.header("Over ons")
@@ -412,6 +405,6 @@ with tab5:
     _render_vragen()
 
 st.divider()
-st.caption("Non-profit · Betaling via iDEAL · © 2026 VoorbereidVoorgaan.nl · Jan-Jaap Gobius du Sart & Wim Otte")
+st.caption("Non-profit · © 2026 VoorbereidVoorgaan.nl · Jan-Jaap Gobius du Sart & Wim Otte")
 
 
