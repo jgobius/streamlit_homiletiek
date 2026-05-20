@@ -44,8 +44,10 @@ def _render_home():
 
     st.subheader("Aanmelden als early tester")
     st.markdown(
-        "VoorbereidVoorgaan.nl is momenteel beschikbaar voor een beperkte groep genodigden. "
-        "Aanmelding is alleen mogelijk via een persoonlijke uitnodiging."
+        "VoorbereidVoorgaan.nl bevindt zich in een vroege testfase (early testing). "
+        "U kunt zich vrijblijvend registreren en als early tester meehelpen het platform "
+        "te verbeteren. Houd er rekening mee dat onderdelen nog volop in ontwikkeling zijn en "
+        "kunnen wijzigen."
     )
     # Voor reeds ingelogde gebruikers (api_handler aanwezig in session_state)
     # vervangen we de inlog-/registreerknoppen door één 'Naar dashboard'-knop.
@@ -343,8 +345,9 @@ def _render_vragen():
         ),
         (
             "Hoe meld ik me aan?",
-            "VoorbereidVoorgaan.nl is momenteel uitsluitend toegankelijk via een persoonlijke uitnodiging. "
-            "Uitnodigingen worden gefaseerd verstuurd aan early testers.",
+            "VoorbereidVoorgaan.nl bevindt zich in een vroege testfase. U kunt zich vrijblijvend "
+            "registreren via de knop 'Registreren' en als early tester meehelpen het platform te verbeteren. "
+            "Onderdelen zijn nog volop in ontwikkeling en kunnen wijzigen.",
         ),
         (
             "Is mijn data veilig?",
