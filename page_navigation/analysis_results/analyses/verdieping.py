@@ -666,7 +666,10 @@ def render_kalender(analysis: dict) -> None:
                 for item in kerkelijk:
                     naam = item.get("naam", "")
                     toelichting = item.get("toelichting", "")
-                    type_k = item.get("type", "")
+                    # Type komt soms als snake_case (bv. 'liturgisch_feest')
+                    # uit de LLM; via _humaniseer_label wordt dat een leesbaar
+                    # tag-label ('Liturgisch Feest') zoals elders in dit bestand.
+                    type_k = _humaniseer_label(item.get("type", ""))
                     regel = f"- **{_md(naam)}**"
                     if type_k:
                         regel += f" ({type_k})"
@@ -714,7 +717,10 @@ def render_kalender(analysis: dict) -> None:
                 for item in overig:
                     naam = item.get("naam", "")
                     toelichting = item.get("toelichting", "")
-                    cat = item.get("categorie", "")
+                    # Zelfde humaniseer-stap als bij Kerkelijk: categorie kan
+                    # snake_case zijn (bv. 'internationale_dag'); rauw rendering
+                    # was niet consistent met de rest van verdieping.
+                    cat = _humaniseer_label(item.get("categorie", ""))
                     regel = f"- **{_md(naam)}**"
                     if cat:
                         regel += f" ({cat})"

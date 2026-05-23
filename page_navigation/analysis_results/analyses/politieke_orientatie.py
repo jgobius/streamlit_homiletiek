@@ -10,7 +10,7 @@ from typing import Any
 
 import streamlit as st
 
-from src.utils.utils import clean_md
+from src.utils.utils import clean_md, humaniseer_tag
 
 
 def _zacht_breekbaar(text: str) -> str:
@@ -262,8 +262,14 @@ def politieke_orientatie(analysis: dict[str, Any]) -> None:
         ):
             for sv in spanningsvelden:
                 with st.container(border=True):
+                    # Type-waarde uit het schema is snake_case met optionele
+                    # '/' (bv. 'asiel/migratie', 'energie/klimaat'). humaniseer_tag
+                    # raakt alleen underscores aan, dus de '/' blijft staan
+                    # zodat de samengestelde categorie zichtbaar blijft.
+                    sv_type = humaniseer_tag(sv.get("type", ""))
+                    type_extra = f" — *{sv_type}*" if sv_type else ""
                     st.markdown(
-                        f"**{sv.get('onderwerp', '')}** — *{sv.get('type', '')}*"
+                        f"**{sv.get('onderwerp', '')}**{type_extra}"
                     )
                     if sv.get("standpunten"):
                         st.markdown(clean_md(sv["standpunten"]))

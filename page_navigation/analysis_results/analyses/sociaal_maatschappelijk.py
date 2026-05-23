@@ -2,7 +2,7 @@ from typing import Any
 
 import streamlit as st
 
-from src.utils.utils import clean_md
+from src.utils.utils import clean_md, humaniseer_tag
 
 
 def _render_list(values: list) -> None:
@@ -204,7 +204,10 @@ def sociaal_maatschappelijk(analysis: dict[str, Any]) -> None:
                     c1, c2 = st.columns([1, 3])
                     with c1:
                         st.caption(geb.get("datum", ""))
-                        st.markdown(f"*{geb.get('type', '')}*")
+                        # Type komt rauw als snake_case uit de LLM (bv.
+                        # 'politieke_crisis'); humaniseren voorkomt dat
+                        # underscores in de UI verschijnen.
+                        st.markdown(f"*{humaniseer_tag(geb.get('type', ''))}*")
                     with c2:
                         st.markdown(f"**{geb.get('gebeurtenis', '')}**")
                         if geb.get("impact"):

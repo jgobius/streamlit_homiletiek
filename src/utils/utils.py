@@ -375,6 +375,25 @@ def humanize_key(key: str) -> str:
     return woorden[0].upper() + woorden[1:]
 
 
+def humaniseer_tag(value: Any) -> str:
+    """Maak een snake_case-tag leesbaar zonder de overige interpunctie
+    aan te tasten: 'politieke_crisis' → 'Politieke crisis',
+    'asiel/migratie' → 'Asiel/migratie'.
+
+    In tegenstelling tot ``humanize_key`` raakt deze helper alleen
+    underscores aan; samengestelde tag-waardes uit LLM-schema's (zoals
+    'bouw/ruimtelijk' of 'asiel/migratie' uit politieke_orientatie) houden
+    dus hun '/'-scheiding. Niet-strings of lege waarden geven we
+    onveranderd terug zodat de aanroeper zelf bepaalt of er gerenderd
+    wordt."""
+    if not isinstance(value, str) or not value:
+        return value if isinstance(value, str) else ""
+    schoon = value.replace("_", " ").strip()
+    if not schoon:
+        return value
+    return schoon[0].upper() + schoon[1:]
+
+
 def _verse_int(number: Any) -> int | None:
     """Geef het versnummer als int, of None bij iets niet-numerieks.
 
@@ -1190,13 +1209,13 @@ def registreer_lopende_analyse(
 
 @st.fragment(run_every="15s")
 def render_analyse_voortgang_poller() -> None:
-    """Polt elke 15s of een gestarte analyse klaar is en toast bij detectie.
+    """Polt elke 15s of een gestarte analyse klaar is en invalideert cache.
 
     Het fragment her-runt zichzelf zonder de hele pagina te ververen — dat
-    maakt periodieke API-calls hier veilig. Toasts werken globaal vanuit
-    een fragment, maar navigatie-side-effects zoals ``st.switch_page``
-    NIET; daarom roepen we ``api_handler.get(...)`` rechtstreeks aan in
-    plaats van ``get_data()`` (die bij 401 redirect naar login).
+    maakt periodieke API-calls hier veilig. We roepen ``api_handler.get(...)``
+    rechtstreeks aan in plaats van ``get_data()`` (die bij 401 redirect naar
+    login en navigatie-side-effects zoals ``st.switch_page`` werken niet
+    vanuit een fragment).
 
     Het fragment rendert ALTIJD een onzichtbare placeholder, ook als er
     geen lopende analyses zijn. Streamlit pauzeert de scheduler-runs van
@@ -1206,9 +1225,12 @@ def render_analyse_voortgang_poller() -> None:
     placeholder uit te zenden blijven de 15s-tikken ook stabiel
     plaatsvinden tussen tab-wissels door.
 
-    We veroorzaken bewust geen ``st.rerun()``: de toast vermeldt 'Ververs
-    het menu' en de gebruiker beslist zelf wanneer hij dat doet — een
-    automatische rerun zou hem onderbreken tijdens lezen of typen.
+    Bewust GEEN ``st.toast`` of ``st.rerun``: een toast-aanroep vanuit een
+    fragment-tick sluit elke open ``@st.dialog`` (zoals "Selectie van input
+    voor preekschetsen" of "Eigen preek invoeren"), waardoor de gebruiker
+    zijn niet-opgeslagen selectie verliest. De gebruiker krijgt direct na
+    het starten van een analyse al een ``st.toast`` ("... wordt uitgevoerd")
+    en kan zelf via de Ververs-knop het menu verversen.
     """
     # Onzichtbare placeholder: geeft het fragment een DOM-anker zodat
     # Streamlit het niet weg-optimaliseert. Lege string in markdown
@@ -1232,12 +1254,12 @@ def render_analyse_voortgang_poller() -> None:
         try:
             # APIHandler.get() geeft al de gedecodeerde JSON terug (zie
             # src/api/handler.py); een extra .json()-call zou hier een
-            # AttributeError opleveren en de toast laten missen.
+            # AttributeError opleveren en de detectie laten missen.
             data = handler.get(f"api/analysis-results?sermon_analysis_id={sid}")
             resultaten_per_sermon[sid] = data if isinstance(data, list) else []
         except Exception:
             # Negeer en probeer in de volgende poll opnieuw — netwerkhiccups
-            # mogen geen toast missen of een entry per ongeluk droppen.
+            # mogen geen entry per ongeluk droppen.
             resultaten_per_sermon[sid] = []
 
     nu = time.time()
@@ -1256,12 +1278,7 @@ def render_analyse_voortgang_poller() -> None:
         # Klaar = er bestaat een resultaat met hogere id dan de baseline
         # (of überhaupt een resultaat als er geen baseline was).
         if max_id is not None and (baseline is None or max_id > baseline):
-            # Pop vóór toast om dubbele meldingen te voorkomen als het
-            # fragment vlak na elkaar twee keer rendert.
             lopende.pop(sleutel, None)
-            st.toast(
-                f"'{info['front_end_name']}' is klaar. Ververs het menu."
-            )
             iets_afgerond = True
         elif nu - info["gestart_op"] > _LOPENDE_ANALYSE_TIMEOUT_S:
             # Stilletjes droppen na 10 min — vermoedelijk een agent-fout.
