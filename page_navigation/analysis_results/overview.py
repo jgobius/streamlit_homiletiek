@@ -545,6 +545,50 @@ def _trigger_collecta(
         st.error(f"Fout: {e}")
 
 
+@st.dialog("Stijl van de collecta")
+def collecta_stijl_dialog(analysis_id: int, at: dict) -> None:
+    """Popup waarin de prediker het literaire register van de collecta kiest.
+
+    Wordt gebruikt voor zowel de eerste generatie ('Collecta toevoegen') als
+    'Opnieuw': beide starten een nieuwe run met de gekozen stijl. De keuze
+    wordt niet in de DB bewaard — de popup verschijnt elke keer opnieuw, zodat
+    een rerun bewust een andere stijl kan krijgen. De radio staat default op
+    'Laat de AI kiezen' (= het oorspronkelijke gedrag, register=None).
+
+    Staat naast _trigger_collecta gedefinieerd (en niet verderop bij de andere
+    dialogen) omdat de sidebar-rendercode op module-niveau de dialog al kan
+    aanroepen vóór dat latere defs-blok is uitgevoerd; een latere positie gaf
+    een NameError op 'collecta_stijl_dialog'.
+    """
+    st.write(
+        f"Kies in welk literair register **'{at['front_end_name']}'** wordt "
+        "geschreven, of laat de AI zelf een passend register kiezen op basis "
+        "van het kerkelijk jaar en de lezingen."
+    )
+    # 'Laat de AI kiezen' als eerste optie zodat index=0 de default is.
+    opties = [_COLLECTA_REGISTER_AI, *_COLLECTA_REGISTERS]
+    keuze = st.radio(
+        "Literair register",
+        options=opties,
+        index=0,
+        key=f"collecta_register_radio_{analysis_id}",
+    )
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Genereren", type="primary", use_container_width=True):
+            # AI-optie -> None meesturen; de backend levert dan een lege
+            # register-instructie en de prompt kiest zelf.
+            register = None if keuze == _COLLECTA_REGISTER_AI else keuze
+            # Zelfde lock-key-conventie als toevoegen/rerun zodat dubbele
+            # triggers elkaar blokkeren.
+            lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+            _trigger_collecta(int(analysis_id), at, lock_key, register)
+            st.rerun()
+    with col2:
+        if st.button("Annuleren", use_container_width=True):
+            st.rerun()
+
+
 def _render_preekschets_result(selected_preek: dict, latest: dict) -> None:
     """Dispatch op basis van aanwezigheid preek_onderdelen in result."""
     result = selected_preek.get("result", {})
@@ -1216,45 +1260,6 @@ def confirm_rerun_analysis(result: dict) -> None:
                 _trigger_preekschets(int(result["sermon_analysis"]["id"]), at, lock_key)
             else:
                 _trigger_analysis(int(result["sermon_analysis"]["id"]), at, lock_key)
-            st.rerun()
-    with col2:
-        if st.button("Annuleren", use_container_width=True):
-            st.rerun()
-
-
-@st.dialog("Stijl van de collecta")
-def collecta_stijl_dialog(analysis_id: int, at: dict) -> None:
-    """Popup waarin de prediker het literaire register van de collecta kiest.
-
-    Wordt gebruikt voor zowel de eerste generatie ('Collecta toevoegen') als
-    'Opnieuw': beide starten een nieuwe run met de gekozen stijl. De keuze
-    wordt niet in de DB bewaard — de popup verschijnt elke keer opnieuw, zodat
-    een rerun bewust een andere stijl kan krijgen. De radio staat default op
-    'Laat de AI kiezen' (= het oorspronkelijke gedrag, register=None).
-    """
-    st.write(
-        f"Kies in welk literair register **'{at['front_end_name']}'** wordt "
-        "geschreven, of laat de AI zelf een passend register kiezen op basis "
-        "van het kerkelijk jaar en de lezingen."
-    )
-    # 'Laat de AI kiezen' als eerste optie zodat index=0 de default is.
-    opties = [_COLLECTA_REGISTER_AI, *_COLLECTA_REGISTERS]
-    keuze = st.radio(
-        "Literair register",
-        options=opties,
-        index=0,
-        key=f"collecta_register_radio_{analysis_id}",
-    )
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Genereren", type="primary", use_container_width=True):
-            # AI-optie -> None meesturen; de backend levert dan een lege
-            # register-instructie en de prompt kiest zelf.
-            register = None if keuze == _COLLECTA_REGISTER_AI else keuze
-            # Zelfde lock-key-conventie als toevoegen/rerun zodat dubbele
-            # triggers elkaar blokkeren.
-            lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
-            _trigger_collecta(int(analysis_id), at, lock_key, register)
             st.rerun()
     with col2:
         if st.button("Annuleren", use_container_width=True):
