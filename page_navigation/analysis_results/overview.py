@@ -160,6 +160,25 @@ _COLLECTA_REGISTERS = [
 # string vergelijken (de AI-optie stuurt literair_register=None mee).
 _COLLECTA_REGISTER_AI = "Laat de AI kiezen"
 
+# Korte toelichting per register voor de captions onder de radio-opties in de
+# Collecta-stijlpopup. Geboorte-/sterfdata (indien bekend) + een beknopte
+# typering van de stijl, zodat de prediker een geïnformeerde keuze maakt.
+# Een dict (label -> caption) zodat de captions exact met _COLLECTA_REGISTERS
+# meelopen en bij herordening niet uit de pas raken. Bevat ook de AI-optie.
+_COLLECTA_REGISTER_INFO = {
+    _COLLECTA_REGISTER_AI: "Het model kiest zelf een passend register op basis van het kerkelijk jaar en de lezingen.",
+    "Mary Oliver": "1935–2019 · Amerikaans dichter. Heldere natuurobservatie, eenvoudige taal, aandachtige verwondering.",
+    "Rainer Maria Rilke": "1875–1926 · Duitstalig dichter. Mystiek-existentieel, beeldrijk, intense innerlijkheid.",
+    "T.S. Eliot": "1888–1965 · Brits-Amerikaans dichter. Modernistisch, gelaagd, religieuze diepgang (Four Quartets).",
+    "Ida Gerhardt": "1905–1997 · Nederlands dichter. Klassiek geschoold, sober, strenge vorm, bijbels-natuurlijk.",
+    "Willem Barnard": "1920–2010 · Nederlands dichter/theoloog. Liturgisch, bijbels, geworteld in het kerkelijk jaar.",
+    "Huub Oosterhuis": "1933–2024 · Nederlands dichter/theoloog. Vernieuwende liturgische taal, psalmparafrase, toegankelijk en geëngageerd.",
+    "Vasalis": "1909–1998 · Nederlands dichter. Ingetogen, helder, existentiële verwondering over leven en vergankelijkheid.",
+    "Annie Dillard": "1945– · Amerikaans schrijver. Contemplatief proza, natuur en theologie, scherpe observatie.",
+    "Bonhoeffer": "1906–1945 · Duits theoloog. Gebed vanuit lijden en verzet, christocentrisch, sober en concreet.",
+    "Psalmisch register": "Bijbelse psalmtaal. Parallellisme, afwisseling van klacht en lof, directe aanspraak tot God.",
+}
+
 # Tab-categorisatie (_PERSPECTIEVEN_NAMEN, _VERDIEPING_NAMEN, _GEBEDEN_NAMEN,
 # _PREEKSCHETSEN_NAMEN, _FEEDBACK_NAMEN, _PREEKSCHETS_HULPSTUKKEN,
 # _PREEKSCHETSEN_TAB, _ALL_NON_BASIS, _TABS/TAB_VOLGORDE, _BASIS_ORDER) wordt
@@ -567,9 +586,14 @@ def collecta_stijl_dialog(analysis_id: int, at: dict) -> None:
     )
     # 'Laat de AI kiezen' als eerste optie zodat index=0 de default is.
     opties = [_COLLECTA_REGISTER_AI, *_COLLECTA_REGISTERS]
+    # Captions tonen per optie de leefdata + een korte stijltypering. We lezen
+    # ze per label uit _COLLECTA_REGISTER_INFO zodat de volgorde gegarandeerd
+    # met `opties` meeloopt; een ontbrekend label valt terug op een lege caption.
+    captions = [_COLLECTA_REGISTER_INFO.get(o, "") for o in opties]
     keuze = st.radio(
         "Literair register",
         options=opties,
+        captions=captions,
         index=0,
         key=f"collecta_register_radio_{analysis_id}",
     )
