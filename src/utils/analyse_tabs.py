@@ -49,13 +49,17 @@ _VERDIEPING_NAMEN: set[str] = {
     "poezie_meertalig",
 }
 
-# Gebeden: vier varianten (klassiek, profetisch, dialogisch, eenvoudig) die
-# dezelfde renderer delen maar verschillende prompts hebben.
+# Gebeden: vijf varianten. De eerste vier (klassiek, profetisch, dialogisch,
+# eenvoudig) zijn sets van vijf liturgische gebeden en delen de renderer
+# render_gebeden. De collecta is een afwijkend type: één lang openingsgebed
+# (~500 woorden) met een eigen, plat schema en daarom een eigen renderer
+# (render_collecta) — zie verdieping.py.
 _GEBEDEN_NAMEN: set[str] = {
     "gebeden",
     "gebeden_profetisch",
     "gebeden_dialogisch",
     "gebeden_eenvoudig",
+    "gebeden_collecta",
 }
 
 # Preekschetsen: de daadwerkelijke homiletische schetsen (Lowry, Buttrick,

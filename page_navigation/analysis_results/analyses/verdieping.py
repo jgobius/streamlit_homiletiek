@@ -239,6 +239,47 @@ def render_gebeden(analysis: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Collecta (40)
+# ---------------------------------------------------------------------------
+
+def render_collecta(analysis: dict) -> None:
+    # De collecta wijkt af van de andere gebed-types: geen set van vijf
+    # liturgische gebeden, maar één doorlopend openingsgebed (~500 woorden)
+    # met een plat schema. Daarom een eigen renderer i.p.v. render_gebeden.
+    result = _result(analysis)
+    if not result:
+        st.info("Geen resultaat beschikbaar.")
+        return
+
+    # De gebedstekst is het hoofdonderdeel; hij bevat al witregels tussen de
+    # alinea's, dus we tonen hem rechtstreeks als markdown zonder expander —
+    # de collecta is bedoeld om in één beweging hardop gelezen te worden.
+    tekst = result.get("collecta", "")
+    if tekst:
+        st.markdown(_md(tekst))
+    else:
+        st.info("Geen collecta-tekst beschikbaar.")
+
+    # Gekozen retoriek en literair register als rustige duiding onder het
+    # gebed. kwaliteitscontrole (interne booleans) tonen we bewust niet —
+    # dat is analyse-metadata zonder meerwaarde voor de liturgische weergave,
+    # net zoals render_gebeden de profetische_elementen weglaat.
+    retoriek = result.get("gekozen_retoriek", [])
+    if retoriek:
+        if isinstance(retoriek, list):
+            retoriek = " · ".join(str(r) for r in retoriek if r)
+        st.caption(f"Retoriek: {_md(retoriek)}")
+
+    register = result.get("literair_register", "")
+    if register:
+        st.caption(f"Literair register: {_md(register)}")
+
+    lengte = result.get("lengte_woorden")
+    if lengte:
+        st.caption(f"Lengte: ± {lengte} woorden")
+
+
+# ---------------------------------------------------------------------------
 # Kunst, Cultuur en Film (18)
 # ---------------------------------------------------------------------------
 
@@ -764,6 +805,7 @@ _RENDERERS = {
     "gebeden_profetisch":       render_gebeden,
     "gebeden_dialogisch":       render_gebeden,
     "gebeden_eenvoudig":        render_gebeden,
+    "gebeden_collecta":         render_collecta,
     "kunst_cultuur":            render_kunst_cultuur,
     "kindermoment":             render_kindermoment,
     "bezinningsmoment":         render_bezinningsmoment,
