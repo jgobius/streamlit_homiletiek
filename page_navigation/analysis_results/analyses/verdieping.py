@@ -817,6 +817,10 @@ _RENDERERS = {
     "waardenorientatie":        render_waardenorientatie,
     "interpretatieve_synthese": render_interpretatieve_synthese,
     "sociaal_maatschappelijk":  render_sociaal_maatschappelijk,
+    # poezie_nederlands hergebruikt de generieke poëzie-renderer: die filtert
+    # alleen op categorie (Klassiek/Modern) en is taal-agnostisch, dus werkt
+    # ongewijzigd voor zowel het NL-only als het buitenlands-only resultaat.
+    "poezie_nederlands":        render_poezie_meertalig,
     "poezie_meertalig":         render_poezie_meertalig,
 }
 

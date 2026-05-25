@@ -46,6 +46,7 @@ _VERDIEPING_NAMEN: set[str] = {
     "politieke_orientatie",
     "waardenorientatie",
     "interpretatieve_synthese",
+    "poezie_nederlands",
     "poezie_meertalig",
 }
 
