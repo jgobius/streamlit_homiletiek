@@ -137,6 +137,29 @@ REANALYSIS_LOCK_TIMEOUT_SECONDS = 180
 # geplakte analyses.
 _EIGEN_PREEK_MAX_WOORDEN_TITEL = 30
 
+# Literaire registers waaruit de prediker kan kiezen in de Collecta-
+# stijlpopup. De labels komen exact overeen met de subsectie-koppen in
+# sectie 8 van de collecta-prompt (gebeden_collecta.md), zodat de
+# VERPLICHT-instructie die de agent eruit opbouwt naar de juiste subsectie
+# verwijst. De volgorde volgt de prompt (8.1 t/m 8.10).
+_COLLECTA_REGISTERS = [
+    "Mary Oliver",
+    "Rainer Maria Rilke",
+    "T.S. Eliot",
+    "Ida Gerhardt",
+    "Willem Barnard",
+    "Huub Oosterhuis",
+    "Vasalis",
+    "Annie Dillard",
+    "Bonhoeffer",
+    "Psalmisch register",
+]
+
+# Labeltekst voor de "laat het model zelf kiezen"-optie in de radio. Een
+# losse constante zodat de dialog en de keuze-afhandeling exact dezelfde
+# string vergelijken (de AI-optie stuurt literair_register=None mee).
+_COLLECTA_REGISTER_AI = "Laat de AI kiezen"
+
 # Tab-categorisatie (_PERSPECTIEVEN_NAMEN, _VERDIEPING_NAMEN, _GEBEDEN_NAMEN,
 # _PREEKSCHETSEN_NAMEN, _FEEDBACK_NAMEN, _PREEKSCHETS_HULPSTUKKEN,
 # _PREEKSCHETSEN_TAB, _ALL_NON_BASIS, _TABS/TAB_VOLGORDE, _BASIS_ORDER) wordt
@@ -475,6 +498,95 @@ def _trigger_preekschets(analysis_id: int, at: dict, lock_key: str) -> None:
     except Exception as e:
         _release_reanalysis_lock(lock_key)
         st.error(f"Fout: {e}")
+
+
+def _trigger_collecta(
+    analysis_id: int, at: dict, lock_key: str, literair_register: str | None
+) -> None:
+    """Start een collecta via de naam-gebaseerde /run_single_analysis/-flow.
+
+    Anders dan de overige gebed-types (die via _trigger_analysis op het
+    id-gebaseerde endpoint draaien) routeren we de collecta hier, omdat alleen
+    de naam-gebaseerde flow het vrije veld `literair_register` doorgeeft aan de
+    agent. `literair_register=None` betekent 'laat de AI kiezen' — de backend
+    levert dan een lege register-instructie en de prompt kiest zelf.
+    """
+    st.session_state[lock_key] = time.time()
+    try:
+        # Alleen sermon_analysis_id, naam en het register meesturen; de overige
+        # selected_*-velden van RunSingleAnalysisIn defaulten backend-zijdig
+        # naar leeg en zijn voor de collecta niet van toepassing.
+        response = agent_request.post(
+            endpoint="run_single_analysis/",
+            payload={
+                "sermon_analysis_id": int(analysis_id),
+                "analysis_type_name": at["name"],
+                "literair_register": literair_register,
+            },
+            timeout=120,
+        )
+        response.raise_for_status()
+        st.session_state["analysis_data_dirty"] = True
+        registreer_lopende_analyse(int(analysis_id), at["name"], at["front_end_name"])
+        st.toast(
+            f"'{at['front_end_name']}' wordt uitgevoerd. Ververs de pagina over enkele minuten."
+        )
+    except requests.exceptions.HTTPError as e:
+        if e.response is not None and e.response.status_code == 409:
+            st.warning(e.response.json().get("detail", "Al gestart, wacht even."))
+            registreer_lopende_analyse(
+                int(analysis_id), at["name"], at["front_end_name"]
+            )
+        else:
+            _release_reanalysis_lock(lock_key)
+            st.error(f"Fout: {e}")
+    except Exception as e:
+        _release_reanalysis_lock(lock_key)
+        st.error(f"Fout: {e}")
+
+
+@st.dialog("Stijl van de collecta")
+def collecta_stijl_dialog(analysis_id: int, at: dict) -> None:
+    """Popup waarin de prediker het literaire register van de collecta kiest.
+
+    Wordt gebruikt voor zowel de eerste generatie ('Collecta toevoegen') als
+    'Opnieuw': beide starten een nieuwe run met de gekozen stijl. De keuze
+    wordt niet in de DB bewaard — de popup verschijnt elke keer opnieuw, zodat
+    een rerun bewust een andere stijl kan krijgen. De radio staat default op
+    'Laat de AI kiezen' (= het oorspronkelijke gedrag, register=None).
+
+    Staat naast _trigger_collecta gedefinieerd (en niet verderop bij de andere
+    dialogen) omdat de sidebar-rendercode op module-niveau de dialog al kan
+    aanroepen vóór dat latere defs-blok is uitgevoerd; een latere positie gaf
+    een NameError op 'collecta_stijl_dialog'.
+    """
+    st.write(
+        f"Kies in welk literair register **'{at['front_end_name']}'** wordt "
+        "geschreven, of laat de AI zelf een passend register kiezen op basis "
+        "van het kerkelijk jaar en de lezingen."
+    )
+    # 'Laat de AI kiezen' als eerste optie zodat index=0 de default is.
+    opties = [_COLLECTA_REGISTER_AI, *_COLLECTA_REGISTERS]
+    keuze = st.radio(
+        "Literair register",
+        options=opties,
+        index=0,
+        key=f"collecta_register_radio_{analysis_id}",
+    )
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Genereren", type="primary", use_container_width=True):
+            # AI-optie -> None meesturen; de backend levert dan een lege
+            # register-instructie en de prompt kiest zelf.
+            register = None if keuze == _COLLECTA_REGISTER_AI else keuze
+            # Zelfde lock-key-conventie als toevoegen/rerun zodat dubbele
+            # triggers elkaar blokkeren.
+            lock_key = f"analysis_add_lock_{analysis_id}_{at['name']}"
+            _trigger_collecta(int(analysis_id), at, lock_key, register)
+            st.rerun()
+    with col2:
+        if st.button("Annuleren", use_container_width=True):
+            st.rerun()
 
 
 def _render_preekschets_result(selected_preek: dict, latest: dict) -> None:
@@ -965,7 +1077,12 @@ with st.sidebar:
                         disabled=_add_locked or not _ok,
                         help=_help,
                     ):
-                        _trigger_analysis(int(analysis_id), at, _add_lock_key)
+                        # De collecta krijgt eerst een stijlpopup (literair
+                        # register); de overige gebed-types starten direct.
+                        if at["name"] == "gebeden_collecta":
+                            collecta_stijl_dialog(int(analysis_id), at)
+                        else:
+                            _trigger_analysis(int(analysis_id), at, _add_lock_key)
 
     elif current_tab == "Feedback":
         # Feedback-analysen navigatie
@@ -1183,7 +1300,16 @@ def _render_actieknoppen(result: dict, key_prefix: str) -> None:
     if _toon_opnieuw:
         with col_rerun:
             if st.button("Opnieuw", icon="🔄", key=f"{key_prefix}_rerun"):
-                confirm_rerun_analysis(result)
+                # De collecta krijgt ook bij 'Opnieuw' de stijlpopup, zodat een
+                # rerun bewust een ander literair register kan kiezen. De
+                # overige types gaan via de generieke bevestigingsdialoog.
+                if result["analysis_type"]["name"] == "gebeden_collecta":
+                    collecta_stijl_dialog(
+                        int(result["sermon_analysis"]["id"]),
+                        result["analysis_type"],
+                    )
+                else:
+                    confirm_rerun_analysis(result)
     with col_ctx:
         if st.button("Aanpassen", icon="✏️", key=f"{key_prefix}_ctx"):
             aanpassen_dialog(result)
