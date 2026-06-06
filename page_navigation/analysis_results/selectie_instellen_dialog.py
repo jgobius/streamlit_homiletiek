@@ -466,7 +466,7 @@ def selectie_instellen_dialog(
         # background_task de PATCH wegschrijft.
         try:
             _voor_resultaten = handler.get(
-                f"api/analysis-results?sermon_analysis_id={analysis_id}"
+                f"api/analysis-results/?sermon_analysis_id={analysis_id}"
             ) or []
         except requests.exceptions.RequestException:
             _voor_resultaten = []
@@ -503,7 +503,7 @@ def selectie_instellen_dialog(
                 while time.monotonic() < _bijbelteksten_deadline:
                     try:
                         _resultaten = handler.get(
-                            f"api/analysis-results?sermon_analysis_id={analysis_id}"
+                            f"api/analysis-results/?sermon_analysis_id={analysis_id}"
                         ) or []
                     except requests.exceptions.RequestException:
                         # Tijdelijke netwerkfout: geef de volgende iteratie
