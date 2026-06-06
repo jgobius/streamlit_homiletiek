@@ -1047,7 +1047,7 @@ def haal_cumulatief_tokenverbruik_op() -> tuple[int, int, float, int, int, float
         return None
     try:
         payload = handler.get("api/token-usage/cumulative/")
-    except requests.exceptions.HTTPError:
+    except requests.exceptions.RequestException:
         # Endpoint niet bereikbaar in deze omgeving — laat de pagina
         # gewoon laden zonder waarschuwing.
         return None
@@ -1172,7 +1172,7 @@ def _lees_baseline_id(
         # APIHandler.get() retourneert al de gedecodeerde JSON (geen Response-
         # object), dus geen extra .json()-call nodig.
         items = handler.get(
-            f"api/analysis-results?sermon_analysis_id={sermon_analysis_id}"
+            f"api/analysis-results/?sermon_analysis_id={sermon_analysis_id}"
         ) or []
     except Exception:
         return None
@@ -1255,7 +1255,7 @@ def render_analyse_voortgang_poller() -> None:
             # APIHandler.get() geeft al de gedecodeerde JSON terug (zie
             # src/api/handler.py); een extra .json()-call zou hier een
             # AttributeError opleveren en de detectie laten missen.
-            data = handler.get(f"api/analysis-results?sermon_analysis_id={sid}")
+            data = handler.get(f"api/analysis-results/?sermon_analysis_id={sid}")
             resultaten_per_sermon[sid] = data if isinstance(data, list) else []
         except Exception:
             # Negeer en probeer in de volgende poll opnieuw — netwerkhiccups

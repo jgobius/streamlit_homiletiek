@@ -7,6 +7,9 @@ import streamlit as st
 from .jwthandler import JwtHandler
 
 
+DEFAULT_REQUEST_TIMEOUT_SECONDS = 15
+
+
 class APIHandler:
     """
     A handler class for making HTTP API requests.
@@ -36,7 +39,12 @@ class APIHandler:
                 requests.exceptions.HTTPError: If the request returns an error status code.
     """
 
-    def __init__(self, base_url: str, jwt_handler: JwtHandler) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        jwt_handler: JwtHandler,
+        request_timeout: int = DEFAULT_REQUEST_TIMEOUT_SECONDS,
+    ) -> None:
         """
         Initialize the handler with a base URL.
         Args:
@@ -45,6 +53,7 @@ class APIHandler:
 
         self.base_url = base_url
         self.jwt_handler = jwt_handler
+        self.request_timeout = request_timeout
 
     def get(
         self, endpoint: str, params: dict[str, Any] | None = None
@@ -69,7 +78,12 @@ class APIHandler:
                 "Content-Type": "application/json",
             }
         
-        response = requests.get(url, params=params, headers=headers)
+        response = requests.get(
+            url,
+            params=params,
+            headers=headers,
+            timeout=self.request_timeout,
+        )
         response.raise_for_status()
         return response.json()
 
@@ -95,9 +109,18 @@ class APIHandler:
                 "Authorization": f"Bearer {self.jwt_handler.token}",
                 "Content-Type": "application/json",
             }
-            response = requests.post(url, json=data, headers=headers)
+            response = requests.post(
+                url,
+                json=data,
+                headers=headers,
+                timeout=self.request_timeout,
+            )
         else:
-            response = requests.post(url, json=data)    
+            response = requests.post(
+                url,
+                json=data,
+                timeout=self.request_timeout,
+            )
             
         response.raise_for_status()
         return response.json()
@@ -122,7 +145,12 @@ class APIHandler:
             "Authorization": f"Bearer {self.jwt_handler.token}",
             "Content-Type": "application/json",
         }
-        response = requests.put(url, json=data, headers=headers)
+        response = requests.put(
+            url,
+            json=data,
+            headers=headers,
+            timeout=self.request_timeout,
+        )
         response.raise_for_status()
         return response.json()
 
@@ -157,6 +185,11 @@ class APIHandler:
             "Authorization": f"Bearer {self.jwt_handler.token}",
             "Content-Type": "application/json",
         }
-        response = requests.patch(url, json=data, headers=headers)
+        response = requests.patch(
+            url,
+            json=data,
+            headers=headers,
+            timeout=self.request_timeout,
+        )
         response.raise_for_status()
         return response.json()

@@ -559,7 +559,7 @@ if submit:
                 with st.spinner("Bijbelteksten worden opgehaald..."):
                     while time.monotonic() < _bijbelteksten_deadline:
                         _resultaten = st.session_state["api_handler"].get(
-                            f"api/analysis-results?sermon_analysis_id={sermon_analysis_id}"
+                            f"api/analysis-results/?sermon_analysis_id={sermon_analysis_id}"
                         ) or []
                         if any(
                             (r.get("analysis_type") or {}).get("name") == "bijbelteksten"

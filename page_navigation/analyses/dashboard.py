@@ -23,13 +23,12 @@ redirect_to_login()
 
 render_sidebar()
 
-# Polling-fragment: rendert niets zichtbaars maar her-runt elke 15s en
-# toont een toast wanneer een eerder gestarte analyse afgerond is. We
-# plaatsen het in de sidebar zodat de fragment-positie stabiel blijft
-# bij rerenders van de hoofdcontent (zoals na het verwijderen van een
-# analyse via de bevestigingsdialoog).
-with st.sidebar:
-    render_analyse_voortgang_poller()
+# Poll alleen wanneer er in deze sessie daadwerkelijk een analyse loopt.
+# Anders blijft Streamlit elke 15s een fragment-rerun plannen terwijl er
+# niets te controleren valt.
+if st.session_state.get("lopende_analyses"):
+    with st.sidebar:
+        render_analyse_voortgang_poller()
 
 # Django levert `created_at` in UTC (settings.USE_TZ=True, TIME_ZONE="UTC").
 # Voor weergave converteren we naar Nederlandse tijd (DST-aware via zoneinfo).
