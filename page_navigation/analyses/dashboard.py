@@ -179,10 +179,29 @@ def confirm_delete_analysis() -> None:
             st.rerun()
 
 
+# Bereik van het overzicht. Voor een superuser geeft de backend standaard de
+# eigen analyses plus die van de drie recentst actieve accounts; `?scope=all`
+# vraagt de volledige lijst op. Dat scheelt fors: op productie is de volledige
+# lijst 728 KB over 73 analyses van 30 accounts, opgehaald bij elke
+# dashboard-opbouw. We lezen de waarde hier uit session_state omdat het
+# bijbehorende vinkje pas onder de paginatitel gerenderd wordt; Streamlit
+# bewaart die waarde onder de widget-key, dus na een klik pakt de
+# eerstvolgende rerun hem hier op.
+_alle_gebruikers = bool(st.session_state.get("dashboard_scope_all", False))
+_analyses_endpoint = (
+    "api/sermon-analyses/?scope=all" if _alle_gebruikers else "api/sermon-analyses/"
+)
+
 # Cache de lijst om te voorkomen dat elke klik een API-roundtrip veroorzaakt.
 # De vlag `dashboard_data_dirty` wordt gezet na aanmaken of verwijderen van een analyse.
-if st.session_state.pop("dashboard_data_dirty", False) or "dashboard_analyses_cache" not in st.session_state:
-    st.session_state["dashboard_analyses_cache"] = get_data("api/sermon-analyses/")
+# Wisselt het bereik, dan is de cache ook stale — vandaar de derde voorwaarde.
+if (
+    st.session_state.pop("dashboard_data_dirty", False)
+    or "dashboard_analyses_cache" not in st.session_state
+    or st.session_state.get("dashboard_analyses_scope") != _analyses_endpoint
+):
+    st.session_state["dashboard_analyses_cache"] = get_data(_analyses_endpoint)
+    st.session_state["dashboard_analyses_scope"] = _analyses_endpoint
 analysis = st.session_state["dashboard_analyses_cache"]
 
 # Controleer cumulatief verbruik van de ingelogde gebruiker tegen het
@@ -211,6 +230,23 @@ if _token_info is not None:
 
 st.title("Kerkdienstanalyses")
 st.write("Overzicht van alle kerkdienstanalyses.")
+
+# Bereik-schakelaar, alleen voor superusers. Zonder vinkje toont de backend de
+# eigen analyses plus die van de drie recentst actieve accounts. De waarde
+# wordt bovenaan dit bestand uitgelezen om het endpoint te kiezen. Bewust hier
+# en niet in de else-tak hieronder: bij een leeg gefilterd overzicht moet de
+# schakelaar juist wél bereikbaar blijven.
+superuser_modus = bool(st.session_state.get("is_superuser", False))
+if superuser_modus:
+    st.checkbox(
+        "Analyses van alle gebruikers tonen",
+        key="dashboard_scope_all",
+        help=(
+            "Standaard toont dit overzicht je eigen analyses plus die van de "
+            "drie gebruikers die het laatst een analyse aanmaakten. Aanvinken "
+            "haalt de volledige lijst op, wat merkbaar trager is."
+        ),
+    )
 
 # Paginascoped CSS: geef de knop van de laatste analyse (meest recente zondagdatum)
 # dezelfde zachte oranje styling als het actieve tabblad en de geselecteerde
@@ -250,7 +286,6 @@ else:
     # belangrijk om in dat geval alsnog te zien van wie die analyses zijn.
     # De vroegere drempel "len(unieke_emails) > 1" werkte niet als de
     # superuser zelf nog geen actieve analyses had.
-    superuser_modus = bool(st.session_state.get("is_superuser", False))
     unieke_emails = sorted({
         it.get("user_email") for it in analysis if it.get("user_email")
     })
