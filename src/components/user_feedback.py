@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Optional
+from typing import Any, Optional
 
 import streamlit as st
 
@@ -133,8 +133,37 @@ def _render_wrapped_text(text: str, key: str) -> None:
     )
 
 
+def _haal_prompt_op(analysis: dict, handler) -> Any:
+    """Haal het `prompt`-veld op voor deze analyse.
+
+    Het lijst-endpoint stuurt `prompt` niet meer mee: op een gevulde preek is
+    dat tweederde van een antwoord van ruim een megabyte, terwijl alleen deze
+    debug-dialoog het veld leest. Staat het er toch in (oudere backend), dan
+    gebruiken we die waarde; anders halen we het losse record op, dat het
+    volledige object teruggeeft.
+    """
+    if "prompt" in analysis:
+        return analysis.get("prompt")
+
+    sermon_analysis = analysis.get("sermon_analysis")
+    sermon_analysis_id = (
+        sermon_analysis.get("id")
+        if isinstance(sermon_analysis, dict)
+        else sermon_analysis
+    )
+    try:
+        record = handler.get(
+            f"api/analysis-results/{analysis['id']}/"
+            f"?sermon_analysis_id={sermon_analysis_id}"
+        )
+    except Exception as exc:
+        st.error(f"Kon het prompt niet ophalen: {exc}")
+        return None
+    return (record or {}).get("prompt")
+
+
 @st.dialog("LLM-prompt (debug)", width="large")
-def _prompt_debug_dialog(analysis: dict) -> None:
+def _prompt_debug_dialog(analysis: dict, handler) -> None:
     """Toon het LLM-prompt zoals opgeslagen in de database voor deze analyse.
 
     Tijdelijke debug-hulp: het prompt wordt bij elke analyse-run in AnalysisResult.prompt
@@ -145,7 +174,7 @@ def _prompt_debug_dialog(analysis: dict) -> None:
     analysis_type = analysis.get("analysis_type", {}) or {}
     naam = analysis_type.get("front_end_name") or analysis_type.get("name", "")
     st.markdown(f"**{naam}** — analysis_result id `{analysis.get('id')}`")
-    prompt = analysis.get("prompt")
+    prompt = _haal_prompt_op(analysis, handler)
     if prompt is None or prompt == {} or prompt == "":
         st.info("Geen prompt opgeslagen voor deze analyse.")
         return
@@ -227,7 +256,7 @@ def render_analysis_footer(
                 key=f"{key_prefix}_prompt_{analysis_result_id}",
                 use_container_width=True,
             ):
-                _prompt_debug_dialog(analysis)
+                _prompt_debug_dialog(analysis, handler)
     else:
         if st.button(
             feedback_label,
