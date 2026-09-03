@@ -1171,8 +1171,12 @@ def _lees_baseline_id(
     try:
         # APIHandler.get() retourneert al de gedecodeerde JSON (geen Response-
         # object), dus geen extra .json()-call nodig.
+        # `slim=1`: de backend laat `result` en `prompt` weg. Deze functie
+        # leest alleen `id` en `analysis_type.name`, terwijl het volledige
+        # antwoord bij een gevulde preek ruim een megabyte is — genoeg om de
+        # web-dyno bij herhaald pollen over zijn geheugengrens te duwen.
         items = handler.get(
-            f"api/analysis-results/?sermon_analysis_id={sermon_analysis_id}"
+            f"api/analysis-results/?sermon_analysis_id={sermon_analysis_id}&slim=1"
         ) or []
     except Exception:
         return None
@@ -1255,7 +1259,13 @@ def render_analyse_voortgang_poller() -> None:
             # APIHandler.get() geeft al de gedecodeerde JSON terug (zie
             # src/api/handler.py); een extra .json()-call zou hier een
             # AttributeError opleveren en de detectie laten missen.
-            data = handler.get(f"api/analysis-results/?sermon_analysis_id={sid}")
+            # Zelfde slanke variant als in `_lees_baseline_id`: de poller
+            # vergelijkt alleen id's per analysetype en heeft de resultaat-JSON
+            # niet nodig. Een oudere backend die `slim` niet kent geeft gewoon
+            # het volledige antwoord terug, dus dit is veilig vooruit te zetten.
+            data = handler.get(
+                f"api/analysis-results/?sermon_analysis_id={sid}&slim=1"
+            )
             resultaten_per_sermon[sid] = data if isinstance(data, list) else []
         except Exception:
             # Negeer en probeer in de volgende poll opnieuw — netwerkhiccups
