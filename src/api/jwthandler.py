@@ -5,6 +5,10 @@ from typing import Any
 import requests
 import jwt
 
+
+DEFAULT_AUTH_TIMEOUT_SECONDS = 15
+
+
 class JwtHandler:
     """
     Manages JWT authentication with automatic token refresh.
@@ -84,7 +88,12 @@ class JwtHandler:
         obj._get_refresh_token()
         return obj
 
-    def post(self, endpoint: str, data: dict[str, Any]) -> dict[str, Any]:
+    def post(
+        self,
+        endpoint: str,
+        data: dict[str, Any],
+        timeout: int = DEFAULT_AUTH_TIMEOUT_SECONDS,
+    ) -> dict[str, Any]:
         """
         Send a POST request to the specified endpoint with JSON data.
         Args:
@@ -98,7 +107,7 @@ class JwtHandler:
         """
         
         url = f"{self.base_url}{endpoint}"
-        response = requests.post(url, json=data)
+        response = requests.post(url, json=data, timeout=timeout)
         response.raise_for_status()
         return response.json()
     

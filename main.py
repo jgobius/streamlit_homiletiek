@@ -7,7 +7,12 @@ from streamlit_cookies_controller import CookieController
 
 from src.api.jwthandler import JwtHandler
 from src.api.handler import APIHandler
-from src.utils.utils import bereken_kosten_eur, bereken_tavily_kosten_eur, formatteer_eur
+from src.utils.utils import (
+    bereken_kosten_eur,
+    bereken_tavily_kosten_eur,
+    formatteer_eur,
+    haal_cumulatief_tokenverbruik_op,
+)
 
 # Laad .env één keer bovenin zodat alle child-pages (die in dezelfde Python-
 # proces draaien via st.navigation) de environment-variabelen geërfd krijgen.
@@ -897,7 +902,7 @@ def _render_token_usage_sidebar() -> None:
     endpoint = f"api/token-usage/?sermon_analysis_id={analysis_id}" if analysis_id else "api/token-usage/"
     try:
         payload = handler.get(endpoint)
-    except requests.exceptions.HTTPError:
+    except requests.exceptions.RequestException:
         # Endpoint nog niet beschikbaar in deze omgeving; sidebar stilletjes overslaan.
         return
     if not isinstance(payload, dict):
@@ -921,39 +926,25 @@ def _render_cumulative_token_usage_sidebar() -> None:
     # (zie `bereken_kosten_eur` + `bereken_tavily_kosten_eur`) en afgezet
     # tegen `BUDGET_EUR` uit UserPreferences zodat de testgebruiker ziet
     # hoeveel ruimte er nog is.
-    handler = st.session_state.get('api_handler')
-    if not handler:
+    info = haal_cumulatief_tokenverbruik_op()
+    if info is None:
         return
-    try:
-        payload = handler.get("api/token-usage/cumulative/")
-    except requests.exceptions.HTTPError:
-        # Endpoint nog niet beschikbaar in deze omgeving; sidebar stilletjes overslaan.
-        return
-    if not isinstance(payload, dict):
-        return
-    # De cumulatieve variant levert {"usage": {...}, "tavily_credits": N,
-    # "limits": {...}}; we hebben `usage` nodig voor token-totalen en
-    # `tavily_credits` voor de aparte regel + EUR-aanvulling. Oudere
-    # backends zonder de `usage`-sleutel blijven werken doordat we dan
-    # de payload zelf als usage-dict behandelen — Tavily blijft dan op 0.
-    usage = payload.get("usage") if "usage" in payload else payload
-    if not isinstance(usage, dict):
-        return
-    total_input, total_output = _calc_token_totals(usage)
-    tavily_credits = int(payload.get("tavily_credits", 0) or 0)
 
-    # `limits` ontbreekt op oudere backends; in dat geval tonen we alleen het
-    # geschatte verbruik zonder budget-percentage zodat de UI niet breekt.
-    raw_limits = payload.get("limits")
-    limits = raw_limits if isinstance(raw_limits, dict) else {}
-    budget_eur = float(limits.get("budget_eur", 0) or 0)
+    (
+        total_input,
+        total_output,
+        kosten_eur,
+        _max_input,
+        _max_output,
+        budget_eur,
+        tavily_credits,
+    ) = info
     # Splits LLM- en tool-kosten op de respectievelijke regels en toon
     # het totaal apart op een derde regel. Eerder hingen ze op één regel
     # ("Totaal tokenverbruik: ... €X,XX") wat suggereerde dat het bedrag
     # alleen de tokens dekte terwijl de tool-kosten er ook al in zaten.
     tokens_eur = bereken_kosten_eur(total_input, total_output)
     tools_eur = bereken_tavily_kosten_eur(tavily_credits)
-    kosten_eur = tokens_eur + tools_eur
 
     with st.sidebar:
         st.divider()

@@ -637,13 +637,12 @@ if not analysis_id:
 
 st.session_state["current_analysis_id"] = analysis_id
 
-# Polling-fragment: rendert geen zichtbare UI, maar her-runt elke 15s en
-# toont een toast zodra een gestarte analyse klaar is in de database. We
-# plaatsen het in de sidebar omdat die DOM-positie stabiel blijft tussen
-# tab-wissels in de hoofdcontent — een fragment direct in de hoofdcontent
-# verloor na een tab-klik soms zijn run_every-cyclus.
-with st.sidebar:
-    render_analyse_voortgang_poller()
+# Poll alleen wanneer er in deze sessie daadwerkelijk een analyse loopt.
+# Anders blijft Streamlit elke 15s een fragment-rerun plannen terwijl er
+# niets te controleren valt.
+if st.session_state.get("lopende_analyses"):
+    with st.sidebar:
+        render_analyse_voortgang_poller()
 
 _data_cache_key = f"overview_data_{analysis_id}"
 _cached_entry = st.session_state.get(_data_cache_key)
@@ -674,6 +673,34 @@ def _normaliseer_front_end_namen(items: list) -> None:
                     dep["front_end_name"] = toon_analysenaam(dep["front_end_name"])
 
 
+def _vul_slim_dep_dependencies_aan(items: list[dict[str, Any]]) -> None:
+    """Zet depends_on-id's uit /analysis-types/slim/ om naar kleine type-dicts."""
+    per_id = {
+        item.get("id"): item
+        for item in items
+        if isinstance(item, dict) and item.get("id") is not None
+    }
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        deps = []
+        for dep in item.get("depends_on") or []:
+            if isinstance(dep, dict):
+                deps.append(dep)
+                continue
+            dep_type = per_id.get(dep)
+            if dep_type is None:
+                continue
+            deps.append(
+                {
+                    "id": dep,
+                    "name": dep_type.get("name"),
+                    "front_end_name": dep_type.get("front_end_name"),
+                }
+            )
+        item["depends_on"] = deps
+
+
 if (
     st.session_state.pop("analysis_data_dirty", False)
     or _cached_entry is None
@@ -681,7 +708,7 @@ if (
 ):
     try:
         _fresh_results = get_data(
-            f"api/analysis-results?sermon_analysis_id={analysis_id}"
+            f"api/analysis-results/?sermon_analysis_id={analysis_id}"
         )
         # Normaliseer weergavenamen meteen na het ophalen, vóór caching,
         # zodat elke latere lezer de opgeschoonde versie ziet.
@@ -699,6 +726,12 @@ if (
             )
             st.stop()
         raise
+    except requests.exceptions.RequestException as e:
+        if _cached_entry is not None:
+            st.session_state[_data_cache_key] = _cached_entry
+        else:
+            st.error(f"Kon de analysegegevens niet ophalen: {e}")
+            st.stop()
 _cached_data = st.session_state[_data_cache_key]
 analysis_results = _cached_data["analysis_results"]
 sermon_analysis = _cached_data["sermon_analysis"]
@@ -779,11 +812,15 @@ feedback_summary = sorted(
 )
 
 if "all_analysis_types_cache" not in st.session_state:
-    _fresh_types = get_data("api/analysis-types/")
-    # Normaliseer weergavenamen ook voor het "toevoegen"-menu en afhankelijkheidslabels,
-    # zodat zowel bestaande als nog te maken analyses dezelfde opgeschoonde naam tonen.
-    _normaliseer_front_end_namen(_fresh_types)
-    st.session_state["all_analysis_types_cache"] = _fresh_types
+    try:
+        _fresh_types = get_cached_data("api/analysis-types/slim/")
+        _vul_slim_dep_dependencies_aan(_fresh_types)
+        # Normaliseer weergavenamen ook voor het "toevoegen"-menu en afhankelijkheidslabels,
+        # zodat zowel bestaande als nog te maken analyses dezelfde opgeschoonde naam tonen.
+        _normaliseer_front_end_namen(_fresh_types)
+        st.session_state["all_analysis_types_cache"] = _fresh_types
+    except requests.exceptions.RequestException:
+        st.session_state["all_analysis_types_cache"] = []
 all_analysis_types = st.session_state["all_analysis_types_cache"]
 missing_types = sorted(
     [
